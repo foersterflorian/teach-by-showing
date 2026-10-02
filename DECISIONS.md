@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** repository set up; first spikes pending
+**Status:** spike day 1 in progress: simulation core and task (§6, §7)
 **Last updated:** 2026-10-02
 
 This file records *why* the code looks the way it does. The code says what it
@@ -219,3 +219,116 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   estimate.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
+- **Crane and task parameters** (§6, §7). A first set chosen on paper and
+  checked only with a scripted controller. Whether the swing is dramatic
+  enough for the naive agent, whether visitors can reach the calm criterion,
+  and whether transports take the intended 20–30 s, is tuned on the gamepad
+  (concept §15 items 7 and 8). One observation already: with
+  `max_accel = 0.8 m/s²` a full-throttle run with an abrupt stop swings by
+  only about 9°, and it may even end calm by chance of timing.
+
+---
+
+## 6. Simulation core: batched NumPy, semi-implicit Euler, a drive with limits
+
+**Context.** The same crane is driven by a visitor at 60 Hz, by a learned
+agent, by the naive baseline, and — during evolution — by a swarm of 50–100
+agents at once (concept §5.3). CLAUDE.md demands one code path for all of
+them.
+
+**Decision.** `crane.py` simulates *n* cranes at once: every state quantity is
+a NumPy array with one entry per crane, and a single crane is the case
+*n* = 1. `step()` is a pure function from a state and one command per crane to
+the next state; nothing is mutated, so recorded states stay valid.
+
+**Physics** (concept §4). The load is a point mass on a massless rope of fixed
+length *l*, hung from the trolley:
+
+```
+θ̈ = −(g·sin θ + ẍ·cos θ) / l − c·θ̇
+```
+
+- *Integration:* semi-implicit Euler at 240 Hz, four substeps per 60 Hz frame,
+  fixed step. Time is counted in integer frames, so it cannot drift.
+- *Command:* the target trolley velocity as a fraction of `max_speed`, clipped
+  to −1..1, as on a real crane with a frequency converter. The drive follows
+  it with at most `max_accel`.
+- *End stops:* the drive limits the speed towards each end to
+  `sqrt(2·max_accel·distance)`, so it always brakes in time, like a crane's
+  pre-limit switch; a final clip catches rounding.
+- The drive limits and end stops are the **safety layer** under every driver
+  (concept §5.1). It is part of the crane, not of the agent, so a network
+  cannot bypass it.
+
+**Parameters** (first set, `CraneParams`). `rope_length` 1.55 m gives a
+period of 2.5 s (measured in the simulation: 2.498 s). `damping` 0.05/s halves an
+uncontrolled swing in about 28 s. Track 0–10 m, `max_speed` 0.8 m/s,
+`max_accel` 0.8 m/s². Their tuning is open (§5).
+
+**Why.**
+
+- *Batched from the start*, because the swarm would otherwise need a second
+  implementation later, and the rule against that would be broken exactly
+  where it is hardest to test. The cost is that the core reads a little less
+  directly than with plain floats. `test_batch_equals_individual_cranes`
+  guards that a batch behaves bit for bit like separate runs.
+- *Semi-implicit Euler* keeps the energy of a free swing bounded (within 1 %
+  over 120 s, tested). Explicit Euler with the same step pumps energy in:
+  measured, a free swing from 0.5 rad gains a factor of 12 in energy within
+  120 s, so the load would swing up on its own.
+- *Velocity, not acceleration or force, as the command*, because that is how
+  a crane is driven and what a gamepad stick maps to naturally; it also gives
+  the network a bounded, well-scaled output.
+
+**Measured** (deployment machine, RTX 4090 / AMD 16-core, CPU only,
+2026-10-02). One `step()`: 52 µs for 1 crane, 59 µs for 100, 127 µs for 1000.
+Together with `task.advance()`, a 60 s episode costs 0.22 s simulated for one
+crane and 0.24 s for 100 — so a frame of the live loop uses 0.3 % of its
+budget, and the swarm costs almost nothing extra, as the concept assumed.
+
+**Rejected alternatives.**
+
+- *Scalar core plus a vectorised copy for the swarm.* Two implementations
+  that must agree; see above.
+- *RK4 or `scipy.integrate`.* More accurate per step, but the frame rate is
+  fixed anyway, the error at 240 Hz is far below what is visible (period
+  error 0.015 %, measured), and SciPy would be a dependency for nothing.
+- *A physics engine (pymunk, Box2D).* A dependency and an opaque model for a
+  single pendulum equation.
+- *Hard end stops without early braking.* A trolley hitting the end at full
+  speed would be a non-physical jolt and a cheap way to make the load swing.
+
+`tests/test_crane.py` guards this section.
+
+---
+
+## 7. Task: start, target, and "calm" by swing amplitude
+
+**Decision.** `task.py` draws start and target per transport from an injected
+generator, uniform over the track minus a margin of 0.5 m at each end and at
+least 4 m apart, in both directions. A transport succeeds when the load has
+hung calm for one second; it fails after 60 s.
+
+**Calm** means, all at once: the trolley is within 0.15 m of the target,
+slower than 0.05 m/s, and the **swing amplitude** is below 2°. The amplitude
+is `sqrt(θ² + (θ̇/ω₀)²)`, the amplitude the load would keep swinging with if
+the trolley stood still from now on.
+
+**Why the amplitude and not |θ|.** A swinging load passes the vertical twice
+per period with θ = 0. A test on θ alone would count those moments as calm;
+the one-second hold would mostly catch it, but not reliably for small
+swings. The amplitude is constant over a free swing (tested) and is also the
+natural measure for the style profile's "calm" and "residual swing" (concept
+§6.2).
+
+**Details that are deliberate.**
+
+- *A finished transport is frozen.* Once it has succeeded or timed out,
+  later frames do not change it, so a batch can keep stepping until the last
+  crane is done.
+- *Duration includes the calm second.* It is measured from the start to the
+  frame at which the hold completes.
+- *Sampling fails loudly* if the track is too short for the minimum distance,
+  instead of silently producing short transports.
+
+`tests/test_task.py` guards this section.
