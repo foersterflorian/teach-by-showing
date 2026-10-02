@@ -161,3 +161,30 @@ def test_swing_amplitude_is_constant_over_a_free_swing() -> None:
     states: list[CraneState] = run(swinging(0.05), UNDAMPED, 2.5)
     amps: FloatArray = np.array([swing_amplitude(s, UNDAMPED)[0] for s in states])
     assert np.all(np.abs(amps - 0.05) < 0.05 * 0.01)
+
+
+def test_naive_driver_leaves_a_visible_swing_a_controller_does_not() -> None:
+    """The drive limits are chosen for a visible contrast between a naive and
+    a skilled driver (§6). Fine-tuning may move the figures, but not below
+    what the comparison set A showed to be too tame."""
+    from teach_by_showing.task import TaskParams, Transport, advance, sample_transports
+
+    task: TaskParams = TaskParams()
+    start, target = sample_transports(np.random.default_rng(0), PARAMS, task, 200)
+
+    naive: CraneState = CraneState.at_rest(start)
+    for _ in range(25 * SIM_HZ):
+        braking: FloatArray = naive.v**2 / (2 * PARAMS.max_accel)
+        gap: FloatArray = target - naive.x
+        naive = step(naive, np.where(np.abs(gap) > braking + 0.02, np.sign(gap), 0.0), PARAMS)
+    residual: FloatArray = np.degrees(swing_amplitude(naive, PARAMS))
+    assert np.median(residual) > 10.0
+    assert np.mean(residual < math.degrees(task.swing_tolerance)) < 0.1
+
+    skilled: CraneState = CraneState.at_rest(start)
+    transport: Transport = Transport.begin(target, 0)
+    for _ in range(task.limit_frames):
+        u: FloatArray = np.clip(0.5 * (target - skilled.x), -1, 1) + 2.0 * skilled.theta
+        skilled = step(skilled, u, PARAMS)
+        transport = advance(transport, skilled, PARAMS, task)
+    assert transport.succeeded.all()

@@ -36,8 +36,11 @@ class CraneParams:
     damping: float = 0.05
     track_min: float = 0.0
     track_max: float = 10.0
-    max_speed: float = 0.8
-    max_accel: float = 0.8
+    # Faster and harder than a real crane (about 0.3–0.5 m/s²), on purpose:
+    # the naive driver must leave a swing a visitor sees at a glance. Set B of
+    # the comparison in DECISIONS.md §6; fine-tuning remains open.
+    max_speed: float = 1.2
+    max_accel: float = 1.5
 
     @property
     def omega0(self) -> float:
@@ -110,6 +113,22 @@ def swing_amplitude(state: CraneState, params: CraneParams) -> FloatArray:
     return np.hypot(state.theta, state.omega / params.omega0)
 
 
+def _stoppable_speed(distance: FloatArray, params: CraneParams, h: float) -> FloatArray:
+    """Highest speed from which the drive, braking at max_accel, still stops
+    within `distance`, counted in substeps of length h.
+
+    The continuous answer, sqrt(2·a·d), is not enough: within a substep the
+    trolley moves after the speed is set, so near the end it would arrive too
+    fast and be stopped by the hard clip, a jolt the drive cannot produce.
+    Requiring v²/(2a) + v·h/2 ≤ d keeps braking feasible from every substep
+    to the next. That bound is exact only when v is a whole multiple of a·h;
+    otherwise the trolley rolls up to a·h²/8 farther, so the distance is
+    shortened by a·h², which also absorbs rounding (test_crane.py)."""
+    a: float = params.max_accel
+    d: FloatArray = np.maximum(distance - a * h * h, 0.0)
+    return a * (np.sqrt(h * h / 4.0 + 2.0 * d / a) - h / 2.0)
+
+
 def step(state: CraneState, command: FloatArray, params: CraneParams) -> CraneState:
     """Advance all cranes by one frame of 1/SIM_HZ.
 
@@ -126,9 +145,8 @@ def step(state: CraneState, command: FloatArray, params: CraneParams) -> CraneSt
     x, v, theta, omega = state.x, state.v, state.theta, state.omega
 
     for _ in range(SUBSTEPS):
-        # Highest speed from which the drive can still stop before each end.
-        room_right: FloatArray = np.sqrt(2.0 * p.max_accel * np.maximum(p.track_max - x, 0.0))
-        room_left: FloatArray = np.sqrt(2.0 * p.max_accel * np.maximum(x - p.track_min, 0.0))
+        room_right: FloatArray = _stoppable_speed(np.maximum(p.track_max - x, 0.0), p, h)
+        room_left: FloatArray = _stoppable_speed(np.maximum(x - p.track_min, 0.0), p, h)
         v_target: FloatArray = np.clip(u * p.max_speed, -room_left, room_right)
         accel: FloatArray = np.clip((v_target - v) / h, -p.max_accel, p.max_accel)
 

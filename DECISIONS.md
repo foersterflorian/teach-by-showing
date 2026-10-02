@@ -223,9 +223,8 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   checked only with a scripted controller. Whether the swing is dramatic
   enough for the naive agent, whether visitors can reach the calm criterion,
   and whether transports take the intended 20–30 s, is tuned on the gamepad
-  (concept §15 items 7 and 8). One observation already: with
-  `max_accel = 0.8 m/s²` a full-throttle run with an abrupt stop swings by
-  only about 9°, and it may even end calm by chance of timing.
+  (concept §15 items 7 and 8). The drive limits were raised once already
+  for a visible naive swing (§6); fine-tuning on the gamepad stays open.
 
 ---
 
@@ -253,17 +252,50 @@ length *l*, hung from the trolley:
 - *Command:* the target trolley velocity as a fraction of `max_speed`, clipped
   to −1..1, as on a real crane with a frequency converter. The drive follows
   it with at most `max_accel`.
-- *End stops:* the drive limits the speed towards each end to
-  `sqrt(2·max_accel·distance)`, so it always brakes in time, like a crane's
-  pre-limit switch; a final clip catches rounding.
+- *End stops:* the drive limits the speed towards each end so that braking
+  at `max_accel` always stops in time, like a crane's pre-limit switch. The
+  continuous limit `sqrt(2·max_accel·distance)` is not enough: within a
+  substep the trolley moves after its speed is set, so it reached the end
+  slightly too fast and the hard clip stopped it with a jolt of up to
+  3.4 × `max_accel` (found by `test_drive_respects_speed_and_acceleration_limits`
+  once the drive became faster). The limit is therefore taken from the
+  discrete braking distance, `v²/(2a) + v·h/2 ≤ d`, with the distance
+  shortened by `a·h²` (0.03 mm) for the case that v is not a whole multiple
+  of `a·h` and for rounding. Checked with 5 × 1000 cranes under random and
+  sustained full commands for 120 s each: the acceleration never exceeded
+  `max_accel` and the hard clip never acted. It stays as a last guard.
 - The drive limits and end stops are the **safety layer** under every driver
   (concept §5.1). It is part of the crane, not of the agent, so a network
   cannot bypass it.
 
-**Parameters** (first set, `CraneParams`). `rope_length` 1.55 m gives a
-period of 2.5 s (measured in the simulation: 2.498 s). `damping` 0.05/s halves an
-uncontrolled swing in about 28 s. Track 0–10 m, `max_speed` 0.8 m/s,
-`max_accel` 0.8 m/s². Their tuning is open (§5).
+**Parameters** (`CraneParams`). `rope_length` 1.55 m gives a period of
+2.5 s (measured in the simulation: 2.498 s). `damping` 0.05/s halves an
+uncontrolled swing in about 28 s. Track 0–10 m, `max_speed` 1.2 m/s,
+`max_accel` 1.5 m/s². Fine-tuning on the gamepad stays open (§5).
+
+*Drive limits chosen for a visible difference* (decided 2026-10-02). The
+demonstrator lives on the contrast between a naive driver and a trained
+agent, so the naive swing must be obvious. The first set (0.8 m/s, 0.8 m/s²)
+looked too tame in a playback of the simulation. Three sets were compared
+over 500 random transports (seed 0) with a naive driver — full speed, then
+the latest possible full braking, hitting the target exactly — and a scripted
+anti-sway controller (deployment machine, 2026-10-02):
+
+| Set | max_accel | max_speed | rope (period) | naive: max swing / residual at target, mean / median | ends calm by luck | controller: success, median time |
+|---|---|---|---|---|---|---|
+| A (first) | 0.8 m/s² | 0.8 m/s | 1.55 m (2.50 s) | 12° / 7° (20 cm) | 12 % | 100 %, 10.7 s |
+| **B (chosen)** | 1.5 m/s² | 1.2 m/s | 1.55 m (2.50 s) | 22° / 15° (40 cm) | 4 % | 100 %, 7.3 s |
+| C | 2.0 m/s² | 1.2 m/s | 2.0 m (2.84 s) | 21° / 13° (45 cm) | 3 % | 100 %, 8.1 s |
+
+The residual swing depends mainly on top speed and period, much less on the
+acceleration: a short acceleration phase gives the load an impulse
+proportional to the velocity change. B doubles the naive swing and keeps the
+concept's period of 2.5 s; C swings comparably with a slower period and was
+not preferred. The price of B: it is faster and harder than a real crane
+(about 0.3–0.5 m/s²), and a well-driven transport is short, around 7–11 s
+for the controller against the concept's 20–30 s per demonstration;
+visitors will drive more slowly. How dramatic the swing *looks* also depends
+on the rendering scale, which is decided with the renderer.
 
 **Why.**
 
