@@ -24,8 +24,8 @@ DT: Final[float] = 1.0 / SIM_HZ
 
 @dataclass(frozen=True, slots=True)
 class CraneParams:
-    """Physical parameters. First set for the spike; tuned on the gamepad
-    (concept §15 item 7)."""
+    """Physical parameters: set B of the comparison in DECISIONS.md §6.
+    Fine-tuning on the gamepad is open (concept §15 item 7)."""
 
     gravity: float = 9.81
     # g·T²/(4π²) for a swing period T of 2.5 s: long enough to see the swing,

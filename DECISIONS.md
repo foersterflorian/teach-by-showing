@@ -50,8 +50,9 @@ one is played.
 **Why it holds here, unlike in feature-viz.** feature-viz had to become
 AGPL-3.0-or-later because it is built around ultralytics and serves its output
 over HTTP (feature-viz `DECISIONS.md` §16). Nothing comparable applies here:
-the planned dependencies — NumPy, FastAPI/Starlette, uvicorn — are all
-permissive (BSD-3-Clause or MIT). Any new dependency must keep it that way; a
+the dependencies — NumPy, FastAPI/Starlette, uvicorn and websockets, with
+everything they pull in — are all permissive (MIT, BSD-3-Clause, PSF-2.0;
+listed in §3). Any new dependency must keep it that way; a
 copyleft one reopens this section.
 
 **A consequence worth stating.** MIT permits closed reuse, including by an
@@ -81,8 +82,9 @@ pair.
 **Decision.** The same wording and the same two logos, byte-identical copies of
 feature-viz's files, kept as package data in `src/teach_by_showing/funding/`
 and read through `importlib.resources`. `funding.py` holds the text, the link
-and the logo list. The notice appears in `README.md` and, once the frontend
-exists, as a white strip along the bottom of the screen.
+and the logo list. The notice appears in `README.md` and as a white strip
+along the bottom of the screen, filled in by the server (§9). It is in
+English; a German option is decided but not built (§5).
 
 **Details that are deliberate.**
 
@@ -186,6 +188,12 @@ dependency groups. `DECISIONS.md` and `CLAUDE.md` play the same roles.
   several modules and the frontend also needs them.
 - *No pytest markers yet.* feature-viz's markers (`weights`, `gpu`, `camera`)
   have no counterpart; tiers will be added when there is something to tier.
+- *`tools/` for host-side scripts.* Scripts that run on the stand machine
+  outside the container, such as `kiosk.py` (§11), live in `tools/`, outside
+  the package, and use the system Python, so they need neither the venv nor
+  a build. mypy and ruff cover them like `src` and `tests`.
+- *An entry point:* `pdm run teach-by-showing` starts the server from the
+  venv (`api.main`); the container runs the same module.
 
 **Container:** `Dockerfile` and `compose.yaml` as in feature-viz §9, see
 §10. Still planned: a start script for the stand that checks preconditions
@@ -202,26 +210,28 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   of 20–30 s each suffice for an agent that reaches the target reliably and
   visibly keeps its teacher's style. This is the project's central risk
   (concept §5.2); the first spike tests it with real people.
-- **Gamepad mapping per browser on Linux.** Chrome is documented to report
-  XInput gamepads with the `standard` mapping, Firefox on Linux not (triggers
-  and D-pad as axes, stick axes at other indices). The sources are several
-  years old. To be checked with the GameSir G7 SE and the Logitech F310 in
-  both browsers.
 - **Kiosk placement under COSMIC/Wayland** — *settled on 2026-10-02, see
   §11*: Firefox with `--kiosk-monitor`, the monitor chosen by its EDID
   serial. Still open: the venue's cabling (both DisplayPort, no docking
   station), to be checked at the dress rehearsal; and whether a COSMIC or
   Firefox update changes the behaviour before November, so the placement is
-  rechecked after updates on the stand machine.
-- **Firefox for the crane.** §11 moves the crane from Chrome to Firefox,
-  because Chrome cannot be placed. So the gamepad must work in Firefox,
-  where older sources report a non-`standard` mapping on Linux; the mapping
-  layer of concept §7.1 is meant for exactly that. Checked with both
-  gamepads on the spike's day 1.
-- **Firefox's scale on a fractionally scaled monitor.** At COSMIC's 150 %
-  Firefox reported `devicePixelRatio` 1.36 and a 2816-pixel-wide screen, not
-  1.5 and 2560. Whether that blurs text or canvas on the 4K monitor is
-  judged by eye; Firefox has a pref for fractional scaling on Wayland.
+  rechecked after updates on the stand machine. Firefox's placement rests on
+  6 of 6 starts checked by eye, against series of 10–20 for Chrome; a
+  longer series follows at the dress rehearsal at the latest.
+- **Gamepad in Firefox.** §11 moves the crane from Chrome to Firefox,
+  because Chrome cannot be placed. Older sources (2017, 2022) report XInput
+  gamepads in Chrome with the `standard` mapping, in Firefox on Linux not
+  (triggers and D-pad as axes, stick axes at other indices); the mapping
+  layer of concept §7.1 is meant for exactly that. To be checked with the
+  GameSir G7 SE and the Logitech F310 on the spike's day 1, mainly in
+  Firefox, Chrome only for comparison. The kiosk needs input focus: the
+  keyboard drove the crane only after a click into its window (2026-10-02);
+  whether the Gamepad API needs focus too is part of the next item.
+- **Firefox's scale on a fractionally scaled monitor** — *judged on
+  2026-10-02*. At COSMIC's 150 % Firefox reported `devicePixelRatio` 1.36
+  and a 2816-pixel-wide screen, not 1.5 and 2560. By eye the crane in the
+  Firefox kiosk looked sharp on the 4K monitor, so nothing is changed;
+  Firefox's pref for fractional scaling on Wayland stays in reserve.
 - **Gamepad input with two browser windows.** Whether the crane window keeps
   receiving gamepad input while the feature-viz window runs next to it —
   now two Firefox instances with separate profiles (§11).
@@ -253,9 +263,10 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   fallback stays open and is built only if that fails.
 - **Smoothness against latency in the kiosk.** Interpolation (§9) costs
   about 21 ms of display delay. In the development browser pane it removed
-  all visible skips, but that pane drew only 48 frames per second and is no
-  measure for the kiosk Chrome on the 4K monitor. Whether 21 ms is felt, and
-  whether `?delay=0` looks worse, is judged there with the gamepad.
+  all visible skips, but that pane drew only 48 frames per second. In the
+  Firefox kiosk on the 4K monitor, driving with the keyboard felt smooth
+  with no noticeable delay (judged by eye, 2026-10-02). Still open: the same
+  with the gamepad, and whether `?delay=0` looks worse.
 - **Funding notice language.** The notice is shown in English, verbatim as
   in feature-viz, on an otherwise German screen. Decided 2026-10-02, not yet
   built: the language becomes an option, German or English, with English as
@@ -267,6 +278,10 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   matters when a second tab is open for debugging: the two then fight over
   the crane. Whether the server should accept input from one client only is
   decided with the stand's state machine.
+- **Green on success against green for the agent.** The frontend colours
+  the load and the target zone green when a transport succeeds (§9);
+  concept §8 reserves green for the learned agent. Once agents drive, that
+  reads as "the agent". Resolved with the agent display.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7). A first set chosen on paper and
@@ -363,10 +378,11 @@ on the rendering scale, which is decided with the renderer.
   the network a bounded, well-scaled output.
 
 **Measured** (deployment machine, RTX 4090 / AMD 16-core, CPU only,
-2026-10-02). One `step()`: 52 µs for 1 crane, 59 µs for 100, 127 µs for 1000.
-Together with `task.advance()`, a 60 s episode costs 0.22 s simulated for one
-crane and 0.24 s for 100 — so a frame of the live loop uses 0.3 % of its
-budget, and the swarm costs almost nothing extra, as the concept assumed.
+2026-10-02, after the end-stop fix). One `step()`: 70 µs for 1 crane, 78 µs
+for 100, 160 µs for 1000. Together with `task.advance()`, a 60 s episode
+costs 0.28 s simulated for one crane and 0.31 s for 100 — so a frame of the
+live loop uses under 0.5 % of its budget, and the swarm costs almost nothing
+extra, as the concept assumed. (Before the end-stop fix: 52, 59 and 127 µs.)
 
 **Rejected alternatives.**
 
@@ -380,7 +396,9 @@ budget, and the swarm costs almost nothing extra, as the concept assumed.
 - *Hard end stops without early braking.* A trolley hitting the end at full
   speed would be a non-physical jolt and a cheap way to make the load swing.
 
-`tests/test_crane.py` guards this section.
+`tests/test_crane.py` guards this section; the choice of set B in
+particular is guarded by
+`test_naive_driver_leaves_a_visible_swing_a_controller_does_not`.
 
 ---
 
@@ -412,6 +430,10 @@ natural measure for the style profile's "calm" and "residual swing" (concept
   frame at which the hold completes.
 - *Sampling fails loudly* if the track is too short for the minimum distance,
   instead of silently producing short transports.
+- *A target from anywhere.* `sample_targets()` draws a target for a given
+  start, which may lie anywhere on the track, including the ends where a
+  timed-out transport left the trolley; the live loop (§8) needs that.
+  `sample_transports()` draws starts and uses it.
 
 `tests/test_task.py` guards this section.
 
@@ -437,7 +459,7 @@ api.py              FastAPI: /ws, /healthz, static files — calls into live.py 
   lost time and counts an overrun, rather than catching up with a burst the
   viewer would see as a jump.
 - *An asyncio task, not a thread* — unlike feature-viz §12, whose loop is
-  blocking inference. One tick here costs about 0.06 ms (§6), so it never
+  blocking inference. One tick here costs about 0.08 ms (§6), so it never
   holds the event loop noticeably, and with a single owner of the state no
   lock is needed. Training and evolution will take seconds and go to a
   worker process (§3), never into this loop.
@@ -480,6 +502,10 @@ machine, 30 s):
 | input round trip (send → first state showing it) | median 16.5 ms, p95 17.6 ms, max 17.6 ms |
 | overruns | 0 |
 
+The round trip is one frame, as designed: an input takes effect at the next
+tick. Browser rendering and the gamepad's own polling come on top and are
+part of the spike's acceptance ("latency not noticeable").
+
 **Under load** (deployment machine, 2026-10-02, 60 s): crane and
 feature-viz both in their containers, feature-viz with GPU and webcam, both
 pages open full screen in two Firefox kiosks (§11). The crane: 3601 state
@@ -491,10 +517,6 @@ stream (about 150 % of one core), the crane's server took 4–21 %. The
 input round trip could not be measured this way: the open kiosk sends its
 own command every frame and overwrote the measuring client's (§5, several
 browsers driving at once).
-
-The round trip is one frame, as designed: an input takes effect at the next
-tick. Browser rendering and the gamepad's own polling come on top and are
-part of the spike's acceptance ("latency not noticeable").
 
 **Rejected alternatives.**
 
@@ -517,7 +539,7 @@ that `crane.py`, `task.py` and `live.py` import nothing from the web stack.
 
 ## 9. Frontend: plain files, drawn to scale, interpolated
 
-**Decision.** Four static files, no framework, no build step (§3):
+**Decision.** Five static files, no framework, no build step (§3):
 
 ```
 index.html   layout, German texts, placeholder for the funding notice
@@ -680,8 +702,10 @@ cosmic-comp of 2026-09, Chrome 154, Firefox 156, 2026-10-02). Placement
 was read back with `xwininfo` for X11 windows, through Chrome's debugging
 port (`screen.availLeft`) for Wayland windows, and by eye.
 
-- *Chrome under XWayland with `--window-position`.* The first two tries
-  landed right, which looked like success. Repeated runs did not: COSMIC
+- *Chrome under XWayland with `--window-position`.* The first start, with a
+  fresh profile, landed where asked; the second, reusing that profile, did
+  not; the third, with a fresh profile again, did — which looked like
+  success once the profile was understood. Repeated runs did not: COSMIC
   ignores the position an X11 window asks for and opens it centred on the
   output under the mouse pointer (a 1200 × 800 window asked for at 4200,200
   and at 300,200 landed at the same spot both times). Separately, a reused
@@ -702,7 +726,10 @@ port (`screen.availLeft`) for Wayland windows, and by eye.
   output in its fullscreen request, and the compositor follows it. Verified
   by eye with the pointer deliberately on the *other* monitor, in both
   directions: left with the pointer on the right, right with the pointer on
-  the left, each full screen and showing only the page.
+  the left, each full screen and showing only the page. In all, 6 of 6
+  starts landed correctly (two by hand, two through the script with the
+  pointer opposite, two in the parallel runs with feature-viz); a longer
+  series is open (§5).
 
 **Details that are deliberate.**
 
@@ -727,6 +754,10 @@ port (`screen.availLeft`) for Wayland windows, and by eye.
 - *Placement is verified by eye,* not by a test: a Wayland page does not
   learn which monitor it is on (Firefox reports `screen.left` 0 on both).
   `tests/test_kiosk.py` covers the parsing, the matching and the command.
+- *feature-viz must run in Firefox too,* and so far it does not: its MJPEG
+  picture turns black there while Chrome shows it (§5). It is being fixed in
+  feature-viz; Chrome with a placement checked after start and retried stays
+  the fallback for the feature-viz kiosk.
 - *Tied to COSMIC* through `cosmic-randr`. Another desktop needs another
   source for serial and position; the rest of the chain is generic.
 

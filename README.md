@@ -19,6 +19,9 @@ pdm run pytest
 pdm run teach-by-showing        # http://localhost:8081
 ```
 
+For development the crane is driven with ← → or A / D; on the stand with a
+USB gamepad.
+
 On the stand it runs in a container, without GPU or devices; the browser on
 the host draws the crane and reads the gamepad:
 
@@ -26,9 +29,14 @@ the host draws the crane and reads the gamepad:
 docker compose up -d                # then open http://localhost:8081
 ```
 
-`tools/kiosk.py` opens the page full screen on a chosen monitor, picked by
-its EDID serial (`python3 tools/kiosk.py list`, then
-`python3 tools/kiosk.py open --serial <n>`); see `DECISIONS.md` §11.
+`tools/kiosk.py` opens the page full screen in Firefox on a chosen monitor,
+picked by its EDID serial; it runs with the system Python on the host and
+needs Firefox (`DECISIONS.md` §11):
+
+```bash
+python3 tools/kiosk.py list
+python3 tools/kiosk.py open --serial <n>
+```
 
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.
@@ -42,7 +50,7 @@ The [K-M-I research and development project](https://kmi-netzwerk.org/kmi-projek
   <img src="src/teach_by_showing/funding/Logo_Kompetenzzentren_Arbeitsforschung.png" alt="logo ReKodA (Regional Competence Centres of Work Research)" width="150">
 </p>
 
-The running demonstrator will carry the same notice on screen (`DECISIONS.md`
+The running demonstrator carries the same notice on screen (`DECISIONS.md`
 §2).
 
 ## License
@@ -54,4 +62,5 @@ licence. They belong to their respective owners and are included, unmodified,
 solely to meet the funding acknowledgement requirement.
 
 Dependencies are permissively licensed: NumPy, Starlette, uvicorn and
-websockets (BSD-3-Clause), FastAPI and pydantic (MIT).
+websockets (BSD-3-Clause), FastAPI and pydantic (MIT), and their own
+dependencies (MIT, BSD-3-Clause, PSF-2.0).
