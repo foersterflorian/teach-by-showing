@@ -249,6 +249,8 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   shows it, or the feature-viz kiosk runs in Chrome with a placement that
   is checked after start and retried (Chrome's debugging port tells which
   screen it is on, `screen.availLeft`).
+  Decided 2026-10-02: the first way, as a task in feature-viz; the Chrome
+  fallback stays open and is built only if that fails.
 - **Smoothness against latency in the kiosk.** Interpolation (§9) costs
   about 21 ms of display delay. In the development browser pane it removed
   all visible skips, but that pane drew only 48 frames per second and is no
