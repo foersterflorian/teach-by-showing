@@ -12,9 +12,11 @@ Read this before modifying the code. If you change one of these decisions,
 update the corresponding section rather than deleting it — the rejected
 alternatives are the useful part.
 
-Scope, audience and priorities come from the concept document (German, outside
-the repository): `../Konzept/V02 - Konzeptstand Kran-Demonstrator.md`. Section
-numbers there are given as "concept §n".
+Scope, audience and priorities come from the concept (German, internal, not
+part of this repository), kept in `../Konzept/` as a separate local Git
+repository; the highest document version is authoritative. References of the
+form "concept §n" point to its version V02. This file must remain
+understandable without it.
 
 ---
 
@@ -136,8 +138,11 @@ runs, agents, gallery (JSON on a volume)
 - *Thin frontend.* No framework, no npm, no build step; plain HTML, CSS and
   JavaScript served by the container. The frontend holds no logic.
 - *Offline at runtime.* No CDN; every file comes from the container.
-- *localhost.* The Gamepad API requires a secure context, which
-  `http://localhost` is; the kiosk points there, not at the machine's address.
+- *localhost.* Current browsers restrict the Gamepad API to secure contexts
+  (not checked for every browser, §5); `http://localhost` is one, so the
+  kiosk points there, not at the machine's address.
+- *Names and ports.* The container is `teach-by-showing` and serves on port
+  8081; feature-viz keeps 8080.
 - *The core knows nothing about HTTP* (feature-viz §12). If web-framework
   types leak into the simulation, replacing the framework means rewriting the
   project.
@@ -203,6 +208,9 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   full-screen on a given monitor reliably and from a script.
 - **Gamepad input with two browser windows.** Whether the crane window keeps
   receiving gamepad input while the feature-viz window runs next to it.
+- **Secure context for the Gamepad API.** Assumed for current browsers,
+  not checked in Chrome and Firefox on the deployment machine. Harmless
+  either way, since the kiosk uses `http://localhost`.
 - **Training time.** "One to three seconds" for the MLP in NumPy is an
   estimate.
 - **Evolution speed.** Whether a vectorised population shows a visible

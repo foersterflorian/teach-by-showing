@@ -15,7 +15,7 @@ one monitor each.
 
 ```bash
 pdm install
-pytest
+pdm run pytest
 ```
 
 `DECISIONS.md` records why the code is shaped the way it is, including the

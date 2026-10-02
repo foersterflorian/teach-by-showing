@@ -25,9 +25,11 @@ delete it.
 `DECISIONS.md` §5 lists what has been reasoned about but never measured. Treat
 those as open tasks, not as facts.
 
-The concept (German, outside this repository) lives in
-`../Konzept/V02 - Konzeptstand Kran-Demonstrator.md`. It is the source for
-scope and priorities; this repository records the technical decisions.
+The concept (German, internal, not part of this repository) lives in
+`../Konzept/`, a separate local Git repository; each document carries its
+version in its title, and the highest version is authoritative. It is the
+source for scope and priorities; this repository records the technical
+decisions and must remain understandable without the concept.
 
 ## Conventions
 
@@ -46,6 +48,8 @@ scope and priorities; this repository records the technical decisions.
 - **Layering.** The simulation core knows nothing about HTTP, the frontend or
   the AI layer. The frontend holds no logic, only display and input.
 - Comments explain *why*, not *what*. The annotations already say what.
+- **Commit messages** as in feature-viz: English, lower case, imperative,
+  optionally with a scope prefix such as `docs:` or `tests:`.
 
 ## Commands
 
@@ -61,6 +65,7 @@ Outside an activated venv, prefix with `pdm run`.
 ## Machines
 
 Two machines, both Pop!_OS with CUDA; `nvidia-smi` tells which one you are on.
+This is the current pair, the same as for feature-viz; others may join.
 
 - **Deployment:** RTX 4090, AMD 16-core, two 4K monitors. Runs the stand; the
   figures that matter are the ones measured here.
