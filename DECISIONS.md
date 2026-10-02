@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 in progress: core, server, frontend and container done (§6–§10); kiosk and gamepad pending
+**Status:** spike day 1 in progress: core, server, frontend, container and kiosk placement done (§6–§11); gamepad pending
 **Last updated:** 2026-10-02
 
 This file records *why* the code looks the way it does. The code says what it
@@ -207,14 +207,24 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   and D-pad as axes, stick axes at other indices). The sources are several
   years old. To be checked with the GameSir G7 SE and the Logitech F310 in
   both browsers.
-- **Kiosk placement under COSMIC/Wayland.** Whether a browser can be put
-  full-screen on a given monitor reliably and from a script. Connector names
-  cannot identify the monitors: in the office they hang on DP-4 and HDMI-A-2
-  and on a docking station in parallel, at the venue both on DisplayPort.
-  Open whether placement by monitor identity (EDID: make, model, serial)
-  works, or whether the assignment is set at setup time.
+- **Kiosk placement under COSMIC/Wayland** — *settled on 2026-10-02, see
+  §11*: Firefox with `--kiosk-monitor`, the monitor chosen by its EDID
+  serial. Still open: the venue's cabling (both DisplayPort, no docking
+  station), to be checked at the dress rehearsal; and whether a COSMIC or
+  Firefox update changes the behaviour before November, so the placement is
+  rechecked after updates on the stand machine.
+- **Firefox for the crane.** §11 moves the crane from Chrome to Firefox,
+  because Chrome cannot be placed. So the gamepad must work in Firefox,
+  where older sources report a non-`standard` mapping on Linux; the mapping
+  layer of concept §7.1 is meant for exactly that. Checked with both
+  gamepads on the spike's day 1.
+- **Firefox's scale on a fractionally scaled monitor.** At COSMIC's 150 %
+  Firefox reported `devicePixelRatio` 1.36 and a 2816-pixel-wide screen, not
+  1.5 and 2560. Whether that blurs text or canvas on the 4K monitor is
+  judged by eye; Firefox has a pref for fractional scaling on Wayland.
 - **Gamepad input with two browser windows.** Whether the crane window keeps
-  receiving gamepad input while the feature-viz window runs next to it.
+  receiving gamepad input while the feature-viz window runs next to it —
+  now two Firefox instances with separate profiles (§11).
 - **Secure context for the Gamepad API.** Assumed for current browsers,
   not checked in Chrome and Firefox on the deployment machine. Harmless
   either way, since the kiosk uses `http://localhost`.
@@ -611,3 +621,96 @@ keeping, as in feature-viz.
 - *An autoheal sidecar that restarts unhealthy containers:* a second
   container and a mounted Docker socket, where a process that exits on its
   own fault does the same with nothing extra.
+
+---
+
+## 11. Kiosk placement: Firefox with `--kiosk-monitor`, chosen by EDID serial
+
+**Context.** Both demonstrators run full screen on the same machine, one
+monitor each, under COSMIC on Wayland. A start script must put each browser
+on the right monitor without anyone touching the mouse. Connector names do
+not identify a monitor: in the office the two hang on DP-4 and HDMI-A-2 (and
+a docking station in parallel), at the venue both on DisplayPort. The two
+office monitors are the same model (AOC U2790B) and differ only in their
+EDID serial (114210 on DP-4, 114203 on HDMI-A-2).
+
+**Decision.** `tools/kiosk.py open --serial <EDID serial> [--url ...]`:
+
+```
+EDID serial  --cosmic-randr list--> connector and layout position
+layout position  --GTK 3 (Gdk)-->   Firefox's monitor number
+firefox --no-remote --profile <fresh> --kiosk --kiosk-monitor <number> <url>
+```
+
+The script runs on the host with the system Python (standard library, plus
+the GTK bindings that come with the desktop), so it needs neither the venv
+nor a build.
+
+**What was tried, and why it failed** (stand machine, COSMIC with
+cosmic-comp of 2026-09, Chrome 154, Firefox 156, 2026-10-02). Placement
+was read back with `xwininfo` for X11 windows, through Chrome's debugging
+port (`screen.availLeft`) for Wayland windows, and by eye.
+
+- *Chrome under XWayland with `--window-position`.* The first two tries
+  landed right, which looked like success. Repeated runs did not: COSMIC
+  ignores the position an X11 window asks for and opens it centred on the
+  output under the mouse pointer (a 1200 × 800 window asked for at 4200,200
+  and at 300,200 landed at the same spot both times). Separately, a reused
+  Chrome profile restores its last position and overrides the flag, and
+  `--window-size` together with the position sent the window to the first
+  monitor.
+- *Moving the pointer first,* with a short-lived virtual mouse through
+  `/dev/uinput` (writable for the session's user through an ACL), pushed far
+  beyond the layout's edge so that acceleration does not matter. A device
+  with only REL_X was ignored; with both axes it moved the pointer, but
+  placement stayed unreliable: 16 of 20 under XWayland (all failures on the
+  left monitor after a run on the right), 3 of 10 when the pointer first
+  moved away and back, and with Chrome on native Wayland 10 of 20, now
+  failing only on the right. The compositor's choice of output depends on
+  more than the pointer position, in ways not documented and liable to
+  change with any COSMIC update.
+- *Firefox with `--kiosk-monitor`.* On Wayland the client may name the
+  output in its fullscreen request, and the compositor follows it. Verified
+  by eye with the pointer deliberately on the *other* monitor, in both
+  directions: left with the pointer on the right, right with the pointer on
+  the left, each full screen and showing only the page.
+
+**Details that are deliberate.**
+
+- *The monitor number comes from GTK, not from cosmic-randr.* Firefox counts
+  monitors in GTK 3's order, which put the right monitor first, while
+  `cosmic-randr` listed DP-4 first in one call and HDMI-A-2 first in the
+  next. The script matches the two by layout position.
+- *Layout positions are scaled* (the right monitor starts at 2560, not
+  3840, at 150 %). The script never mixes them with device pixels; the
+  XWayland coordinates of the failed attempts were device pixels.
+- *A fresh profile each start,* removed when Firefox exits, with prefs that
+  suppress the welcome page, the data-reporting notice, the default-browser
+  question, session restore after a crash and the translation offer.
+  `--no-remote` keeps the crane's and feature-viz's Firefox apart.
+- *`MOZ_ENABLE_WAYLAND=1`*: only a native Wayland client can name the output.
+
+**Consequences.**
+
+- *Firefox for the crane,* not Chrome as concept §7.1 proposed: Chrome
+  cannot be placed. The gamepad mapping in Firefox and input with two
+  Firefox windows are checked on the spike's day 1 (§5).
+- *Placement is verified by eye,* not by a test: a Wayland page does not
+  learn which monitor it is on (Firefox reports `screen.left` 0 on both).
+  `tests/test_kiosk.py` covers the parsing, the matching and the command.
+- *Tied to COSMIC* through `cosmic-randr`. Another desktop needs another
+  source for serial and position; the rest of the chain is generic.
+
+**Rejected alternatives.**
+
+- *Chrome with `--window-position`, with or without moving the pointer:*
+  see above.
+- *Assigning the windows by hand at setup:* a manual step at every start,
+  the risk the concept names.
+- *A separate kiosk session with sway,* whose config can assign windows to
+  outputs by make, model and serial: deterministic, but a second desktop to
+  install and maintain on the stand machine. The fallback, should Firefox's
+  placement stop working.
+- *The Window Management API* (`requestFullscreen({screen})`): needs a
+  permission granted through a browser policy and a user gesture, and puts
+  placement logic into JavaScript.

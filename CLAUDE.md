@@ -36,7 +36,7 @@ decisions and must remain understandable without the concept.
 - **English only.** Code, comments, docstrings, commit messages, documentation.
   On-screen texts for visitors are German; that is content, not convention.
 - **Full type annotations** on every function signature, class attribute, and
-  any local whose type is not obvious. `mypy src tests` must stay clean.
+  any local whose type is not obvious. `mypy src tests tools` must stay clean.
 - **Tests protect decisions.** Each test module names the `DECISIONS.md`
   section it guards. Run `pytest` before every commit.
 - **One code path.** The live stand, training and headless runs share the same
@@ -59,8 +59,8 @@ decisions and must remain understandable without the concept.
 
 ```bash
 pdm install                              # venv with all groups
-mypy src tests
-ruff check src tests
+mypy src tests tools
+ruff check src tests tools
 pytest
 ```
 

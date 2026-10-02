@@ -26,6 +26,10 @@ the host draws the crane and reads the gamepad:
 docker compose up -d                # then open http://localhost:8081
 ```
 
+`tools/kiosk.py` opens the page full screen on a chosen monitor, picked by
+its EDID serial (`python3 tools/kiosk.py list`, then
+`python3 tools/kiosk.py open --serial <n>`); see `DECISIONS.md` §11.
+
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.
 
