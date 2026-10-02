@@ -231,16 +231,24 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **Training time.** "One to three seconds" for the MLP in NumPy is an
   estimate.
 - **Loop timing under load** — *measured on 2026-10-02, see §8*: unchanged
-  with feature-viz running next to it. Not yet judged: how driving feels in
-  the kiosk under that load, because feature-viz did not show its picture
-  (next item).
-- **feature-viz in Firefox.** In the Firefox kiosk of §11, feature-viz showed
-  its page but no picture, although its server delivered frames (3790 × 1372
-  JPEG, about 870 KB each, about 24 MB/s) and the Firefox content process
-  decoding them ran at about 150 % CPU. feature-viz had been viewed in Brave
-  (Chromium) so far, never in Firefox. Since only Firefox can be placed on a
-  monitor (§11), this has to be solved in feature-viz, or its kiosk placed
-  another way.
+  with feature-viz running next to it. Driving in the kiosk next to a
+  running feature-viz (shown in Chrome) felt smooth and looked sharp, judged
+  by eye on 2026-10-02.
+- **feature-viz in Firefox** — *reproduced on 2026-10-02*. Both containers,
+  crane in a Firefox kiosk on the left, feature-viz on the right, 3 minutes
+  each, logged every 5 s. In Firefox, feature-viz showed its picture at
+  first, then the image area turned black and stayed black, while its
+  server stayed healthy and the stream connection stayed open (frames of
+  3790 × 1372 JPEG, about 870 KB, about 24 MB/s). The Firefox content
+  process ran at 150 % CPU, its memory rising from about 0.25 to 2.3 GB
+  within every 20 s and dropping back. The same page in Chrome on the same
+  machine: picture throughout, 33 % CPU, memory steady at 160 MB. The crane
+  next to it, in Firefox, drove smoothly and looked sharp (judged by eye).
+  So Firefox cannot show feature-viz's MJPEG stream, and Chrome cannot be
+  placed on a monitor (§11). Either feature-viz is changed so that Firefox
+  shows it, or the feature-viz kiosk runs in Chrome with a placement that
+  is checked after start and retried (Chrome's debugging port tells which
+  screen it is on, `screen.availLeft`).
 - **Smoothness against latency in the kiosk.** Interpolation (§9) costs
   about 21 ms of display delay. In the development browser pane it removed
   all visible skips, but that pane drew only 48 frames per second and is no
