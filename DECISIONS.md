@@ -230,10 +230,17 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   either way, since the kiosk uses `http://localhost`.
 - **Training time.** "One to three seconds" for the MLP in NumPy is an
   estimate.
-- **Loop timing under load.** The figures in §8 were taken with the machine
-  otherwise idle. Whether they hold with feature-viz running next to it
-  (GPU inference, a second browser) and inside the container is measured in
-  the spike's acceptance on the stand machine.
+- **Loop timing under load** — *measured on 2026-10-02, see §8*: unchanged
+  with feature-viz running next to it. Not yet judged: how driving feels in
+  the kiosk under that load, because feature-viz did not show its picture
+  (next item).
+- **feature-viz in Firefox.** In the Firefox kiosk of §11, feature-viz showed
+  its page but no picture, although its server delivered frames (3790 × 1372
+  JPEG, about 870 KB each, about 24 MB/s) and the Firefox content process
+  decoding them ran at about 150 % CPU. feature-viz had been viewed in Brave
+  (Chromium) so far, never in Firefox. Since only Firefox can be placed on a
+  monitor (§11), this has to be solved in feature-viz, or its kiosk placed
+  another way.
 - **Smoothness against latency in the kiosk.** Interpolation (§9) costs
   about 21 ms of display delay. In the development browser pane it removed
   all visible skips, but that pane drew only 48 frames per second and is no
@@ -462,6 +469,18 @@ machine, 30 s):
 | simulated vs. wall-clock time | −0.3 ms over 30 s |
 | input round trip (send → first state showing it) | median 16.5 ms, p95 17.6 ms, max 17.6 ms |
 | overruns | 0 |
+
+**Under load** (deployment machine, 2026-10-02, 60 s): crane and
+feature-viz both in their containers, feature-viz with GPU and webcam, both
+pages open full screen in two Firefox kiosks (§11). The crane: 3601 state
+messages, 60.00 Hz, none skipped, interval 1st–99th percentile
+15.70–17.56 ms, max 17.90 ms; 0 overruns in 112 682 ticks since the
+container started (31 min). The machine: GPU 19–30 %, CPU 82–88 % idle of 32
+threads; the busiest process was feature-viz's Firefox decoding its MJPEG
+stream (about 150 % of one core), the crane's server took 4–21 %. The
+input round trip could not be measured this way: the open kiosk sends its
+own command every frame and overwrote the measuring client's (§5, several
+browsers driving at once).
 
 The round trip is one frame, as designed: an input takes effect at the next
 tick. Browser rendering and the gamepad's own polling come on top and are
