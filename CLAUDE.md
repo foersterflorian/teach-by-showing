@@ -80,3 +80,10 @@ Every recorded measurement names its machine.
   quality matters, measure it and record the figure with its machine. If you
   cannot verify something, say so and add it to `DECISIONS.md` §5.
 - Commit before starting a substantial change, so it can be reverted cleanly.
+- **The maintainer** is fluent in Python but has no JavaScript or frontend
+  experience. Keep the frontend plain and thin, so that a fault can be traced
+  without knowing JavaScript; logic belongs in Python.
+- When asked to review or check something, present the findings and a plan
+  first; change files only after approval.
+- The next step and the open points with their deadlines are in the concept
+  (§16 and §15 of the highest version under `../Konzept/`).
