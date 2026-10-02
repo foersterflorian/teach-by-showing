@@ -231,8 +231,11 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   measure for the kiosk Chrome on the 4K monitor. Whether 21 ms is felt, and
   whether `?delay=0` looks worse, is judged there with the gamepad.
 - **Funding notice language.** The notice is shown in English, verbatim as
-  in feature-viz, on an otherwise German screen. Whether the funder expects
-  a German wording on a German-language exhibit was not checked.
+  in feature-viz, on an otherwise German screen. Decided 2026-10-02, not yet
+  built: the language becomes an option, German or English, with English as
+  the default so that the repository reads internationally. The German
+  wording must come from the funder's material, not from a translation of
+  our own.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7). A first set chosen on paper and
