@@ -50,6 +50,10 @@ decisions and must remain understandable without the concept.
 - Comments explain *why*, not *what*. The annotations already say what.
 - **Commit messages** as in feature-viz: English, lower case, imperative,
   optionally with a scope prefix such as `docs:` or `tests:`.
+- **Branches.** `dev` is the development branch. Every feature or section gets
+  its own branch from `dev`; after the maintainer has reviewed it, it is
+  fast-forwarded into `dev`. `dev` is fast-forwarded into `main` only on the
+  maintainer's command. Never merge or fast-forward without that review.
 
 ## Commands
 
