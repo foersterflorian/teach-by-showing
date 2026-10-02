@@ -1,0 +1,77 @@
+# CLAUDE.md
+
+Project instructions for Claude Code. Keep this file short — it is prepended to
+every session.
+
+## What this is
+
+A demonstrator for a research project (K-M-I, TU Chemnitz): visitors steer a
+simulated overhead crane with a swinging load; a small neural network learns
+their driving style from the demonstration within seconds (behavioural
+cloning), and an evolution strategy refines it towards goals the human sets.
+It runs on an exhibition stand next to its sibling `feature-viz`, one monitor
+each, both in Docker containers.
+
+It is shown to visitors and handed to colleagues who did not write it. Clarity
+and reproducibility outrank cleverness.
+
+## Read first
+
+`DECISIONS.md` records why the code is shaped the way it is, including the
+alternatives that were rejected and why. Read it before changing anything
+structural. If you change one of those decisions, update that section — do not
+delete it.
+
+`DECISIONS.md` §5 lists what has been reasoned about but never measured. Treat
+those as open tasks, not as facts.
+
+The concept (German, outside this repository) lives in
+`../Konzept/V02 - Konzeptstand Kran-Demonstrator.md`. It is the source for
+scope and priorities; this repository records the technical decisions.
+
+## Conventions
+
+- **English only.** Code, comments, docstrings, commit messages, documentation.
+  On-screen texts for visitors are German; that is content, not convention.
+- **Full type annotations** on every function signature, class attribute, and
+  any local whose type is not obvious. `mypy src tests` must stay clean.
+- **Tests protect decisions.** Each test module names the `DECISIONS.md`
+  section it guards. Run `pytest` before every commit.
+- **One code path.** The live stand, training and headless runs share the same
+  simulation; they differ by parameters, never by a second implementation.
+- **Standard library first.** Every dependency is a future breakage; state why
+  it is needed in `DECISIONS.md` when adding one.
+- **Determinism.** Fixed time step; no global `random` in the core — the
+  generator is injected. All state is JSON-serialisable.
+- **Layering.** The simulation core knows nothing about HTTP, the frontend or
+  the AI layer. The frontend holds no logic, only display and input.
+- Comments explain *why*, not *what*. The annotations already say what.
+
+## Commands
+
+```bash
+pdm install                              # venv with all groups
+mypy src tests
+ruff check src tests
+pytest
+```
+
+Outside an activated venv, prefix with `pdm run`.
+
+## Machines
+
+Two machines, both Pop!_OS with CUDA; `nvidia-smi` tells which one you are on.
+
+- **Deployment:** RTX 4090, AMD 16-core, two 4K monitors. Runs the stand; the
+  figures that matter are the ones measured here.
+- **Development:** private box, RTX 4070 Ti (12 GB), Ryzen 7 5700G. Figures
+  from here are a lower bound for the deployment machine.
+
+Every recorded measurement names its machine.
+
+## Rules
+
+- **Verify, do not assert.** If a claim about timing, latency or learning
+  quality matters, measure it and record the figure with its machine. If you
+  cannot verify something, say so and add it to `DECISIONS.md` §5.
+- Commit before starting a substantial change, so it can be reverted cleanly.
