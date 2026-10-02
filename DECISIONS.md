@@ -205,7 +205,11 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   years old. To be checked with the GameSir G7 SE and the Logitech F310 in
   both browsers.
 - **Kiosk placement under COSMIC/Wayland.** Whether a browser can be put
-  full-screen on a given monitor reliably and from a script.
+  full-screen on a given monitor reliably and from a script. Connector names
+  cannot identify the monitors: in the office they hang on DP-4 and HDMI-A-2
+  and on a docking station in parallel, at the venue both on DisplayPort.
+  Open whether placement by monitor identity (EDID: make, model, serial)
+  works, or whether the assignment is set at setup time.
 - **Gamepad input with two browser windows.** Whether the crane window keeps
   receiving gamepad input while the feature-viz window runs next to it.
 - **Secure context for the Gamepad API.** Assumed for current browsers,
