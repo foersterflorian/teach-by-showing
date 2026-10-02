@@ -1,25 +1,34 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
-<title>teach-by-showing</title>
-<!-- Placeholder until the frontend exists: shows the raw messages, so that
-     the server can be checked by eye. -->
-<style>body { background:#111; color:#ddd; font:16px monospace; margin:2em; }</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kran-Demonstrator · teach-by-showing</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<p id="status">connecting…</p>
-<pre id="config"></pre>
-<pre id="state"></pre>
-<script>
-const ws = new WebSocket(`ws://${location.host}/ws`);
-ws.onopen = () => document.getElementById("status").textContent = "connected";
-ws.onclose = () => document.getElementById("status").textContent = "disconnected";
-ws.onmessage = (e) => {
-  const m = JSON.parse(e.data);
-  document.getElementById(m.type === "config" ? "config" : "state").textContent =
-    JSON.stringify(m, null, 2);
-};
-</script>
+<header>
+  <h1>Bringen Sie die Last ins Ziel – ohne dass sie pendelt</h1>
+  <p id="hint">← → oder A / D: Katze fahren</p>
+</header>
+
+<main>
+  <canvas id="scene"></canvas>
+  <p id="banner" hidden></p>
+  <p id="offline">Verbindung zum Kran wird hergestellt …</p>
+</main>
+
+<section id="readout">
+  <div><span>Fahrzeit</span><b id="elapsed">0,0 s</b></div>
+  <div><span>Stellgröße</span><b><span id="command-bar"><i id="command-fill"></i></span></b></div>
+  <div><span>Transporte</span><b id="transports">0</b></div>
+</section>
+
+<!-- Filled in by the server, verbatim from funding.py (DECISIONS.md §2). -->
+<footer id="funding"><!--FUNDING--></footer>
+
+<script src="scene.js"></script>
+<script src="input.js"></script>
+<script src="main.js"></script>
 </body>
 </html>

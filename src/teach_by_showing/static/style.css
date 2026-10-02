@@ -1,0 +1,125 @@
+/* Layout for a 4K monitor in landscape, read from standing distance
+   (concept §8): sizes scale with the viewport, nothing scrolls. */
+
+:root {
+  --bg: #111;
+  --fg: #e6e6e6;
+  --muted: #8a8a8a;
+  --ok: #4ade80;
+  --bad: #f87171;
+  --accent: #fb923c;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, sans-serif;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  padding: 1.6vh 2.5vw 0;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2.6vh;
+  font-weight: 600;
+}
+
+#hint {
+  margin: 0.4vh 0 0;
+  font-size: 1.6vh;
+  color: var(--muted);
+}
+
+main {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#banner, #offline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8%;
+  margin: 0;
+  text-align: center;
+  font-size: 4vh;
+  font-weight: 600;
+}
+
+#banner.success { color: var(--ok); }
+#banner.timeout { color: var(--bad); }
+#offline { color: var(--muted); }
+#offline[hidden] { display: none; }
+
+#readout {
+  display: flex;
+  gap: 4vw;
+  padding: 1vh 2.5vw 1.6vh;
+  font-variant-numeric: tabular-nums;
+}
+
+#readout span {
+  display: block;
+  font-size: 1.4vh;
+  color: var(--muted);
+}
+
+#readout b {
+  font-size: 2.4vh;
+  font-weight: 600;
+}
+
+/* Command as a bar from the centre: left half negative, right positive. */
+#command-bar {
+  position: relative;
+  display: inline-block;
+  width: 12vw;
+  height: 1.2vh;
+  margin-top: 0.8vh;
+  background: #2a2a2a;
+}
+
+#command-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  background: var(--accent);
+}
+
+/* White ground: the BMFTR logo must sit on white or a very light colour
+   (DECISIONS.md §2). */
+#funding {
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  padding: 0.8vh 2.5vw;
+  background: #fff;
+  color: #333;
+  font-size: 1.15vh;
+  line-height: 1.35;
+}
+
+#funding img { height: 7vh; width: auto; }
+#funding p { margin: 0; max-width: 70vw; }
+#funding a { color: #1d4ed8; }

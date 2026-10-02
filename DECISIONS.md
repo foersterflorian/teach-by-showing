@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 in progress: simulation core, task, live server (§6–§8)
+**Status:** spike day 1 in progress: simulation core, task, live server, frontend (§6–§9)
 **Last updated:** 2026-10-02
 
 This file records *why* the code looks the way it does. The code says what it
@@ -225,6 +225,14 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   otherwise idle. Whether they hold with feature-viz running next to it
   (GPU inference, a second browser) and inside the container is measured in
   the spike's acceptance on the stand machine.
+- **Smoothness against latency in the kiosk.** Interpolation (§9) costs
+  about 21 ms of display delay. In the development browser pane it removed
+  all visible skips, but that pane drew only 48 frames per second and is no
+  measure for the kiosk Chrome on the 4K monitor. Whether 21 ms is felt, and
+  whether `?delay=0` looks worse, is judged there with the gamepad.
+- **Funding notice language.** The notice is shown in English, verbatim as
+  in feature-viz, on an otherwise German screen. Whether the funder expects
+  a German wording on a German-language exhibit was not checked.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7). A first set chosen on paper and
@@ -456,3 +464,73 @@ part of the spike's acceptance ("latency not noticeable").
 
 `tests/test_live.py` and `tests/test_api.py` guard this section, including
 that `crane.py`, `task.py` and `live.py` import nothing from the web stack.
+
+---
+
+## 9. Frontend: plain files, drawn to scale, interpolated
+
+**Decision.** Four static files, no framework, no build step (§3):
+
+```
+index.html   layout, German texts, placeholder for the funding notice
+style.css    sizes in viewport units for a 4K monitor read from standing distance
+scene.js     drawScene(): girder, trolley, rope, load, target zone — drawing only
+input.js     readCommand(): the keyboard, ramped; the gamepad joins here
+main.js      WebSocket, state buffer, interpolation, readouts, render loop
+```
+
+About 260 lines of JavaScript against a budget of about 900 for the whole
+project (concept §7.4). A fault can be traced by file: wrong picture →
+`scene.js`, crane does not react → `input.js`, nothing at all → `main.js`
+and the browser console.
+
+**Details that are deliberate.**
+
+- *Drawn to scale from the config message.* Track, rope length and target
+  tolerance come from the server; the scripts hold no physical parameter of
+  their own (tested for the distinctive ones). One scale for both axes, so
+  that the drawn angle is the simulated angle. Drawn part sizes (trolley,
+  load) are in metres too.
+- *Interpolation with a fixed delay.* The picture runs about 21 ms — one
+  state interval plus margin for the ±1 ms jitter (§8) — behind the newest
+  state and interpolates position and angle between the two received states
+  around it. Sim time is mapped to browser time through the least-delayed
+  arrival in a 2 s buffer. Without this, a display refreshing at 60 Hz
+  beside a server ticking at 60 Hz shows some states twice and skips others,
+  a visible stutter of a few pixels on a trolley moving at 1.2 m/s.
+  Measured in the development browser pane (deployment machine,
+  2026-10-02, 10 s): without interpolation 120 of 480 drawn frames skipped
+  a state; with it, every frame advanced by 0.94–1.0 states except where the
+  pane itself dropped a frame. `?delay=0` switches it off, to compare on the
+  stand (§5).
+- *The command is sent every displayed frame.* That doubles as a heartbeat:
+  a hidden tab stops its render loop, the server's input timeout (§8)
+  fires, and the crane brakes.
+- *Keyboard ramped* from 0 to full in 0.4 s. A key is all or nothing; without
+  the ramp every key press would be a full-throttle jolt that no gamepad
+  produces, and keyboard-driven test runs would teach the network the wrong
+  style. The keyboard is for development and staff, not for visitors
+  (concept §6.3).
+- *Reconnect* every second after the connection drops, with a notice on
+  screen; the server may be restarted by its healthcheck.
+- *Funding notice filled in by the server* (`index_page()`), html-escaped
+  from `funding.py`, so the wording exists once and the script never touches
+  it. Logos come from `/funding/<name>`, through the allow-list of §2;
+  anything else is 404 (tested, including a traversal attempt). White strip
+  along the bottom, as in feature-viz §17.
+- *Offline:* no external script, stylesheet or font (tested); system fonts
+  only.
+
+**Rejected alternatives.**
+
+- *Drawing the newest state as it arrives* (no interpolation): lowest
+  latency, but the stutter described above. Kept as `?delay=0`.
+- *Extrapolating past the newest state:* no added delay, but it predicts
+  the swing, and every correction would show as a jolt.
+- *SVG or DOM elements instead of a canvas:* comparable for one crane, but
+  the swarm of the evolution step will draw a hundred.
+- *ES modules:* would need a module-aware layout for four small files;
+  plain script tags in a fixed order are easier to follow.
+- *Keyboard without a ramp:* see above.
+
+`tests/test_frontend.py` guards this section.

@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import html
 import json
 import logging
 import secrets
@@ -18,9 +19,10 @@ from typing import Any, Final
 import numpy as np
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from teach_by_showing.funding import FUNDING_LOGOS, FUNDING_TEXT, FUNDING_URL, funding_asset
 from teach_by_showing.live import LiveSession, LoopStats, parse_command, run_paced
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
@@ -125,9 +127,39 @@ def create_app(make_session: Callable[[], LiveSession]) -> FastAPI:
                 with contextlib.suppress(asyncio.CancelledError, WebSocketDisconnect):
                     await t
 
+    @app.get("/")
+    async def index() -> HTMLResponse:
+        return HTMLResponse(index_page())
+
+    @app.get("/funding/{name}")
+    async def funding_logo(name: str) -> Response:
+        try:
+            data: bytes = funding_asset(name)
+        except KeyError:
+            return Response(status_code=404)
+        media: str = "image/png" if name.endswith(".png") else "image/jpeg"
+        return Response(data, media_type=media)
+
     static: str = str(resources.files("teach_by_showing") / "static")
-    app.mount("/", StaticFiles(directory=static, html=True), name="static")
+    app.mount("/", StaticFiles(directory=static), name="static")
     return app
+
+
+def index_page() -> str:
+    """The start page with the funding notice filled in on the server, so
+    that the wording exists once, in funding.py, and the frontend's script
+    never touches it (DECISIONS.md §2)."""
+    page: str = (resources.files("teach_by_showing") / "static" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    logos: str = "".join(
+        f'<img src="/funding/{name}" alt="{html.escape(alt)}">' for name, alt in FUNDING_LOGOS
+    )
+    notice: str = (
+        f"{logos}<p>{html.escape(FUNDING_TEXT)} "
+        f'<a href="{FUNDING_URL}">{FUNDING_URL}</a></p>'
+    )
+    return page.replace("<!--FUNDING-->", notice)
 
 
 def _log_crash(task: asyncio.Task[None]) -> None:
