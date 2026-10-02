@@ -16,6 +16,7 @@ one monitor each.
 ```bash
 pdm install
 pdm run pytest
+pdm run teach-by-showing        # http://localhost:8081
 ```
 
 `DECISIONS.md` records why the code is shaped the way it is, including the
@@ -41,4 +42,5 @@ The two logos in `src/teach_by_showing/funding/` are not covered by the MIT
 licence. They belong to their respective owners and are included, unmodified,
 solely to meet the funding acknowledgement requirement.
 
-Dependencies are permissively licensed: NumPy (BSD-3-Clause).
+Dependencies are permissively licensed: NumPy, Starlette, uvicorn and
+websockets (BSD-3-Clause), FastAPI and pydantic (MIT).

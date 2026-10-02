@@ -14,6 +14,7 @@ from teach_by_showing.task import (
     Transport,
     advance,
     is_calm,
+    sample_targets,
     sample_transports,
 )
 
@@ -125,3 +126,13 @@ def test_transport_and_params_survive_json() -> None:
     back: Transport = Transport.from_dict(json.loads(json.dumps(tr.to_dict())))
     assert back.to_dict() == tr.to_dict()
     assert TaskParams.from_dict(json.loads(json.dumps(TASK.to_dict()))) == TASK
+
+
+@pytest.mark.parametrize("start", [0.0, 0.3, 5.0, 9.8, 10.0])
+def test_targets_from_anywhere_on_the_track(start: float) -> None:
+    """The live loop draws the next target from wherever the trolley stands,
+    including the ends after a timed-out transport."""
+    starts: FloatArray = np.full(500, start)
+    target: FloatArray = sample_targets(np.random.default_rng(0), starts, CRANE, TASK)
+    assert np.all(np.abs(target - starts) >= TASK.min_distance - 1e-12)
+    assert np.all((target >= TASK.margin) & (target <= CRANE.track_max - TASK.margin))

@@ -58,26 +58,41 @@ class TaskParams:
         return cls(**data)
 
 
+def _admissible_range(crane: CraneParams, task: TaskParams) -> tuple[float, float]:
+    lo: float = crane.track_min + task.margin
+    hi: float = crane.track_max - task.margin
+    if hi - lo < 2.0 * task.min_distance:
+        # Otherwise a start near the middle has no admissible target.
+        raise ValueError(f"track {lo}..{hi} too short for min_distance {task.min_distance}")
+    return lo, hi
+
+
 def sample_transports(
     rng: np.random.Generator, crane: CraneParams, task: TaskParams, n: int
 ) -> tuple[FloatArray, FloatArray]:
     """n pairs of start and target, uniform over the track and at least
     min_distance apart, in either direction."""
-    lo: float = crane.track_min + task.margin
-    hi: float = crane.track_max - task.margin
-    d: float = task.min_distance
-    if hi - lo < 2.0 * d:
-        # Otherwise a start near the middle has no admissible target.
-        raise ValueError(f"track {lo}..{hi} too short for min_distance {d}")
-
+    lo, hi = _admissible_range(crane, task)
     start: FloatArray = rng.uniform(lo, hi, size=n)
+    return start, sample_targets(rng, start, crane, task)
+
+
+def sample_targets(
+    rng: np.random.Generator, start: FloatArray, crane: CraneParams, task: TaskParams
+) -> FloatArray:
+    """One target per start, uniform over the admissible track and at least
+    min_distance away. The start may lie anywhere on the track, for instance
+    where a timed-out transport left the trolley."""
+    lo, hi = _admissible_range(crane, task)
+    d: float = task.min_distance
+    start = np.asarray(start, dtype=np.float64)
     # Admissible targets form [lo, start − d] and [start + d, hi]; draw a point
-    # on their joint length and map it back.
+    # on their joint length and map it back. Since hi − lo ≥ 2d, every start
+    # on the track has at least one side.
     left: FloatArray = np.maximum(start - d - lo, 0.0)
     right: FloatArray = np.maximum(hi - start - d, 0.0)
-    r: FloatArray = rng.uniform(0.0, 1.0, size=n) * (left + right)
-    target: FloatArray = np.where(r < left, lo + r, start + d + (r - left))
-    return start, target
+    r: FloatArray = rng.uniform(0.0, 1.0, size=start.shape[0]) * (left + right)
+    return np.where(r < left, lo + r, start + d + (r - left))
 
 
 def is_calm(

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>teach-by-showing</title>
+<!-- Placeholder until the frontend exists: shows the raw messages, so that
+     the server can be checked by eye. -->
+<style>body { background:#111; color:#ddd; font:16px monospace; margin:2em; }</style>
+</head>
+<body>
+<p id="status">connecting…</p>
+<pre id="config"></pre>
+<pre id="state"></pre>
+<script>
+const ws = new WebSocket(`ws://${location.host}/ws`);
+ws.onopen = () => document.getElementById("status").textContent = "connected";
+ws.onclose = () => document.getElementById("status").textContent = "disconnected";
+ws.onmessage = (e) => {
+  const m = JSON.parse(e.data);
+  document.getElementById(m.type === "config" ? "config" : "state").textContent =
+    JSON.stringify(m, null, 2);
+};
+</script>
+</body>
+</html>

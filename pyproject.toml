@@ -5,13 +5,16 @@ description = "A neural network learns to drive an overhead crane from a short h
 authors = [
     {name = "Florian Förster",email = "florian.foerster@mb.tu-chemnitz.de"},
 ]
-dependencies = ["numpy>=2.5.3"]
+dependencies = ["numpy>=2.5.3", "fastapi>=0.142.2", "uvicorn>=0.54.0", "websockets>=17.1"]
 requires-python = "<3.14,>=3.12"
 readme = "README.md"
 # MIT: every dependency is permissive, unlike feature-viz (AGPL via
 # ultralytics). The funding logos are excluded. See DECISIONS.md §1.
 license = "MIT"
 license-files = ["LICENSE"]
+
+[project.scripts]
+teach-by-showing = "teach_by_showing.api:main"
 
 [build-system]
 requires = ["pdm-backend"]
@@ -140,6 +143,7 @@ tests = [
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
+    "httpx>=0.28.1",
 ]
 lint = [
     "ruff>=0.9.6",

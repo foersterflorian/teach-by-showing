@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 in progress: simulation core and task (§6, §7)
+**Status:** spike day 1 in progress: simulation core, task, live server (§6–§8)
 **Last updated:** 2026-10-02
 
 This file records *why* the code looks the way it does. The code says what it
@@ -149,8 +149,12 @@ runs, agents, gallery (JSON on a volume)
 - *Backend:* FastAPI/Starlette with uvicorn — the switch feature-viz §12
   names for the point where more than one endpoint is needed. Training and
   evolution run in a worker process so that the simulation loop never stalls.
-  Not yet added as dependencies; that happens with the first code that needs
-  them.
+  Added with the server (§8): `fastapi`, `uvicorn`, and `websockets`, which
+  uvicorn needs to speak WebSocket at all; the alternative `wsproto` is less
+  common. `uvicorn[standard]` was not taken: it adds uvloop, httptools,
+  watchfiles, python-dotenv and PyYAML, none of which this server needs.
+  The test group gains `httpx`, which Starlette's test client requires.
+  Every package in the runtime tree is MIT, BSD-3-Clause or PSF-2.0 (§1).
 
 **Rejected alternatives.**
 
@@ -217,6 +221,10 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   either way, since the kiosk uses `http://localhost`.
 - **Training time.** "One to three seconds" for the MLP in NumPy is an
   estimate.
+- **Loop timing under load.** The figures in §8 were taken with the machine
+  otherwise idle. Whether they hold with feature-viz running next to it
+  (GPU inference, a second browser) and inside the container is measured in
+  the spike's acceptance on the stand machine.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7). A first set chosen on paper and
@@ -364,3 +372,87 @@ natural measure for the style profile's "calm" and "residual swing" (concept
   instead of silently producing short transports.
 
 `tests/test_task.py` guards this section.
+
+---
+
+## 8. Live loop and protocol: one paced loop, latest-only outboxes
+
+**Context.** The visitor drives the crane in a browser; the simulation is
+authoritative in Python (§3). Something has to pace the simulation at 60 Hz,
+carry the state out and the stick back in, and stay up for two days.
+
+**Decision.** Three layers, as in feature-viz §12:
+
+```
+crane.py, task.py   simulation core           — knows nothing about HTTP
+live.py             LiveSession, run_paced()  — the engine, counts in frames
+api.py              FastAPI: /ws, /healthz, static files — calls into live.py only
+```
+
+- *Pacing:* `run_paced()` is an asyncio task that ticks the session against
+  absolute deadlines (`deadline += 1/60`), so the inaccuracy of each sleep
+  does not add up to drift. If it falls more than 0.1 s behind it drops the
+  lost time and counts an overrun, rather than catching up with a burst the
+  viewer would see as a jump.
+- *An asyncio task, not a thread* — unlike feature-viz §12, whose loop is
+  blocking inference. One tick here costs about 0.06 ms (§6), so it never
+  holds the event loop noticeably, and with a single owner of the state no
+  lock is needed. Training and evolution will take seconds and go to a
+  worker process (§3), never into this loop.
+- *Outboxes:* each connection has a slot holding only the latest state
+  message. The loop only overwrites slots; a sender task per connection
+  sends what is there. A slow or stalled browser skips frames and can never
+  hold up the simulation.
+- *Messages* are JSON. On connect, one `config` message carries the crane
+  and task parameters, so the frontend draws to scale without physical
+  constants of its own. Then one `state` message per frame: positions, angle,
+  target, effective command, calm progress, result, elapsed time. Positions
+  are lists, as the core is batched; ghosts and swarms will use the same
+  shape. The browser sends `{"type": "input", "u": <-1..1>}`.
+- *Untrusted input:* anything that is not a finite number is dropped and
+  logged without closing the connection; numbers are clipped to −1..1.
+- *Input timeout:* without fresh input for 0.25 s the command falls back to
+  zero and the drive brakes. A closed tab, a lost connection or an
+  unplugged gamepad must never leave the crane driving.
+- *Transports follow each other:* after success or timeout, a pause of
+  1.5 s, then a new target is drawn from wherever the trolley stands. The
+  stand's real sequence of steps 0–4 replaces this with the state machine.
+- *Health:* `/healthz` returns 503 when the loop has not ticked for a
+  second, not merely when the server is down. A crash in the loop is logged
+  and turns the health check red, so the container restarts (tested).
+- *Bind address:* `127.0.0.1:8081` by default; the Gamepad API needs a
+  secure context, which `localhost` is (§3). `--seed` makes a session
+  reproducible; without it a fresh seed is drawn and logged.
+
+**Measured** (deployment machine, RTX 4090 / AMD 16-core, otherwise idle,
+outside the container, 2026-10-02; script: a WebSocket client on the same
+machine, 30 s):
+
+| Quantity | Figure |
+|---|---|
+| state messages | 1801 in 30.0 s, 60.00 Hz, none skipped |
+| interval between messages | median 16.57 ms, 1st–99th percentile 15.51–17.69 ms, max 18.82 ms |
+| simulated vs. wall-clock time | −0.3 ms over 30 s |
+| input round trip (send → first state showing it) | median 16.5 ms, p95 17.6 ms, max 17.6 ms |
+| overruns | 0 |
+
+The round trip is one frame, as designed: an input takes effect at the next
+tick. Browser rendering and the gamepad's own polling come on top and are
+part of the spike's acceptance ("latency not noticeable").
+
+**Rejected alternatives.**
+
+- *A thread for the loop* (feature-viz §12). Needed there for blocking
+  inference; here it would add a lock around the session for nothing.
+- *Awaiting each client's send inside the loop.* One slow browser would slow
+  the crane for everyone.
+- *A queue per client.* Old states are worthless; queueing them only adds
+  latency.
+- *Simulation in the browser, server only for learning.* Two implementations
+  of the physics, or JavaScript as the authoritative one; both contradict
+  "one code path" and "logic belongs in Python".
+- *Server-Sent Events plus POST for input.* Two channels where one
+  WebSocket suffices, and an HTTP request per input at 60 Hz.
+
+`tests/test_live.py` and `tests/test_api.py` guard this section, including
+that `crane.py`, `task.py` and `live.py` import nothing from the web stack.

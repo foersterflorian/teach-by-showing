@@ -1,0 +1,178 @@
+"""The live crane on the stand: one crane driven by the visitor's input, one
+transport after another, paced at SIM_HZ (DECISIONS.md §8).
+
+This is the engine between the simulation core and the web layer. It knows
+nothing about HTTP; api.py calls into it and nothing else. Everything here
+counts in frames, never in wall-clock time, so a session is reproducible from
+its seed and its input sequence.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import math
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any, Final
+
+import numpy as np
+
+from teach_by_showing.crane import DT, SIM_HZ, CraneParams, CraneState, FloatArray, step
+from teach_by_showing.task import (
+    TaskParams,
+    Transport,
+    advance,
+    sample_targets,
+    sample_transports,
+)
+
+# Without fresh input for this long the command falls back to zero and the
+# trolley brakes: a closed browser tab, a lost connection or an unplugged
+# gamepad must never leave the crane driving. Four frames at the browser's
+# own 60 Hz would do; 0.25 s tolerates a hiccup.
+INPUT_TIMEOUT_FRAMES: Final[int] = SIM_HZ // 4
+# Between two transports, long enough to see the result.
+PAUSE_FRAMES: Final[int] = round(1.5 * SIM_HZ)
+# If the loop falls further behind than this, it gives up the lost time
+# instead of catching up with a burst of steps the viewer would see as a jump.
+MAX_LAG: Final[float] = 0.1
+
+
+def parse_command(value: object) -> float | None:
+    """A command from untrusted input: a finite number, clipped to −1..1, or
+    None if it is not one."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    u: float = float(value)
+    if not math.isfinite(u):
+        return None
+    return min(1.0, max(-1.0, u))
+
+
+@dataclass(slots=True)
+class LiveSession:
+    """One crane on the stand. Mutable on purpose: it is the single owner of
+    the live state, and only the pacing loop calls tick()."""
+
+    rng: np.random.Generator
+    crane: CraneParams
+    task: TaskParams
+    state: CraneState
+    transport: Transport
+    command: float = 0.0
+    input_frame: int = -INPUT_TIMEOUT_FRAMES - 1
+    pause_left: int = 0
+    transports_done: int = 0
+
+    @classmethod
+    def start(
+        cls,
+        rng: np.random.Generator,
+        crane: CraneParams | None = None,
+        task: TaskParams | None = None,
+    ) -> LiveSession:
+        crane = crane or CraneParams()
+        task = task or TaskParams()
+        start, target = sample_transports(rng, crane, task, 1)
+        state: CraneState = CraneState.at_rest(start)
+        return cls(rng, crane, task, state, Transport.begin(target, state.frame))
+
+    def set_input(self, command: float) -> None:
+        self.command = command
+        self.input_frame = self.state.frame
+
+    @property
+    def effective_command(self) -> float:
+        if self.state.frame - self.input_frame > INPUT_TIMEOUT_FRAMES:
+            return 0.0
+        return self.command
+
+    def tick(self) -> None:
+        """Advance one frame. After a transport has finished, the crane keeps
+        responding during a short pause; then the next target is drawn from
+        wherever the trolley stands."""
+        u: FloatArray = np.array([self.effective_command])
+        self.state = step(self.state, u, self.crane)
+        if not self.transport.done(self.state.frame, self.task)[0]:
+            self.transport = advance(self.transport, self.state, self.crane, self.task)
+            if self.transport.done(self.state.frame, self.task)[0]:
+                self.pause_left = PAUSE_FRAMES
+                self.transports_done += 1
+        elif self.pause_left > 0:
+            self.pause_left -= 1
+        else:
+            target: FloatArray = sample_targets(self.rng, self.state.x, self.crane, self.task)
+            self.transport = Transport.begin(target, self.state.frame)
+
+    def config_message(self) -> dict[str, Any]:
+        """Sent once per connection: everything the frontend needs to draw to
+        scale, so that it holds no physical constants of its own."""
+        return {
+            "type": "config",
+            "hz": SIM_HZ,
+            "crane": self.crane.to_dict(),
+            "task": self.task.to_dict(),
+        }
+
+    def state_message(self) -> dict[str, Any]:
+        """Sent every frame. Lists, not scalars, because the core is batched
+        and later messages carry ghosts and swarms in the same shape."""
+        s: CraneState = self.state
+        tr: Transport = self.transport
+        frame: int = s.frame
+        result: str = (
+            "success"
+            if tr.succeeded[0]
+            else "timeout"
+            if tr.timed_out(frame, self.task)[0]
+            else "running"
+        )
+        elapsed: int = (
+            int(tr.duration_frames()[0]) if tr.succeeded[0] else frame - tr.start_frame
+        )
+        return {
+            "type": "state",
+            "frame": frame,
+            "x": s.x.tolist(),
+            "theta": s.theta.tolist(),
+            "target": tr.target.tolist(),
+            "command": self.effective_command,
+            "calm": min(1.0, int(tr.calm_frames[0]) / self.task.calm_frames),
+            "result": result,
+            "elapsed": elapsed * DT,
+            "transports": self.transports_done,
+        }
+
+
+@dataclass(slots=True)
+class LoopStats:
+    """What the health check reads. Wall-clock times come from the loop's own
+    monotonic clock."""
+
+    last_tick: float = -math.inf
+    ticks: int = 0
+    # Times the loop fell more than MAX_LAG behind and dropped time.
+    overruns: int = 0
+
+
+async def run_paced(
+    session: LiveSession,
+    publish: Callable[[dict[str, Any]], None],
+    stats: LoopStats,
+) -> None:
+    """Tick the session at SIM_HZ against absolute deadlines, so that
+    sleep inaccuracy does not accumulate into drift. `publish` must not
+    block; it is called once per frame with the state message."""
+    loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+    deadline: float = loop.time()
+    while True:
+        session.tick()
+        publish(session.state_message())
+        now: float = loop.time()
+        stats.last_tick = now
+        stats.ticks += 1
+        deadline += DT
+        if now - deadline > MAX_LAG:
+            stats.overruns += 1
+            deadline = now
+        await asyncio.sleep(max(0.0, deadline - now))
