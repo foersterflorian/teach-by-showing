@@ -19,6 +19,13 @@ pdm run pytest
 pdm run teach-by-showing        # http://localhost:8081
 ```
 
+On the stand it runs in a container, without GPU or devices; the browser on
+the host draws the crane and reads the gamepad:
+
+```bash
+docker compose up -d                # then open http://localhost:8081
+```
+
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.
 

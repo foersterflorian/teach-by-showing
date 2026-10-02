@@ -1,0 +1,26 @@
+# teach-by-showing on the stand. Rationale: DECISIONS.md §10.
+#
+#   docker compose up -d     # then open http://localhost:8081 on the host
+#
+# No GPU, no display, no devices: the host's browser draws the crane and
+# reads the gamepad.
+name: teach-by-showing
+
+services:
+  teach-by-showing:
+    build: .
+    image: teach-by-showing:0.1.0
+    ports:
+      # Host side bound to localhost: the kiosk runs on this machine, the
+      # Gamepad API wants http://localhost (§3), and nobody else on the
+      # venue's network should drive the crane.
+      - "127.0.0.1:${HOST_PORT:-8081}:8081"
+    volumes:
+      - data:/data
+    # The server ends itself if its loop crashes (§8); this brings it back.
+    # A container stopped by hand stays stopped.
+    restart: unless-stopped
+
+volumes:
+  # Runs, agents and the gallery; survives rebuilds and restarts.
+  data:

@@ -130,6 +130,11 @@ filename = "pyproject.toml"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
+[[tool.bumpversion.files]]
+filename = "compose.yaml"
+search = "image: teach-by-showing:{current_version}"
+replace = "image: teach-by-showing:{new_version}"
+
 
 [tool.pdm]
 distribution = true

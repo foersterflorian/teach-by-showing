@@ -86,3 +86,30 @@ def test_health_fails_when_the_loop_has_crashed() -> None:
         r = c.get("/healthz")
     assert r.status_code == 503
     assert r.json()["status"] == "stalled"
+
+
+@pytest.mark.parametrize("exit_on_crash", [True, False])
+def test_crash_signals_shutdown_only_when_asked(
+    monkeypatch: pytest.MonkeyPatch, exit_on_crash: bool
+) -> None:
+    """Docker does not restart an unhealthy container, only an exited one;
+    so the stand's server ends itself when its loop dies (§10)."""
+    import asyncio
+    import os
+    import signal
+
+    from teach_by_showing import api
+
+    sent: list[tuple[int, int]] = []
+    monkeypatch.setattr(os, "kill", lambda pid, sig: sent.append((pid, sig)))
+
+    async def crash() -> None:
+        raise RuntimeError("simulated crash")
+
+    async def run() -> None:
+        task: asyncio.Task[None] = asyncio.create_task(crash())
+        await asyncio.wait([task])
+        api._on_loop_done(task, exit_on_crash=exit_on_crash)  # noqa: SLF001
+
+    asyncio.run(run())
+    assert sent == ([(os.getpid(), signal.SIGTERM)] if exit_on_crash else [])

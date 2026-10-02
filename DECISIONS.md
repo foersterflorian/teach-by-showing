@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 in progress: simulation core, task, live server, frontend (§6–§9)
+**Status:** spike day 1 in progress: core, server, frontend and container done (§6–§10); kiosk and gamepad pending
 **Last updated:** 2026-10-02
 
 This file records *why* the code looks the way it does. The code says what it
@@ -187,11 +187,10 @@ dependency groups. `DECISIONS.md` and `CLAUDE.md` play the same roles.
 - *No pytest markers yet.* feature-viz's markers (`weights`, `gpu`, `camera`)
   have no counterpart; tiers will be added when there is something to tier.
 
-**Planned, following feature-viz once there is something to run:** a
-`Dockerfile` on a digest-pinned `python:3.12-slim` with hash-checked installs
-from `pdm export` (feature-viz §9), `compose.yaml`, a `start-container.sh`
-that checks preconditions before starting, and an image archive via
-`docker save`.
+**Container:** `Dockerfile` and `compose.yaml` as in feature-viz §9, see
+§10. Still planned: a start script for the stand that checks preconditions
+and opens the kiosk (concept §15 item 16), and an image archive via
+`docker save` once there is a version worth archiving.
 
 ---
 
@@ -236,6 +235,11 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   the default so that the repository reads internationally. The German
   wording must come from the funder's material, not from a translation of
   our own.
+- **Several browsers driving at once.** Every connected client may send
+  input, and the latest message wins. The stand has one kiosk, so this only
+  matters when a second tab is open for debugging: the two then fight over
+  the crane. Whether the server should accept input from one client only is
+  decided with the stand's state machine.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7). A first set chosen on paper and
@@ -430,7 +434,9 @@ api.py              FastAPI: /ws, /healthz, static files — calls into live.py 
   stand's real sequence of steps 0–4 replaces this with the state machine.
 - *Health:* `/healthz` returns 503 when the loop has not ticked for a
   second, not merely when the server is down. A crash in the loop is logged
-  and turns the health check red, so the container restarts (tested).
+  and turns the health check red. Run as a program (`main()`), the server
+  then also shuts itself down, because Docker restarts an exited container
+  but not an unhealthy one (§10; tested with `os.kill` replaced).
 - *Bind address:* `127.0.0.1:8081` by default; the Gamepad API needs a
   secure context, which `localhost` is (§3). `--seed` makes a session
   reproducible; without it a fresh seed is drawn and logged.
@@ -537,3 +543,71 @@ and the browser console.
 - *Keyboard without a ramp:* see above.
 
 `tests/test_frontend.py` guards this section.
+
+---
+
+## 10. Container: as in feature-viz, without GPU or devices
+
+**Decision.** `Dockerfile`, `.dockerignore` and `compose.yaml` in the
+repository root, following feature-viz §9; `docker compose up -d` starts the
+stand's backend, and the host's browser opens `http://localhost:8081`.
+
+**Taken over from feature-viz §9.**
+
+- *The image runs what the tests ran:* `python:3.12-slim` pinned by digest,
+  on top exactly what `pdm.lock` pins, installed with `pip --require-hashes`
+  from a `pdm export`. pdm, pinned, exists only in the build stage. The
+  project is copied as source and found via `PYTHONPATH`.
+- *The same base digest as feature-viz,* so that the two images on the stand
+  machine share their base layers. The first build here took 14 s because
+  that layer was already present.
+- *Unprivileged user* (UID 10001), *build context as an allow-list*,
+  *health check on `/healthz`* (§8), *image tag follows the package version*
+  (`bump-my-version` updates `compose.yaml`).
+
+**Different from feature-viz.**
+
+- *No GPU, no devices, no display, no `ipc: host`.* NumPy on a few cranes
+  needs none of them (§6), and the browser on the host reads the gamepad
+  (§3). Nothing in `compose.yaml` depends on the machine, so there is no
+  `.env` and no variant files.
+- *Port published to the host's localhost only* (`127.0.0.1:8081`). The kiosk
+  runs on the same machine, the Gamepad API wants `http://localhost`, and
+  nobody else on the venue's network should drive the crane. Inside, the
+  server binds `0.0.0.0`, since Docker forwards to the container's own
+  interface.
+- *`restart: unless-stopped`, and the server ends itself when its loop
+  crashes* (§8). Docker only reports an unhealthy container; it restarts an
+  exited one. A container stopped by hand stays stopped.
+- *A named volume `data` at `/data`* (`DATA_DIR`) for runs, agents and the
+  gallery, so they survive rebuilds. Nothing writes there yet; recording
+  arrives with the spike's second day.
+
+**Verified** (deployment machine, Docker 29.8.2, 2026-10-02):
+
+| Check | Result |
+|---|---|
+| Build, base layer cached | 14 s; image 73.7 MB content, 314 MB on disk |
+| Start to healthy | about 7 s |
+| Container setup | no devices, not privileged, user `teach-by-showing`, port bound to `127.0.0.1:8081` only |
+| Timing at a client on the host, 30 s (script of §8) | 60.00 Hz, none skipped; interval median 16.64 ms, 1st–99th percentile 15.57–17.79 ms; input round trip median 16.6 ms; no overrun — the same as outside the container |
+| Self-shutdown (SIGTERM to PID 1, the path a loop crash takes) | restarted by Docker, healthy again within seconds; the open browser reconnected by itself |
+| `docker stop` | 0.4 s, exit code 0 |
+| `--network none` | healthy after about 7 s, page and logos served |
+
+**Not yet done.** The `org.opencontainers.image.source` label names the
+intended GitHub location; the remote does not exist yet (concept §15 item
+15). No archive with `docker save` yet; that follows once a version is worth
+keeping, as in feature-viz.
+
+**Rejected alternatives.**
+
+- *`uvicorn --reload` or a development server in the image:* the image is
+  for the stand; development runs from the venv with
+  `pdm run teach-by-showing`.
+- *Host networking (`network_mode: host`):* would expose whatever the server
+  binds to the venue's network and loses the port mapping that keeps it on
+  localhost.
+- *An autoheal sidecar that restarts unhealthy containers:* a second
+  container and a mounted Docker socket, where a process that exits on its
+  own fault does the same with nothing extra.

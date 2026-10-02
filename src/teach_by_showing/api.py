@@ -11,7 +11,9 @@ import contextlib
 import html
 import json
 import logging
+import os
 import secrets
+import signal
 from collections.abc import AsyncIterator, Callable
 from importlib import resources
 from typing import Any, Final
@@ -50,9 +52,16 @@ class Outbox:
         return self._latest
 
 
-def create_app(make_session: Callable[[], LiveSession]) -> FastAPI:
+def create_app(
+    make_session: Callable[[], LiveSession], exit_on_crash: bool = False
+) -> FastAPI:
     """The app, with the session created at startup. Tests pass their own
-    factory with a fixed seed."""
+    factory with a fixed seed.
+
+    With `exit_on_crash`, a crash of the simulation loop shuts the server
+    down, so that the container's restart policy brings it back: Docker only
+    reports an unhealthy container, it does not restart one (DECISIONS.md
+    §10). Tests leave it off, since it would signal the test process."""
     outboxes: set[Outbox] = set()
     stats: LoopStats = LoopStats()
     holder: dict[str, LiveSession] = {}
@@ -70,7 +79,9 @@ def create_app(make_session: Callable[[], LiveSession]) -> FastAPI:
         )
         # A crash in the loop would otherwise vanish silently with its task.
         # It is logged, /healthz turns 503, and the container restarts.
-        loop_task.add_done_callback(_log_crash)
+        loop_task.add_done_callback(
+            lambda task: _on_loop_done(task, exit_on_crash=exit_on_crash)
+        )
         try:
             yield
         finally:
@@ -156,15 +167,20 @@ def index_page() -> str:
         f'<img src="/funding/{name}" alt="{html.escape(alt)}">' for name, alt in FUNDING_LOGOS
     )
     notice: str = (
-        f"{logos}<p>{html.escape(FUNDING_TEXT)} "
-        f'<a href="{FUNDING_URL}">{FUNDING_URL}</a></p>'
+        f'{logos}<p>{html.escape(FUNDING_TEXT)} <a href="{FUNDING_URL}">{FUNDING_URL}</a></p>'
     )
     return page.replace("<!--FUNDING-->", notice)
 
 
-def _log_crash(task: asyncio.Task[None]) -> None:
-    if not task.cancelled() and task.exception() is not None:
-        log.error("simulation loop crashed", exc_info=task.exception())
+def _on_loop_done(task: asyncio.Task[None], exit_on_crash: bool) -> None:
+    if task.cancelled() or task.exception() is None:
+        return
+    log.error("simulation loop crashed", exc_info=task.exception())
+    if exit_on_crash:
+        # SIGTERM, not sys.exit: uvicorn shuts down cleanly on it, closing
+        # connections, and the process ends for the restart policy to act.
+        log.error("shutting down for a restart")
+        os.kill(os.getpid(), signal.SIGTERM)
 
 
 def handle_input(session: LiveSession, text: str) -> None:
@@ -200,5 +216,11 @@ def main() -> None:
     seed: int = args.seed if args.seed is not None else secrets.randbits(32)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     log.info("seed %d", seed)
-    app: FastAPI = create_app(lambda: LiveSession.start(np.random.default_rng(seed)))
+    app: FastAPI = create_app(
+        lambda: LiveSession.start(np.random.default_rng(seed)), exit_on_crash=True
+    )
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+
+
+if __name__ == "__main__":
+    main()

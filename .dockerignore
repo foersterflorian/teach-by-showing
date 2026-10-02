@@ -1,0 +1,8 @@
+# Allow-list: the build context holds only what the image needs. Everything
+# else - .venv, .git, caches - stays out.
+*
+!pyproject.toml
+!pdm.lock
+!src/
+!LICENSE
+**/__pycache__
