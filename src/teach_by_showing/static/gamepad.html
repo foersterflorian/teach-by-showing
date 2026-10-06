@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gamepad-Test · teach-by-showing</title>
+<style>
+  body { background: #111; color: #e6e6e6; font: 16px/1.4 system-ui, sans-serif; margin: 2em; }
+  h1 { font-size: 1.4em; }
+  table { border-collapse: collapse; margin: 0.5em 0 1.5em; }
+  td, th { padding: 0.15em 0.8em; text-align: left; font-variant-numeric: tabular-nums; }
+  .bar { display: inline-block; width: 300px; height: 0.8em; background: #333; position: relative; }
+  .bar i { position: absolute; top: 0; bottom: 0; background: #fb923c; }
+  .on { color: #4ade80; font-weight: 600; }
+  #log { color: #8a8a8a; white-space: pre; }
+</style>
+</head>
+<body>
+<h1>Gamepad-Test – zeigt, was der Browser vom Gamepad sieht</h1>
+<p>Für das Personal, nicht für Besucher. Erst eine Taste am Gamepad drücken:
+Browser geben Gamepads erst nach einer Eingabe frei.</p>
+<p id="focus"></p>
+<div id="pads">Kein Gamepad gemeldet.</div>
+<h2>Ereignisse</h2>
+<div id="log"></div>
+
+<script>
+// Shows the raw Gamepad API values: axis and button indices as this browser
+// reports them for this device. Display only; it sends nothing anywhere.
+// `snapshot()` returns the same data as JSON for tools that read the page.
+"use strict";
+
+const log = [];
+function note(text) {
+  log.unshift(`${(performance.now() / 1000).toFixed(2)} s  ${text}`);
+  document.getElementById("log").textContent = log.slice(0, 30).join("\n");
+}
+window.addEventListener("gamepadconnected", (e) => note(`connected ${e.gamepad.index}: ${e.gamepad.id}`));
+window.addEventListener("gamepaddisconnected", (e) => note(`disconnected ${e.gamepad.index}: ${e.gamepad.id}`));
+window.addEventListener("focus", () => note("window focus"));
+window.addEventListener("blur", () => note("window blur"));
+
+function snapshot() {
+  return {
+    hasFocus: document.hasFocus(),
+    visibility: document.visibilityState,
+    pads: [...navigator.getGamepads()].filter((p) => p).map((p) => ({
+      index: p.index, id: p.id, mapping: p.mapping, connected: p.connected,
+      timestamp: p.timestamp,
+      axes: [...p.axes],
+      buttons: p.buttons.map((b) => b.value),
+    })),
+    log: log.slice(0, 30),
+  };
+}
+
+function bar(v) {
+  const left = 50 + Math.min(0, v) * 50;
+  return `<span class="bar"><i style="left:${left}%;width:${Math.abs(v) * 50}%"></i></span>`;
+}
+
+function show() {
+  const s = snapshot();
+  document.getElementById("focus").textContent =
+    `Fenster hat Fokus: ${s.hasFocus ? "ja" : "nein"} · Sichtbarkeit: ${s.visibility}`;
+  if (s.pads.length > 0) {
+    document.getElementById("pads").innerHTML = s.pads.map((p) => `
+      <h2>Gamepad ${p.index}: ${p.id}</h2>
+      <p>mapping: „${p.mapping}“ · timestamp: ${p.timestamp.toFixed(0)}</p>
+      <table><tr><th>Achse</th><th>Wert</th><th></th></tr>
+      ${p.axes.map((v, i) => `<tr><td>${i}</td><td>${v.toFixed(3)}</td><td>${bar(v)}</td></tr>`).join("")}
+      </table>
+      <p>Buttons: ${p.buttons.map((v, i) => `<span class="${v > 0 ? "on" : ""}">${i}</span>`).join(" ")}</p>`
+    ).join("");
+  }
+  requestAnimationFrame(show);
+}
+requestAnimationFrame(show);
+</script>
+</body>
+</html>

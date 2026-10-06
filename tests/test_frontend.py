@@ -84,3 +84,18 @@ def test_scripts_hold_no_crane_parameters() -> None:
             float(n) for n in re.findall(r"(?<![\w.])\d+\.\d+(?![\w.])", path.read_text())
         }
         assert not numbers & values, f"{path.name}: {numbers & values}"
+
+
+def test_gamepad_probe_is_served(client: TestClient) -> None:
+    """The staff page that shows raw Gamepad API values (§12)."""
+    r = client.get("/gamepad.html")
+    assert r.status_code == 200
+    assert "navigator.getGamepads()" in r.text
+
+
+def test_no_input_reacts_to_any_button() -> None:
+    """The GameSir's triggers report as pressed at rest in Firefox (§12), so
+    "press any button" would fire on its own. Buttons are read by index."""
+    for path in STATIC.glob("*.js"):
+        text: str = path.read_text(encoding="utf-8")
+        assert not re.search(r"buttons\.(?:some|find|filter|every)\(", text), path.name
