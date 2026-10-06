@@ -828,7 +828,8 @@ screen and a fault in the input can be told apart.
   not understand the reports. With `xpad`, the kernel would translate every
   Xbox pad into one fixed layout that browsers know; with `hid-generic` the
   layout is the order in the pad's own HID descriptor, and the browser has
-  to guess it. In this mode Firefox guesses right.
+  to guess it. In this mode Firefox guesses right. The pad has two more
+  modes, one of them with `xpad`; see below.
 - *Its triggers read as pressed at rest* in Firefox: buttons 6 and 7 at
   0.5 with `pressed` true, axes 6 and 7 at −1. "Press any button" would fire
   on its own; buttons must be read by index (A is 0). Guarded by
@@ -879,6 +880,33 @@ left; Share opened nothing; Firefox still reported the pad with the
 consumer control on interface 00 (volume keys) remains; it sent nothing in
 the test.
 
+**The GameSir's three modes.** The pad announces itself in one of three
+ways, depending on what was pressed. Established from the kernel log of
+every plug-in on 2026-10-06 and then reproduced step by step:
+
+| Mode | How it is reached | USB | Driver | Layout in Firefox |
+|---|---|---|---|---|
+| default | plugged in, nothing pressed; LED off | 3537:1082, gamepad + keyboard/mouse (HID) | `hid-generic` | correct (A 0, B 1, stick axis 0); 8-bit sticks |
+| View+Menu | View and Menu held while plugging in; LED on | 3537:1010, gamepad only (HID) | `hid-generic` | mixed up, see rejected alternatives |
+| Xbox | while plugged in, Menu + View + M held for 3 s (the manual calls it a reset); LED on, the pad vibrates | 3537:1010 with serial number, Xbox protocol (GIP) | `xpad` | correct and complete |
+
+- *The Xbox mode does not last.* The pad re-announces itself within a
+  second of the combination. It survives the next unplug and replug, and
+  falls back to the default mode on the one after (three times in the log,
+  once in a deliberate test). Share + Menu, View + Menu, Xbox + Menu, and
+  Xbox or M alone did nothing while plugged in.
+- *In the Xbox mode Firefox reports exactly the standard layout:* 4 axes,
+  17 buttons; A, B, X, Y as 0–3, LB and RB as 4 and 5, the triggers as
+  analogue buttons 6 and 7, left stick on axes 0 and 1 (up is −1), right
+  stick on 2 and 3; nothing pressed at rest. Sticks have 16 bits, the
+  triggers 10. No keyboard or mouse interface, so the udev rule, which
+  names 1082, has nothing to do.
+
+So `input.js` works in the default and in the Xbox mode alike. The stand
+relies on the default mode, protected by the udev rule: it is what the pad
+falls back to after any second replug, whoever does it. The Xbox mode is
+checked and harmless, but nothing may depend on it.
+
 **Details that are deliberate.**
 
 - *The dead zone is 0.05.* The GameSir rests one 8-bit step off the centre
@@ -908,20 +936,25 @@ what matters for focus, but feature-viz's load was not on the machine.
   click into another window, so the focus check would have proven
   nothing. The server's view, through `tools/measure_ws.py`, does not
   depend on the browser.
-- *The GameSir's second mode,* entered by holding View and Menu while
-  plugging it in (the LED lights). It announces USB 3537:1010 — the ID
-  `xpad` lists for the G7 SE — but still only a HID interface, so the
-  kernel still binds `hid-generic`. The keyboard and mouse interface is
-  gone and the triggers rest at 0, but Firefox, apparently assuming the
-  `xpad` layout for this ID, mixes everything except the left stick up:
-  A, B, X, Y arrive as buttons 1, 17, 0, 3; the right stick as the trigger
-  buttons 6 and 7, pressed at rest; the triggers as the right stick's axes;
-  the left stick's vertical axis inverted. And the pad forgets the mode on
-  every unplug: whoever replugs it at the stand gets the default mode
-  without knowing, so the layout would depend on how it was last plugged
-  in. A mode in which the pad speaks GIP and `xpad` takes it was not found;
-  `xpad` would bring 16-bit sticks, which the crane does not need (one
-  8-bit step is about 1 cm/s of the trolley).
+- *The GameSir's View+Menu mode.* It announces 3537:1010 — the ID `xpad`
+  lists for the G7 SE — but only a HID interface, so the kernel binds
+  `hid-generic`. The keyboard and mouse interface is gone and the triggers
+  rest at 0, but Firefox, apparently assuming the `xpad` layout for this
+  ID, mixes everything except the left stick up: A, B, X, Y arrive as
+  buttons 1, 17, 0, 3; the right stick as the trigger buttons 6 and 7,
+  pressed at rest; the triggers as the right stick's axes; the left
+  stick's vertical axis inverted. It is also lost on every unplug.
+- *Relying on the GameSir's Xbox mode:* the best layout and 16-bit sticks,
+  but it has to be set again after every second replug, and a restart of
+  the machine presumably counts as one. A step the staff can forget must
+  not be what keeps the stand safe. The crane does not need the
+  resolution: one 8-bit step is about 1 cm/s of the trolley.
+- *The out-of-tree driver xone* for Xbox One pads: installed on the stand
+  machine on 2026-10-06 while looking for the Xbox mode, but not involved —
+  the Xbox mode appeared five minutes before its installation, it is
+  `xpad` that binds the pad, and xone's modules had been built empty. A
+  kernel module outside the kernel would have to be rebuilt on every kernel
+  update.
 - *Taping over Share:* does not cover macro buttons and comes off within
   two days of visitors.
 - *Switching off the Print shortcut in COSMIC:* hits every keyboard,
