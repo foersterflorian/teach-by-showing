@@ -45,6 +45,15 @@ python3 tools/kiosk.py list
 python3 tools/kiosk.py open --serial <n>
 ```
 
+`tools/udev/70-teach-by-showing-gamepad.rules` switches off the GameSir
+gamepad's keyboard and mouse interface, through which its Share button
+would open the desktop's screenshot dialog over the kiosk. It is installed
+once on the host (`DECISIONS.md` §12):
+
+```bash
+sudo cp tools/udev/70-teach-by-showing-gamepad.rules /etc/udev/rules.d/
+```
+
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.
 

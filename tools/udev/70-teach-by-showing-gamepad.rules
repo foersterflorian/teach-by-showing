@@ -1,0 +1,15 @@
+# Switch off the keyboard and mouse interface of the GameSir G7 SE, so that a
+# visitor cannot reach the desktop through the gamepad (DECISIONS.md §12).
+#
+# In its default mode (USB 3537:1082) the pad exposes two HID interfaces:
+# 00 is the gamepad, 01 a keyboard and mouse. Its Share button sends the
+# Print key through 01, which opens COSMIC's screenshot dialog over the
+# kiosk; the interface declares a full keyboard and a mouse besides.
+# Deauthorising 01 leaves the gamepad on 00 untouched.
+#
+# Runs on the host, not in the container. Install with:
+#   sudo cp tools/udev/70-teach-by-showing-gamepad.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload
+# then unplug and replug the gamepad.
+
+ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", ATTRS{idVendor}=="3537", ATTRS{idProduct}=="1082", ATTR{bInterfaceNumber}=="01", ATTR{authorized}="0"

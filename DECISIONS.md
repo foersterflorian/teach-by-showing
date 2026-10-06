@@ -819,9 +819,16 @@ screen and a fault in the input can be told apart.
 | rest value, Y (evdev, unused) | +0.004 | −0.043 |
 
 - *Firefox reports the GameSir with the `standard` mapping* although the
-  kernel binds it to `hid-generic`: it presents itself as a HID device
-  (USB 3537:1082, interface class 3), not as an Xbox device, so `xpad`,
-  which the concept's choice relied on, never claims it. It works anyway.
+  kernel binds it to `hid-generic`, not to `xpad`, which the concept's
+  choice relied on. Linux picks a driver by the interface a device
+  announces: `xpad` claims GameSir pads only on a vendor-specific interface
+  (class 0xFF, subclass 0x47, protocol 0xD0: the Xbox One protocol, GIP).
+  The G7 SE announces only HID interfaces (class 3), so `hid-generic` is
+  the one driver that fits, and `xpad` cannot be forced on it — it would
+  not understand the reports. With `xpad`, the kernel would translate every
+  Xbox pad into one fixed layout that browsers know; with `hid-generic` the
+  layout is the order in the pad's own HID descriptor, and the browser has
+  to guess it. In this mode Firefox guesses right.
 - *Its triggers read as pressed at rest* in Firefox: buttons 6 and 7 at
   0.5 with `pressed` true, axes 6 and 7 at −1. "Press any button" would fire
   on its own; buttons must be read by index (A is 0). Guarded by
@@ -839,6 +846,29 @@ screen and a fault in the input can be told apart.
   The server side is one tick at most (§8).
 - *Both pads at once:* plugging the F310 in beside the GameSir needed no
   selection; it drove as soon as it was pushed.
+- *Calibration:* the GameSir was measured before the stick calibration its
+  manual describes. Afterwards the rest values of all four stick axes were
+  unchanged at 128 (the 8-bit centre); the full deflection after
+  calibration was not rechecked.
+
+**The GameSir's keyboard and mouse interface.** In its default mode the
+pad announces two HID interfaces: 00, the gamepad, and 01, a keyboard and a
+mouse (plus volume keys as a consumer control on 00). Read at the kernel
+while every button, stick, trigger and combination was tried for 90 s,
+only one thing came out: the *Share* button sends the Print key
+(`KEY_SYSRQ`), and COSMIC opened its screenshot dialog over the kiosk. The
+interface declares a full keyboard (Ctrl, Alt, Super, function keys) and a
+mouse with buttons and wheel besides, presumably for the pad's macro
+functions. A visitor could reach the desktop through the gamepad — the
+risk concept §14 names for mouse and keyboard.
+
+`tools/udev/70-teach-by-showing-gamepad.rules` deauthorises interface 01
+of 3537:1082, so the kernel creates no keyboard or mouse for it, and leaves
+the gamepad on 00 untouched. It runs on the host, where the browser reads
+the gamepad; the container has no devices (§10) and is not involved. It is
+installed once by hand (the file says how) and later by the stand's start
+script (concept §15 item 16). The F310, through `xpad`, has no such
+interface.
 
 **Details that are deliberate.**
 
@@ -866,8 +896,29 @@ what matters for focus, but feature-viz's load was not on the machine.
   a device needs it.
 - *Reading the state of Firefox through WebDriver BiDi* for these checks:
   tried, but a remote-controlled Firefox kept reporting focus after a
-  click into another window, so the focus check would have proven nothing. The server's
-  view, through `tools/measure_ws.py`, does not depend on the browser.
+  click into another window, so the focus check would have proven
+  nothing. The server's view, through `tools/measure_ws.py`, does not
+  depend on the browser.
+- *The GameSir's second mode,* entered by holding View and Menu while
+  plugging it in (the LED lights). It announces USB 3537:1010 — the ID
+  `xpad` lists for the G7 SE — but still only a HID interface, so the
+  kernel still binds `hid-generic`. The keyboard and mouse interface is
+  gone and the triggers rest at 0, but Firefox, apparently assuming the
+  `xpad` layout for this ID, mixes everything except the left stick up:
+  A, B, X, Y arrive as buttons 1, 17, 0, 3; the right stick as the trigger
+  buttons 6 and 7, pressed at rest; the triggers as the right stick's axes;
+  the left stick's vertical axis inverted. And the pad forgets the mode on
+  every unplug: whoever replugs it at the stand gets the default mode
+  without knowing, so the layout would depend on how it was last plugged
+  in. A mode in which the pad speaks GIP and `xpad` takes it was not found;
+  `xpad` would bring 16-bit sticks, which the crane does not need (one
+  8-bit step is about 1 cm/s of the trolley).
+- *Taping over Share:* does not cover macro buttons and comes off within
+  two days of visitors.
+- *Switching off the Print shortcut in COSMIC:* hits every keyboard,
+  including the staff's, and covers only that one key.
+- *Hiding the interface from libinput* (`LIBINPUT_IGNORE_DEVICE`): works
+  only as long as the desktop uses libinput, and the devices still exist.
 
-`tests/test_frontend.py` (served probe, no "any button") and
-`tests/test_measure.py` guard this section.
+`tests/test_frontend.py` (served probe, no "any button"),
+`tests/test_measure.py` and `tests/test_udev.py` guard this section.
