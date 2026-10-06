@@ -1,8 +1,8 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 in progress: core, server, frontend, container and kiosk placement done (§6–§11); gamepad pending
-**Last updated:** 2026-10-02
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 (recording, behavioural cloning) next
+**Last updated:** 2026-10-06
 
 This file records *why* the code looks the way it does. The code says what it
 does; this says what was considered and rejected, so that changing something
@@ -218,26 +218,22 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   rechecked after updates on the stand machine. Firefox's placement rests on
   6 of 6 starts checked by eye, against series of 10–20 for Chrome; a
   longer series follows at the dress rehearsal at the latest.
-- **Gamepad in Firefox.** §11 moves the crane from Chrome to Firefox,
-  because Chrome cannot be placed. Older sources (2017, 2022) report XInput
-  gamepads in Chrome with the `standard` mapping, in Firefox on Linux not
-  (triggers and D-pad as axes, stick axes at other indices); the mapping
-  layer of concept §7.1 is meant for exactly that. To be checked with the
-  GameSir G7 SE and the Logitech F310 on the spike's day 1, mainly in
-  Firefox, Chrome only for comparison. The kiosk needs input focus: the
-  keyboard drove the crane only after a click into its window (2026-10-02);
-  whether the Gamepad API needs focus too is part of the next item.
+- **Gamepad in Firefox** — *checked on 2026-10-06, see §12*: both pads
+  report the left stick as axis 0 of the `standard` mapping. Still open:
+  Chrome for comparison (not needed while the crane runs in Firefox), and
+  the A button for the stand's steps once the state machine uses it.
 - **Firefox's scale on a fractionally scaled monitor** — *judged on
   2026-10-02*. At COSMIC's 150 % Firefox reported `devicePixelRatio` 1.36
   and a 2816-pixel-wide screen, not 1.5 and 2560. By eye the crane in the
   Firefox kiosk looked sharp on the 4K monitor, so nothing is changed;
   Firefox's pref for fractional scaling on Wayland stays in reserve.
-- **Gamepad input with two browser windows.** Whether the crane window keeps
-  receiving gamepad input while the feature-viz window runs next to it —
-  now two Firefox instances with separate profiles (§11).
-- **Secure context for the Gamepad API.** Assumed for current browsers,
-  not checked in Chrome and Firefox on the deployment machine. Harmless
-  either way, since the kiosk uses `http://localhost`.
+- **Gamepad input with two browser windows** — *checked on 2026-10-06, see
+  §12*: the crane's Firefox receives the stick while a second Firefox
+  instance has the focus. Checked with a stand-in page, not with feature-viz
+  itself; to be repeated with both containers at the dress rehearsal.
+- **Secure context for the Gamepad API** — *settled for Firefox on
+  2026-10-06*: the gamepad works on `http://localhost` (§12). Not checked
+  in Chrome.
 - **Training time.** "One to three seconds" for the MLP in NumPy is an
   estimate.
 - **Loop timing under load** — *measured on 2026-10-02, see §8*: unchanged
@@ -265,8 +261,8 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   about 21 ms of display delay. In the development browser pane it removed
   all visible skips, but that pane drew only 48 frames per second. In the
   Firefox kiosk on the 4K monitor, driving with the keyboard felt smooth
-  with no noticeable delay (judged by eye, 2026-10-02). Still open: the same
-  with the gamepad, and whether `?delay=0` looks worse.
+  with no noticeable delay (judged by eye, 2026-10-02), and so did the
+  gamepad (2026-10-06, §12). Still open: whether `?delay=0` looks worse.
 - **Funding notice language.** The notice is shown in English, verbatim as
   in feature-viz, on an otherwise German screen. Decided 2026-10-02, not yet
   built: the language becomes an option, German or English, with English as
@@ -492,18 +488,25 @@ api.py              FastAPI: /ws, /healthz, static files — calls into live.py 
 
 **Measured** (deployment machine, RTX 4090 / AMD 16-core, otherwise idle,
 outside the container, 2026-10-02; script: a WebSocket client on the same
-machine, 30 s):
+machine, 30 s, written for the occasion and not kept; `tools/measure_ws.py`
+replaces it, so the figures can be taken again the same way):
 
 | Quantity | Figure |
 |---|---|
 | state messages | 1801 in 30.0 s, 60.00 Hz, none skipped |
 | interval between messages | median 16.57 ms, 1st–99th percentile 15.51–17.69 ms, max 18.82 ms |
 | simulated vs. wall-clock time | −0.3 ms over 30 s |
-| input round trip (send → first state showing it) | median 16.5 ms, p95 17.6 ms, max 17.6 ms |
+| input round trip (send → first state showing it) | median 16.5 ms, p95 17.6 ms, max 17.6 ms (see below) |
 | overruns | 0 |
 
-The round trip is one frame, as designed: an input takes effect at the next
-tick. Browser rendering and the gamepad's own polling come on top and are
+The round trip is at most one frame, as designed: an input takes effect at
+the next tick. The median of 16.5 ms above was the worst case, not the
+spread: the script of 2026-10-02 sent in step with the server's tick and so
+always just missed it. Remeasured on 2026-10-06 (deployment machine, idle,
+outside the container) with `tools/measure_ws.py roundtrip`, which waits a
+random part of a frame before each send: median 6.6 ms, p95 15.4 ms, max
+17.6 ms over 53 commands. A first run without that random wait gave a
+median of 2.4 ms, the opposite extreme of the same artefact. Browser rendering and the gamepad's own polling come on top and are
 part of the spike's acceptance ("latency not noticeable").
 
 **Under load** (deployment machine, 2026-10-02, 60 s): crane and
@@ -545,11 +548,15 @@ that `crane.py`, `task.py` and `live.py` import nothing from the web stack.
 index.html   layout, German texts, placeholder for the funding notice
 style.css    sizes in viewport units for a 4K monitor read from standing distance
 scene.js     drawScene(): girder, trolley, rope, load, target zone — drawing only
-input.js     readCommand(): the keyboard, ramped; the gamepad joins here
+input.js     readCommand(): the gamepad's left stick, or the keyboard, ramped (§12)
 main.js      WebSocket, state buffer, interpolation, readouts, render loop
 ```
 
-About 260 lines of JavaScript against a budget of about 900 for the whole
+Beside them, `gamepad.html`: a page for staff that shows the raw Gamepad
+API values, self-contained and not linked from the crane page (§12).
+
+About 280 lines of JavaScript, plus about 50 in the staff page
+`gamepad.html` (§12), against a budget of about 900 for the whole
 project (concept §7.4). A fault can be traced by file: wrong picture →
 `scene.js`, crane does not react → `input.js`, nothing at all → `main.js`
 and the browser console.
@@ -774,3 +781,93 @@ port (`screen.availLeft`) for Wayland windows, and by eye.
 - *The Window Management API* (`requestFullscreen({screen})`): needs a
   permission granted through a browser policy and a user gesture, and puts
   placement logic into JavaScript.
+
+---
+
+## 12. Gamepad: left stick in the "standard" mapping, judged at the server
+
+**Context.** Visitors drive with a USB gamepad (concept §7.7): the GameSir
+G7 SE as the main device, the Logitech F310 as the spare. The browser reads
+it through the Gamepad API (§3), and since §11 that browser is Firefox,
+where older sources reported XInput pads without the `standard` mapping.
+The spike's day 1 had to show that the stick reaches the crane, also while
+feature-viz's Firefox runs beside it, and survives unplugging.
+
+**Decision.** `input.js` reads axis 0 of the Gamepad API's `standard`
+mapping (left stick, horizontal) from whichever connected pad is pushed
+furthest, with a dead zone of 0.05 rescaled so the command starts at 0.
+The stick wins whenever it is deflected; at rest the keyboard drives, for
+development and staff. Fixed indices, no calibration yet: both pads report
+the same layout in Firefox, and the calibration dialog of concept §7.1
+comes only when a device needs it.
+
+**Measured** (deployment machine, RTX 4090 / AMD 16-core, Firefox 156.0.1,
+kernel 7.1.5, 2026-10-06). The browser's view was read from
+`/gamepad.html`, a staff page that shows the raw Gamepad API values; what
+reached the simulation from `tools/measure_ws.py trace`, which listens on
+the WebSocket and prints the command the server applies, so a fault on the
+screen and a fault in the input can be told apart.
+
+| Check | GameSir G7 SE | Logitech F310 |
+|---|---|---|
+| kernel driver | `hid-generic`, not `xpad` | `xpad` |
+| Firefox's `mapping` | `standard`, 8 axes, 19 buttons | — (drove the crane through axis 0 unchanged) |
+| left stick, horizontal | axis 0, −1..+1 | axis 0, −1..+1 |
+| A, B | buttons 0, 1 | — |
+| stick resolution | 8 bit (0..255) | 16 bit |
+| rest value, X (evdev) | +0.004 | +0.004 |
+| rest value, Y (evdev, unused) | +0.004 | −0.043 |
+
+- *Firefox reports the GameSir with the `standard` mapping* although the
+  kernel binds it to `hid-generic`: it presents itself as a HID device
+  (USB 3537:1082, interface class 3), not as an Xbox device, so `xpad`,
+  which the concept's choice relied on, never claims it. It works anyway.
+- *Its triggers read as pressed at rest* in Firefox: buttons 6 and 7 at
+  0.5 with `pressed` true, axes 6 and 7 at −1. "Press any button" would fire
+  on its own; buttons must be read by index (A is 0). Guarded by
+  `tests/test_frontend.py`.
+- *Focus does not matter.* With the crane in the Firefox kiosk on the left
+  monitor and a second Firefox instance with its own profile (standing in
+  for feature-viz) focused on the right, the full stick range reached the
+  server, and the trolley moved, confirmed by eye.
+- *Unplugging* the GameSir with the stick held full right dropped the
+  command from +1 to 0 within one 0.25 s bin: the pad leaves
+  `getGamepads()` at once, without waiting for the server's input timeout
+  (§8). Plugged back in, the stick worked again at once, without a button
+  press or a reload.
+- *Latency:* "not noticeable" by eye, driving with the GameSir in the kiosk.
+  The server side is one tick at most (§8).
+- *Both pads at once:* plugging the F310 in beside the GameSir needed no
+  selection; it drove as soon as it was pushed.
+
+**Details that are deliberate.**
+
+- *The dead zone is 0.05.* The GameSir rests one 8-bit step off the centre
+  (0.004); the F310's X axis rests there too. Without a dead zone that step
+  would enter the recordings as creep (concept §7.7). The F310's unused Y
+  axis rests at −0.043, close to the dead zone; a worn potentiometer on the
+  X axis could exceed it, which the calibration dialog would then measure.
+- *The furthest-pushed pad wins,* rather than the first connected one, so a
+  spare plugged in next to the main pad needs no setting.
+- *No ramp on the stick.* The keyboard's ramp (§9) imitates a stick; the
+  stick itself is analogue.
+
+**Not done.** Chrome as a comparison (concept §16 asked for it only as
+such; Firefox works, and Chrome stays out of the crane kiosk, §11). The
+real feature-viz page beside the crane, rather than a stand-in Firefox:
+the stand-in is a separate Firefox instance with its own profile, which is
+what matters for focus, but feature-viz's load was not on the machine.
+
+**Rejected alternatives.**
+
+- *Reading the gamepad in the container* through `/dev/input`: device
+  pass-through, the fragility §3 avoids.
+- *A calibration dialog now:* both pads report the same layout; built when
+  a device needs it.
+- *Reading the state of Firefox through WebDriver BiDi* for these checks:
+  tried, but a remote-controlled Firefox kept reporting focus after a
+  click into another window, so the focus check would have proven nothing. The server's
+  view, through `tools/measure_ws.py`, does not depend on the browser.
+
+`tests/test_frontend.py` (served probe, no "any button") and
+`tests/test_measure.py` guard this section.

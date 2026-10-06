@@ -19,8 +19,15 @@ pdm run pytest
 pdm run teach-by-showing        # http://localhost:8081
 ```
 
-For development the crane is driven with ← → or A / D; on the stand with a
-USB gamepad.
+On the stand the crane is driven with the left stick of a USB gamepad; for
+development also with ← → or A / D. `http://localhost:8081/gamepad.html`
+shows what the browser reads from a gamepad, and `tools/measure_ws.py`
+measures the running server from outside — timing, input round trip, and
+the command it applies (`DECISIONS.md` §8, §12):
+
+```bash
+pdm run python tools/measure_ws.py timing --seconds 30
+```
 
 On the stand it runs in a container, without GPU or devices; the browser on
 the host draws the crane and reads the gamepad:
