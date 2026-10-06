@@ -14,8 +14,10 @@ import logging
 import os
 import secrets
 import signal
+import time
 from collections.abc import AsyncIterator, Callable
 from importlib import resources
+from pathlib import Path
 from typing import Any, Final
 
 import numpy as np
@@ -25,7 +27,14 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from teach_by_showing.funding import FUNDING_LOGOS, FUNDING_TEXT, FUNDING_URL, funding_asset
-from teach_by_showing.live import LiveSession, LoopStats, parse_command, run_paced
+from teach_by_showing.live import (
+    LiveSession,
+    LoopStats,
+    RecordingRequest,
+    parse_command,
+    run_paced,
+)
+from teach_by_showing.recording import Run, save_run
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
@@ -211,14 +220,47 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--seed", type=int, default=None, help="random seed; default: fresh")
+    parser.add_argument(
+        "--record",
+        metavar="LABEL",
+        help="record the next transports as a run named LABEL, e.g. vorsichtig (§13)",
+    )
+    parser.add_argument(
+        "--transports", type=int, default=3, help="transports per recording; default: 3"
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        # The container sets DATA_DIR to its volume (§10).
+        default=Path(os.environ.get("DATA_DIR", "data")),
+        help="where runs are saved, under runs/; default: $DATA_DIR or ./data",
+    )
     args: argparse.Namespace = parser.parse_args()
 
     seed: int = args.seed if args.seed is not None else secrets.randbits(32)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     log.info("seed %d", seed)
-    app: FastAPI = create_app(
-        lambda: LiveSession.start(np.random.default_rng(seed)), exit_on_crash=True
-    )
+    runs: Path = args.data_dir / "runs"
+
+    def saved(run: Run) -> None:
+        log.info("recorded %d frames to %s", run.frames, save_run(run, runs))
+
+    def make_session() -> LiveSession:
+        session: LiveSession = LiveSession.start(np.random.default_rng(seed))
+        if args.record:
+            session.request_recording(
+                RecordingRequest(
+                    args.record,
+                    seed,
+                    time.strftime("%Y%m%d-%H%M%S"),
+                    args.transports,
+                    saved,
+                )
+            )
+            log.info("recording %d transports from the first deflection", args.transports)
+        return session
+
+    app: FastAPI = create_app(make_session, exit_on_crash=True)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 

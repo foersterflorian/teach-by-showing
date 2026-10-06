@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 (recording, behavioural cloning) next
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 under way: recording (§13), behavioural cloning next
 **Last updated:** 2026-10-06
 
 This file records *why* the code looks the way it does. The code says what it
@@ -648,8 +648,8 @@ stand's backend, and the host's browser opens `http://localhost:8081`.
   crashes* (§8). Docker only reports an unhealthy container; it restarts an
   exited one. A container stopped by hand stays stopped.
 - *A named volume `data` at `/data`* (`DATA_DIR`) for runs, agents and the
-  gallery, so they survive rebuilds. Nothing writes there yet; recording
-  arrives with the spike's second day.
+  gallery, so they survive rebuilds. Recorded runs go to `/data/runs`
+  (§13).
 
 **Verified** (deployment machine, Docker 29.8.2, 2026-10-02):
 
@@ -964,3 +964,76 @@ what matters for focus, but feature-viz's load was not on the machine.
 
 `tests/test_frontend.py` (served probe, no "any button"),
 `tests/test_measure.py` and `tests/test_udev.py` guard this section.
+
+---
+
+## 13. Recording: a run is one JSON file of columns, begun by the first deflection
+
+**Context.** Behavioural cloning learns from what a teacher did (concept
+§5.1). Recording makes that an offline problem: a run can be trained on,
+replayed and turned into a test without hardware or a person at the stand.
+
+**Decision.** `recording.py` holds a `Run`: the crane and task parameters,
+the seed, a label (`vorsichtig`, `zügig`, never a name, concept §6.3), the
+state before the first recorded frame, and per frame the command applied,
+the state that step produced (x, v, θ, ω), the target, the transport's index
+and whether the transport was still running. `LiveSession` appends one row
+per tick while a recording is active. For the spike it is started from the
+command line, before the stand's state machine exists:
+
+```bash
+teach-by-showing --record vorsichtig --transports 3   # saved under $DATA_DIR/runs
+```
+
+**Why.**
+
+- *Commands and states, both.* The states follow from the commands, and a
+  test sends the commands through the same `step()` and gets every state
+  back bit for bit (`tests/test_recording.py`). Storing them anyway makes a
+  file usable without re-simulating it, and a change to the physics shows
+  as a failing test instead of silently changing old demonstrations.
+- *The command applied, not the one received:* after the input timeout
+  (§8) the crane brakes on 0 whatever the browser last sent, and the
+  network must learn what moved the crane.
+- *It begins with the first deflection.* The first transport's clock
+  restarts there. The seconds a teacher needs to pick up the gamepad are not
+  driving; recorded, they would teach "stand still far from the target"
+  (the averaging failure of concept §5.2) and count as transport time.
+  Hesitation *during* a transport is the teacher's style and is kept.
+- *It ends with the frame that finished the last transport;* its pause is
+  not recorded. Pauses between transports are recorded but marked, since
+  the target is gone and the teacher is not driving; training skips them.
+  A pause row carries the index and target of the transport it follows.
+- *Columns, not a list of frame objects:* a file of 5000 frames stays
+  compact and loads straight into arrays.
+- *A schema number.* A file of another schema is refused, not misread.
+
+**Details that are deliberate.**
+
+- *The file name is `<time requested>-<label>.json`*, with everything but
+  letters, digits and hyphens dropped, so that a label can never leave the
+  folder. The time is the wall clock of the server's start, passed in from
+  `api.py`; `live.py` counts frames, never wall-clock time.
+- *Written to a `.partial` name and renamed,* so a crash never leaves half a
+  file that looks like a run.
+- *Saved inside the simulation loop.* Measured on the deployment machine
+  (RTX 4090 / AMD 16-core, 2026-10-06): a run of 6535 frames, 0.8 MB, takes
+  a median 10.8 ms to serialise and write, at most 17.1 ms in 20 tries,
+  about one frame, once per recording, after the last transport. Not worth a
+  thread.
+- *`/data/` is ignored by Git.* Runs chosen as test data go to `tests/data/`
+  deliberately (concept §5.1).
+
+**Rejected alternatives.**
+
+- *Recording in the browser or through a WebSocket listener* such as
+  `tools/measure_ws.py`: the state messages carry neither v nor ω, and the
+  server alone knows the command it applied.
+- *One row per frame as an object:* about three times the size, for no
+  reader that needs it.
+- *Recording from frame 0:* see the first deflection above.
+- *A staff key in the frontend to start a recording:* the trigger belongs to
+  the state machine; until then a command-line flag needs no frontend code.
+
+`tests/test_recording.py` guards this section.
+

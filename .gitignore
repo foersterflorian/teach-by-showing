@@ -1,6 +1,8 @@
 # user-defined
 prototypes/
 reports/
+# Runs recorded locally with --record (DECISIONS.md §13).
+/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

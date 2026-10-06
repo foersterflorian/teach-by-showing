@@ -18,6 +18,7 @@ from typing import Any, Final
 import numpy as np
 
 from teach_by_showing.crane import DT, SIM_HZ, CraneParams, CraneState, FloatArray, step
+from teach_by_showing.recording import Run
 from teach_by_showing.task import (
     TaskParams,
     Transport,
@@ -49,6 +50,18 @@ def parse_command(value: object) -> float | None:
     return min(1.0, max(-1.0, u))
 
 
+@dataclass(frozen=True, slots=True)
+class RecordingRequest:
+    """A recording asked for but not yet begun (DECISIONS.md §13). `created`
+    comes from the caller: this module counts frames, not wall-clock time."""
+
+    label: str
+    seed: int | None
+    created: str
+    transports: int
+    on_done: Callable[[Run], None]
+
+
 @dataclass(slots=True)
 class LiveSession:
     """One crane on the stand. Mutable on purpose: it is the single owner of
@@ -63,6 +76,13 @@ class LiveSession:
     input_frame: int = -INPUT_TIMEOUT_FRAMES - 1
     pause_left: int = 0
     transports_done: int = 0
+    # Asked for by request_recording(); `recording` is None until the
+    # teacher's first deflection begins it.
+    request: RecordingRequest | None = None
+    recording: Run | None = None
+    # transports_done when the recording began, so that its own transports
+    # count from 0.
+    recording_base: int = 0
 
     @classmethod
     def start(
@@ -87,13 +107,31 @@ class LiveSession:
             return 0.0
         return self.command
 
+    def request_recording(self, request: RecordingRequest) -> None:
+        """Record the next `request.transports` transports, beginning with the
+        teacher's first stick deflection."""
+        self.request = request
+        self.recording = None
+
     def tick(self) -> None:
         """Advance one frame. After a transport has finished, the crane keeps
         responding during a short pause; then the next target is drawn from
         wherever the trolley stands."""
-        u: FloatArray = np.array([self.effective_command])
+        command: float = self.effective_command
+        if (
+            self.request is not None
+            and self.recording is None
+            and command != 0.0
+            and not self.transport.done(self.state.frame, self.task)[0]
+        ):
+            self._begin_recording(self.request)
+        u: FloatArray = np.array([command])
+        target: float = float(self.transport.target[0])
         self.state = step(self.state, u, self.crane)
-        if not self.transport.done(self.state.frame, self.task)[0]:
+        running: bool = not self.transport.done(self.state.frame, self.task)[0]
+        # A pause belongs to the transport it follows, which is already counted.
+        index: int = self.transports_done - self.recording_base - (0 if running else 1)
+        if running:
             self.transport = advance(self.transport, self.state, self.crane, self.task)
             if self.transport.done(self.state.frame, self.task)[0]:
                 self.pause_left = PAUSE_FRAMES
@@ -101,8 +139,34 @@ class LiveSession:
         elif self.pause_left > 0:
             self.pause_left -= 1
         else:
-            target: FloatArray = sample_targets(self.rng, self.state.x, self.crane, self.task)
-            self.transport = Transport.begin(target, self.state.frame)
+            new_target: FloatArray = sample_targets(
+                self.rng, self.state.x, self.crane, self.task
+            )
+            self.transport = Transport.begin(new_target, self.state.frame)
+        if self.recording is not None:
+            self._record(command, target, index, running)
+
+    def _begin_recording(self, request: RecordingRequest) -> None:
+        # The transport's clock restarts at the first deflection: the time a
+        # teacher needs to pick up the gamepad is not part of the drive, and
+        # frames of standing still before it would teach "do nothing".
+        self.transport = Transport.begin(self.transport.target, self.state.frame)
+        self.recording = Run(
+            request.label, request.seed, request.created, self.crane, self.task, self.state
+        )
+        self.recording_base = self.transports_done
+
+    def _record(self, command: float, target: float, index: int, running: bool) -> None:
+        run: Run | None = self.recording
+        request: RecordingRequest | None = self.request
+        assert run is not None and request is not None
+        run.append(command, self.state, target, index, running)
+        # Ends with the frame that finished the last transport; its pause is
+        # not part of the demonstration.
+        if self.transports_done - self.recording_base >= request.transports:
+            self.recording = None
+            self.request = None
+            request.on_done(run)
 
     def config_message(self) -> dict[str, Any]:
         """Sent once per connection: everything the frontend needs to draw to
