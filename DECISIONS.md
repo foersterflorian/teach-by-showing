@@ -832,7 +832,9 @@ screen and a fault in the input can be told apart.
 - *Its triggers read as pressed at rest* in Firefox: buttons 6 and 7 at
   0.5 with `pressed` true, axes 6 and 7 at −1. "Press any button" would fire
   on its own; buttons must be read by index (A is 0). Guarded by
-  `tests/test_frontend.py`.
+  `tests/test_frontend.py`. After the calibration below and with the udev
+  rule installed, the triggers rested at 0 and nothing read as pressed;
+  which of the two changed it is not known, so the rule stands.
 - *Focus does not matter.* With the crane in the Firefox kiosk on the left
   monitor and a second Firefox instance with its own profile (standing in
   for feature-viz) focused on the right, the full stick range reached the
@@ -869,6 +871,13 @@ the gamepad; the container has no devices (§10) and is not involved. It is
 installed once by hand (the file says how) and later by the stand's start
 script (concept §15 item 16). The F310, through `xpad`, has no such
 interface.
+
+Verified with the rule installed (deployment machine, 2026-10-06):
+interface 01 deauthorised and without a driver, no keyboard or mouse node
+left; Share opened nothing; Firefox still reported the pad with the
+`standard` mapping, A as button 0, B as 1, the left stick as axis 0. The
+consumer control on interface 00 (volume keys) remains; it sent nothing in
+the test.
 
 **Details that are deliberate.**
 
