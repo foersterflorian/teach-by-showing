@@ -54,6 +54,26 @@ once on the host (`DECISIONS.md` §12):
 sudo cp tools/udev/70-teach-by-showing-gamepad.rules /etc/udev/rules.d/
 ```
 
+The GameSir runs in one of three modes, depending on what was pressed
+(`DECISIONS.md` §12). The crane works in the default and the Xbox mode; the
+stand relies on the default mode, which the pad falls back to on its own.
+To see which mode it is in:
+
+```bash
+grep -i 'N: Name=.*gamesir' /proc/bus/input/devices
+```
+
+| Output | Mode | How it is reached |
+|---|---|---|
+| `GameSir-G7 SE Controller for Xbox` | default | plugged in, nothing pressed; LED off |
+| `GameSir G7 SE` | Xbox | Menu + View + M held for 3 s while plugged in; LED on |
+| `Guangzhou Chicken Run … GameSir-G7 SE Controller for Xbox` | View+Menu — wrong layout, replug | View and Menu held while plugging in; LED on |
+
+Without a terminal, `gamepad.html` shows the same after a button press: the
+id starts with `3537-1082-` (default), `3537-1010-GameSir G7 SE` (Xbox) or
+`3537-1010-Guangzhou` (View+Menu). The LED alone does not tell the Xbox mode
+from the View+Menu mode.
+
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.
 
