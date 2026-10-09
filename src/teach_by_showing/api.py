@@ -31,6 +31,7 @@ from teach_by_showing.live import (
     LiveSession,
     LoopStats,
     RecordingRequest,
+    Settings,
     parse_command,
     run_paced,
 )
@@ -221,6 +222,12 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--seed", type=int, default=None, help="random seed; default: fresh")
     parser.add_argument(
+        "--params",
+        type=Path,
+        metavar="FILE",
+        help="JSON file of crane, task and input parameters that differ from the defaults",
+    )
+    parser.add_argument(
         "--record",
         metavar="LABEL",
         help="record the next transports as a run named LABEL, e.g. vorsichtig (§13)",
@@ -241,12 +248,19 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     log.info("seed %d", seed)
     runs: Path = args.data_dir / "runs"
+    settings: Settings = Settings.from_dict(
+        json.loads(args.params.read_text(encoding="utf-8")) if args.params else {}
+    )
+    if args.params:
+        log.info("parameters from %s: %s", args.params, settings)
 
     def saved(run: Run) -> None:
         log.info("recorded %d frames to %s", run.frames, save_run(run, runs))
 
     def make_session() -> LiveSession:
-        session: LiveSession = LiveSession.start(np.random.default_rng(seed))
+        session: LiveSession = LiveSession.start(
+            np.random.default_rng(seed), settings.crane, settings.task, settings.input
+        )
         if args.record:
             session.request_recording(
                 RecordingRequest(

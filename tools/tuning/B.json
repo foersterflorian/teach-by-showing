@@ -1,0 +1,5 @@
+{
+  "note": "Candidate B (2026-10-09): A, plus damping 0.15/s instead of 0.05/s; a swing halves in about 9 s instead of 28 s. DECISIONS.md §14.",
+  "crane": {"damping": 0.15},
+  "task": {"swing_tolerance": 0.06981317007977318}
+}

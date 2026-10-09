@@ -5,18 +5,22 @@ from __future__ import annotations
 import ast
 import json
 import math
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
 
-from teach_by_showing.crane import SIM_HZ
+from teach_by_showing.crane import SIM_HZ, CraneParams
 from teach_by_showing.live import (
     INPUT_TIMEOUT_FRAMES,
     PAUSE_FRAMES,
+    InputParams,
     LiveSession,
+    Settings,
     parse_command,
 )
+from teach_by_showing.task import TaskParams
 from tests.support import ROOT
 
 
@@ -160,3 +164,35 @@ def test_a_timed_out_transport_is_counted_and_paused_like_a_success() -> None:
     s.tick()
     assert s.transport.target[0] != first_target
     assert s.state_message()["result"] == "running"
+
+
+def test_settings_name_only_what_differs_and_refuse_typos() -> None:
+    """Candidate sets for tuning on the gamepad (§14)."""
+    s: Settings = Settings.from_dict({"crane": {"damping": 0.15}, "input": {"expo": 0.5}})
+    assert s.crane.damping == 0.15 and s.crane.max_accel == CraneParams().max_accel
+    assert s.task == TaskParams() and s.input.expo == 0.5
+    with pytest.raises(TypeError):
+        Settings.from_dict({"crane": {"dampnig": 0.15}})
+    with pytest.raises(ValueError, match="unknown"):
+        Settings.from_dict({"cran": {}})
+
+
+@pytest.mark.parametrize("path", sorted((ROOT / "tools" / "tuning").glob("*.json")))
+def test_candidate_files_load(path: Path) -> None:
+    Settings.from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+
+def test_the_input_curve_keeps_the_ends_and_refines_the_middle() -> None:
+    curve: InputParams = InputParams(expo=0.7)
+    u: np.ndarray = np.linspace(-1.0, 1.0, 201)
+    shaped: np.ndarray = np.array([curve.shape(float(v)) for v in u])
+    assert curve.shape(1.0) == 1.0 and curve.shape(-1.0) == -1.0 and curve.shape(0.0) == 0.0
+    assert np.all(np.diff(shaped) > 0)
+    assert abs(curve.shape(0.5) - 0.2375) < 1e-12
+    assert InputParams().shape(0.3) == 0.3
+
+
+def test_the_session_shapes_the_humans_input() -> None:
+    s: LiveSession = LiveSession.start(np.random.default_rng(0), input=InputParams(expo=0.7))
+    s.set_input(0.5)
+    assert abs(s.effective_command - 0.2375) < 1e-12

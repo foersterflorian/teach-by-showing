@@ -1,0 +1,5 @@
+{
+  "note": "Candidate C (2026-10-09): A, plus an input curve: command = 0.3 u + 0.7 u^3, so half deflection gives 0.24 instead of 0.5. DECISIONS.md §14.",
+  "task": {"swing_tolerance": 0.06981317007977318},
+  "input": {"expo": 0.7}
+}

@@ -1039,3 +1039,51 @@ teach-by-showing --record vorsichtig --transports 3   # saved under $DATA_DIR/ru
 
 `tests/test_recording.py` guards this section.
 
+
+---
+
+## 14. Tuning on the gamepad: settings files and candidate sets
+
+**Context.** The first recorded run (deployment machine, 2026-10-09, the
+maintainer, 5 transports with set B of §6 and the task of §7) showed the
+crane too hard to bring to rest: two of five transports timed out, the
+three others took 22, 38 and 56 s. The approach was quick (6–14 s to the
+target zone); calming the load there took 12–51 s. After arrival the
+trolley stood within the position tolerance most of the time, but the swing
+amplitude was below 2° in only 0–9 % of the frames. The maintainer: "the
+hard part is stopping the swing at the target; it takes a lot of finesse."
+Judged afterwards against looser thresholds on the same frames, a 4°
+threshold would have ended the successful transports after 15, 24 and 39 s
+and saved one of the timeouts; a wider position tolerance changed nothing.
+
+**Decision so far.** `--params FILE` takes a JSON file that names only the
+crane, task and input parameters that differ from the defaults
+(`live.Settings`); a misspelt name is refused. Three candidates in
+`tools/tuning/` are driven on the gamepad, three transports each, recorded:
+
+| | Change | Aim |
+|---|---|---|
+| A | calm below 4° of swing instead of 2° | the threshold alone |
+| B | A, plus damping 0.15/s instead of 0.05/s (a swing halves in about 9 s instead of 28 s) | the load helps calm itself |
+| C | A, plus an input curve, command = 0.3·u + 0.7·u³ | finer commands for small deflections |
+
+The input curve is applied in the server (`InputParams`), to the human's
+input only, so the frontend holds no logic and an agent commands directly.
+Recordings hold the shaped command, which is what moved the crane.
+
+**The naive driver must still swing visibly** (§6). Full speed, then a hard
+stop, 200 transports, seed 0, computed on the deployment machine:
+
+| Set | Swing when stopped (median) | after 25 s (median) | counted calm after 25 s |
+|---|---|---|---|
+| current | 24.3° | 14.6° | 4 % (below 2°) |
+| A, C | 24.3° | 14.6° | 8 % (below 4°) |
+| B | 21.6° | 4.8° | 31 % (below 4°) |
+
+B keeps the swing when the naive driver stops, but lets it fade within
+seconds afterwards, so the contrast lasts less long.
+
+**Open:** the comparison on the gamepad and the choice; then §6 and §7 are
+updated with the old values kept as the rejected alternative.
+
+`tests/test_live.py` guards the settings file and the input curve.

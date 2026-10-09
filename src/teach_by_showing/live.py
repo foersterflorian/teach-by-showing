@@ -12,8 +12,8 @@ from __future__ import annotations
 import asyncio
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any, Final
+from dataclasses import asdict, dataclass, replace
+from typing import Any, Final, Self
 
 import numpy as np
 
@@ -51,6 +51,46 @@ def parse_command(value: object) -> float | None:
 
 
 @dataclass(frozen=True, slots=True)
+class InputParams:
+    """How the stick's deflection becomes a command (concept §15 item 6).
+    Here, not in the browser, so that the frontend holds no logic (§3)."""
+
+    # Blend of a linear and a cubic curve, 0 (linear) to 1 (cubic): small
+    # deflections give finer commands, full deflection stays full speed.
+    # Applies to the human's input only; an agent commands directly.
+    expo: float = 0.0
+
+    def shape(self, u: float) -> float:
+        return (1.0 - self.expo) * u + self.expo * u**3
+
+    def to_dict(self) -> dict[str, float]:
+        return asdict(self)
+
+
+@dataclass(frozen=True, slots=True)
+class Settings:
+    """Crane, task and input parameters as one file, so that candidate sets
+    can be compared on the gamepad without editing code (DECISIONS.md §14).
+    A file names only what differs from the defaults."""
+
+    crane: CraneParams
+    task: TaskParams
+    input: InputParams
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        unknown: set[str] = set(data) - {"note", "crane", "task", "input"}
+        if unknown:
+            raise ValueError(f"unknown settings {sorted(unknown)}")
+        # replace() refuses unknown field names, so a typo fails loudly.
+        return cls(
+            replace(CraneParams(), **data.get("crane", {})),
+            replace(TaskParams(), **data.get("task", {})),
+            replace(InputParams(), **data.get("input", {})),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class RecordingRequest:
     """A recording asked for but not yet begun (DECISIONS.md §13). `created`
     comes from the caller: this module counts frames, not wall-clock time."""
@@ -72,6 +112,7 @@ class LiveSession:
     task: TaskParams
     state: CraneState
     transport: Transport
+    input: InputParams = InputParams()
     command: float = 0.0
     input_frame: int = -INPUT_TIMEOUT_FRAMES - 1
     pause_left: int = 0
@@ -90,15 +131,18 @@ class LiveSession:
         rng: np.random.Generator,
         crane: CraneParams | None = None,
         task: TaskParams | None = None,
+        input: InputParams | None = None,
     ) -> LiveSession:
         crane = crane or CraneParams()
         task = task or TaskParams()
         start, target = sample_transports(rng, crane, task, 1)
         state: CraneState = CraneState.at_rest(start)
-        return cls(rng, crane, task, state, Transport.begin(target, state.frame))
+        transport: Transport = Transport.begin(target, state.frame)
+        return cls(rng, crane, task, state, transport, input or InputParams())
 
-    def set_input(self, command: float) -> None:
-        self.command = command
+    def set_input(self, deflection: float) -> None:
+        """The stick's deflection, −1..1, shaped by the input curve."""
+        self.command = self.input.shape(deflection)
         self.input_frame = self.state.frame
 
     @property
@@ -179,6 +223,7 @@ class LiveSession:
             "hz": SIM_HZ,
             "crane": self.crane.to_dict(),
             "task": self.task.to_dict(),
+            "input": self.input.to_dict(),
         }
 
     def state_message(self) -> dict[str, Any]:
