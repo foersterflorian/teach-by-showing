@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 under way: recording (§13), behavioural cloning next
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 under way: recording (§13), tuning (§14), behavioural cloning (§15); evaluation and ghost replay next
 **Last updated:** 2026-10-06
 
 This file records *why* the code looks the way it does. The code says what it
@@ -240,8 +240,11 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **Secure context for the Gamepad API** — *settled for Firefox on
   2026-10-06*: the gamepad works on `http://localhost` (§12). Not checked
   in Chrome.
-- **Training time.** "One to three seconds" for the MLP in NumPy is an
-  estimate.
+- **Training time** — *measured on 2026-10-09, see §15*: 0.05–0.1 s for
+  the linear policy, 0.3–2.4 s for the network (2000 epochs) on one or two
+  recorded drives. Within the concept's one to three seconds, but the
+  network's figure varies more than its data size explains; to be watched
+  when several drives are pooled.
 - **Loop timing under load** — *measured on 2026-10-02, see §8*: unchanged
   with feature-viz running next to it. Driving in the kiosk next to a
   running feature-viz (shown in Chrome) felt smooth and looked sharp, judged
@@ -1138,3 +1141,95 @@ have not driven before. The files in `tools/tuning/` keep A and B
 reproducible against the new defaults.
 
 `tests/test_live.py` guards the settings file and the input curve.
+
+---
+
+## 15. Behavioural cloning: three features, a small network or a linear policy, NumPy
+
+**Context.** The heart of the demonstrator (concept §5.1): from a recorded
+run (§13), a model learns to map what the crane looks like to the command
+the teacher gave, and then drives on its own.
+
+**Decision.**
+
+- *Features* (`features.py`, in the core, batched): distance to the target,
+  `tanh((target − x) / 2 m)`; rope angle `θ / 0.2 rad`; angular speed
+  `ω / (ω₀ · 0.2 rad)`. Fixed scales, so every agent shares one input space.
+- *Models* (`cloning.py`): an MLP 3 → 8 → 1 with tanh in both layers
+  (41 weights), and a linear policy `tanh(w · f + b)` with the same
+  interface, the fallback of concept §5.2 item 7. Both are batched, so one
+  call drives one agent or a swarm, and both are JSON.
+- *Training:* full-batch Adam on the mean squared error, a fixed number of
+  epochs (2000, learning rate 0.01), initial weights from an injected
+  generator: the same runs and seed give the same agent bit for bit. Only
+  frames of a running transport are used (§13). The loss curve is returned
+  for the network display (concept §6.2).
+- *Mirroring* (`dataset(..., mirror=True)`): every example once more
+  reflected left to right, all features and the command negated. Offered,
+  not the default; the evaluation decides.
+- *`rollout()`* drives n transports at once with the live crane's `step()`
+  and `advance()`; evaluation, ghost replay and swarm build on it.
+
+**Why the trolley speed is not a feature.** The concept listed it, and the
+first version had it. The command is a target speed which the drive reaches
+within about 0.3 s, so the current speed nearly *is* the last command: in
+the maintainer's cautious drive the two correlate at 0.993. Trained on it,
+both models learnt "keep doing what you are doing" with a tiny loss
+(0.0007) and failed at driving: from rest the linear policy never started,
+and the network drifted, partly away from the target. Measured on the
+deployment machine, 2026-10-09, clones of the two drives in `tests/data/`,
+ten new transports (seed 42), first network seed:
+
+| Drive | Model | with speed | without speed |
+|---|---|---|---|
+| cautious | linear | 0/10 | 10/10, 30 s, swing 5° |
+| cautious | network | 0/10 | 0/10 (other seeds 3/10, 8/10) |
+| quick | linear | 10/10 | 10/10, 8.8 s, swing 14° |
+| quick | network | 0/10 | 6/10 (mirrored 10/10) |
+
+The same trap is why the last command is not a feature either.
+
+**First look at real drives** (same setting; median transport time of the
+successful transports, median of each transport's largest swing). The maintainer drove 21–42 s with
+4–14° cautiously and 12–26 s with 19–32° quickly.
+
+| Drive | Model | Success | Time | Swing |
+|---|---|---|---|---|
+| cautious | linear | 10/10 | 30.2 s | 5.0° |
+| cautious | linear, mirrored | 10/10 | 28.0 s | 5.0° |
+| quick | linear | 10/10 | 8.8 s | 14.1° |
+| quick | linear, mirrored | 10/10 | 8.8 s | 14.0° |
+| cautious | network, mirrored | 9/10 | 45.6 s | 35.2° |
+| quick | network, mirrored | 10/10 | 13.6 s | 30.4° |
+
+The linear policy reaches every target and keeps the style; the network
+depends strongly on its seed and swings far more than its teacher, the
+covariate shift of concept §5.2. Which model the stand uses, and whether
+mirroring becomes the default, is decided by the evaluation over more
+seeds and targets, not by this table. Training took 0.05–0.10 s for the
+linear policy and 0.3–2.4 s for the network.
+
+**Details that are deliberate.**
+
+- *Fixed scales, not fitted to the data:* a scale fitted to a cautious
+  teacher would differ from a quick one's, and agents of the gallery and
+  the evolution could no longer be compared or mixed.
+- *Gradients by hand,* checked against finite differences (largest error
+  1e-10), rather than an autodiff library: the network has 41 weights.
+- *A fixed number of epochs,* not a stopping rule on the loss: the
+  training time on the stand stays predictable, and a stopping rule would
+  make the agent depend on the floating-point path to it.
+
+**Rejected alternatives.**
+
+- *The trolley speed and the last command as features:* see above.
+- *Normalising by the data's mean and spread:* see fixed scales.
+- *PyTorch or another framework:* a dependency of hundreds of megabytes for
+  41 weights, against "standard library first" (CLAUDE.md).
+- *Mini-batches or stochastic gradient descent:* a few thousand examples
+  fit in one batch, and full batches keep training deterministic.
+
+`tests/test_cloning.py` guards this section, with scripted teachers
+(`tests/teachers.py`) driving and recorded through the live session like a
+visitor.
+

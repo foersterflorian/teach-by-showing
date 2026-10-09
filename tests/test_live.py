@@ -131,7 +131,14 @@ def test_messages_are_json_and_carry_what_the_frontend_needs() -> None:
     )
 
 
-CORE: tuple[str, ...] = ("crane.py", "task.py", "live.py", "recording.py")
+CORE: tuple[str, ...] = (
+    "crane.py",
+    "task.py",
+    "live.py",
+    "recording.py",
+    "features.py",
+    "cloning.py",
+)
 WEB: frozenset[str] = frozenset({"fastapi", "starlette", "uvicorn", "websockets", "httpx"})
 
 
