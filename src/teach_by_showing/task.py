@@ -38,7 +38,9 @@ class TaskParams:
     min_distance: float = 4.0
     position_tolerance: float = 0.15  # m, trolley to target
     speed_tolerance: float = 0.05  # m/s
-    swing_tolerance: float = math.radians(2.0)  # of crane.swing_amplitude
+    # Of crane.swing_amplitude. 2° until 2026-10-09: too hard to reach on the
+    # gamepad (DECISIONS.md §14).
+    swing_tolerance: float = math.radians(4.0)
     calm_seconds: float = 1.0
     time_limit: float = 60.0
 

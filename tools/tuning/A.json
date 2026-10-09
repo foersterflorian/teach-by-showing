@@ -1,4 +1,9 @@
 {
   "note": "Candidate A (2026-10-09): calm below 4 degrees of swing instead of 2 (0.0698 rad). DECISIONS.md §14.",
-  "task": {"swing_tolerance": 0.06981317007977318}
+  "task": {
+    "swing_tolerance": 0.06981317007977318
+  },
+  "input": {
+    "expo": 0.0
+  }
 }

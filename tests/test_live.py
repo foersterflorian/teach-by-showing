@@ -189,7 +189,7 @@ def test_the_input_curve_keeps_the_ends_and_refines_the_middle() -> None:
     assert curve.shape(1.0) == 1.0 and curve.shape(-1.0) == -1.0 and curve.shape(0.0) == 0.0
     assert np.all(np.diff(shaped) > 0)
     assert abs(curve.shape(0.5) - 0.2375) < 1e-12
-    assert InputParams().shape(0.3) == 0.3
+    assert InputParams(expo=0.0).shape(0.3) == 0.3
 
 
 def test_the_session_shapes_the_humans_input() -> None:

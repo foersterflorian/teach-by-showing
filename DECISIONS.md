@@ -206,6 +206,12 @@ and opens the kiosk (concept §15 item 16), and an image archive via
 
 Reasoned about, never measured. Each item is an open task, not a fact.
 
+- **Calm threshold and input curve** — *chosen on 2026-10-09, see §14*:
+  4° and a curve of 0.7, judged by one practised driver. Whether 3° would
+  suit, and whether the curve is right for people who have not driven
+  before, is open; to be decided with such tests (concept §15 items 6, 7).
+  Recorded runs keep every state, so they can be judged again against
+  another threshold.
 - **Behavioural cloning from a short demonstration.** Whether three transports
   of 20–30 s each suffice for an agent that reaches the target reliably and
   visibly keeps its teacher's style. This is the project's central risk
@@ -406,7 +412,8 @@ least 4 m apart, in both directions. A transport succeeds when the load has
 hung calm for one second; it fails after 60 s.
 
 **Calm** means, all at once: the trolley is within 0.15 m of the target,
-slower than 0.05 m/s, and the **swing amplitude** is below 2°. The amplitude
+slower than 0.05 m/s, and the **swing amplitude** is below 4° (2° until
+2026-10-09, too hard on the gamepad, §14). The amplitude
 is `sqrt(θ² + (θ̇/ω₀)²)`, the amplitude the load would keep swinging with if
 the trolley stood still from now on.
 
@@ -1042,7 +1049,7 @@ teach-by-showing --record vorsichtig --transports 3   # saved under $DATA_DIR/ru
 
 ---
 
-## 14. Tuning on the gamepad: settings files and candidate sets
+## 14. Tuning on the gamepad: calm below 4°, an input curve, settings files
 
 **Context.** The first recorded run (deployment machine, 2026-10-09, the
 maintainer, 5 transports with set B of §6 and the task of §7) showed the
@@ -1056,7 +1063,10 @@ Judged afterwards against looser thresholds on the same frames, a 4°
 threshold would have ended the successful transports after 15, 24 and 39 s
 and saved one of the timeouts; a wider position tolerance changed nothing.
 
-**Decision so far.** `--params FILE` takes a JSON file that names only the
+**Decision** (2026-10-09). Candidate C below is the default: calm below
+4° of swing, and the input curve with 0.7. The damping stays at 0.05/s.
+
+**How it was chosen.** `--params FILE` takes a JSON file that names only the
 crane, task and input parameters that differ from the defaults
 (`live.Settings`); a misspelt name is refused. Three candidates in
 `tools/tuning/` are driven on the gamepad, three transports each, recorded:
@@ -1083,7 +1093,48 @@ stop, 200 transports, seed 0, computed on the deployment machine:
 B keeps the swing when the naive driver stops, but lets it fade within
 seconds afterwards, so the contrast lasts less long.
 
-**Open:** the comparison on the gamepad and the choice; then §6 and §7 are
-updated with the old values kept as the rejected alternative.
+**Driven on the gamepad** (deployment machine, the maintainer, 2026-10-09,
+in the order A, B, C; the first three transports of each recorded):
+
+| | Transports | Calming at the target | Command near the target, median | Maintainer |
+|---|---|---|---|---|
+| before | 22–56 s, 2 of 5 timed out | 12–51 s | — | "very hard" |
+| A | 19–31 s | 12–23 s | 0.56 | "a little easier" |
+| B | 11–18 s | 6–13 s | 0.78 | "easier still, almost too easy" |
+| **C** | 10–22 s | 1–16 s | 0.06 | "finer at the target, more realistic" |
+
+With C the driving changed, not only its speed: in two of three transports
+the load arrived nearly calm (calm within 1.1 and 1.3 s of arrival), so the
+swing was taken out on the way, and near the target the stick worked with
+small commands instead of large ones back and forth. Industrial crane
+controls have such a curve, which is why it felt more realistic.
+
+**Why C.**
+
+- *It makes skill visible rather than unnecessary.* B's damping did part of
+  the work and shortens the naive driver's visible swing; C keeps the
+  physics of §6 and lets the driver calm the load.
+- *Style shows in the data.* Behavioural cloning learns from what the
+  teacher did; with C cautious and quick driving differ in how the swing is
+  handled, not in how long the teacher waits for it to fade.
+- *The naive contrast is unchanged* (table above): the curve applies to the
+  human only.
+
+**Caveats.** One driver, three transports per candidate, and practice: C
+came last, after more than a dozen transports, so part of its advantage may
+be practice. The difference in *how* it was driven is hard to explain by
+practice alone.
+
+**Rejected alternatives.**
+
+- *The old threshold of 2°:* the first run above.
+- *B, more damping:* easiest, but the swing fades on its own and the naive
+  contrast lasts less long.
+- *A wider position tolerance:* changed nothing in the recorded runs.
+- *The curve in the browser:* logic in the frontend (§3).
+
+**Open** (§5): 3° or 4°, and the curve's strength, decided with people who
+have not driven before. The files in `tools/tuning/` keep A and B
+reproducible against the new defaults.
 
 `tests/test_live.py` guards the settings file and the input curve.

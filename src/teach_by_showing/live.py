@@ -58,7 +58,9 @@ class InputParams:
     # Blend of a linear and a cubic curve, 0 (linear) to 1 (cubic): small
     # deflections give finer commands, full deflection stays full speed.
     # Applies to the human's input only; an agent commands directly.
-    expo: float = 0.0
+    # 0.7 chosen on the gamepad on 2026-10-09 (DECISIONS.md §14); fine-tuning
+    # is open.
+    expo: float = 0.7
 
     def shape(self, u: float) -> float:
         return (1.0 - self.expo) * u + self.expo * u**3
