@@ -1328,6 +1328,13 @@ transports, in turn and then from the start again:
   behind the agent; when it reaches the teacher's last row it stays there;
 - when both are done, a pause, and a banner shows both times.
 
+Below the picture, two command bars: the agent's, and the teacher's from
+the recorded row, translucent like the ghost (0 before the first row and
+after the last). Both show the command that reached the crane, after the
+input curve (§14), so they compare like for like. Suggested by the
+maintainer, 2026-10-09, to make the difference in steering visible; judged
+on the stand the same day: "easy to understand".
+
 Input is ignored. The session has the live session's interface (the
 `Session` protocol in `live.py`), so the pacing loop and the web layer
 serve either. The state message carries the agent as before plus `ghost`
@@ -1368,7 +1375,8 @@ and the server's message rate with `tools/measure_ws.py timing`: 60.03 Hz,
 none skipped, interval 15.60–17.71 ms (1st–99th percentile), deployment
 machine, 2026-10-09.
 
-**Not yet.** Speed and swing curves under the picture, new targets without
+**Not yet.** Speed, swing and command curves over time under the picture,
+new targets without
 a ghost, and the stand's state machine come with the full ghost replay of
 week 1 (concept §13). Green for success against green for the agent stays
 open (§5): the ghost differs from the agent only by its transparency.
