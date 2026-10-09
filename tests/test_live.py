@@ -143,3 +143,20 @@ def test_core_knows_nothing_about_http(module: str) -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported.add(node.module.split(".")[0])
     assert not imported & WEB
+
+
+def test_a_timed_out_transport_is_counted_and_paused_like_a_success() -> None:
+    """Found in the first recorded run, 2026-10-09: a timeout drew the next
+    target at once, without the pause and without counting the transport."""
+    s: LiveSession = session()
+    first_target: float = float(s.transport.target[0])
+    for _ in range(s.task.limit_frames):
+        s.tick()
+    assert s.transports_done == 1
+    assert s.state_message()["result"] == "timeout"
+    for _ in range(PAUSE_FRAMES):
+        s.tick()
+    assert s.transport.target[0] == first_target
+    s.tick()
+    assert s.transport.target[0] != first_target
+    assert s.state_message()["result"] == "running"

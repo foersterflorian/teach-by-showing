@@ -111,3 +111,16 @@ def test_a_run_of_another_schema_is_refused(tmp_path: Path) -> None:
 )
 def test_labels_cannot_leave_the_folder(label: str, expected: str) -> None:
     assert run_filename("t", label) == expected
+
+
+def test_timed_out_transports_end_a_recording_too() -> None:
+    s: LiveSession = LiveSession.start(np.random.default_rng(0))
+    runs: list[Run] = []
+    s.request_recording(RecordingRequest("test", 0, "t", 2, runs.append))
+    s.set_input(0.1)  # one nudge begins the recording, then nobody drives
+    for _ in range(3 * s.task.limit_frames):
+        s.tick()
+    assert len(runs) == 1
+    run: Run = runs[0]
+    assert run.transports == 2
+    assert run.frames == 2 * s.task.limit_frames + PAUSE_FRAMES + 1

@@ -477,6 +477,8 @@ api.py              FastAPI: /ws, /healthz, static files — calls into live.py 
 - *Transports follow each other:* after success or timeout, a pause of
   1.5 s, then a new target is drawn from wherever the trolley stands. The
   stand's real sequence of steps 0–4 replaces this with the state machine.
+  Until 2026-10-09 a timeout skipped the pause and was not counted; the
+  first recorded run (§13) showed it, and a test now covers the timeout.
 - *Health:* `/healthz` returns 503 when the loop has not ticked for a
   second, not merely when the server is down. A crash in the loop is logged
   and turns the health check red. Run as a program (`main()`), the server

@@ -127,8 +127,11 @@ class LiveSession:
             self._begin_recording(self.request)
         u: FloatArray = np.array([command])
         target: float = float(self.transport.target[0])
-        self.state = step(self.state, u, self.crane)
+        # Judged before the step: a transport that times out in this frame
+        # is still running in it, so that it is counted and paused after
+        # like one that succeeds.
         running: bool = not self.transport.done(self.state.frame, self.task)[0]
+        self.state = step(self.state, u, self.crane)
         # A pause belongs to the transport it follows, which is already counted.
         index: int = self.transports_done - self.recording_base - (0 if running else 1)
         if running:
