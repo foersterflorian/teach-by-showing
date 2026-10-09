@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 under way: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16); ghost replay next
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go/No-Go with the maintainer
 **Last updated:** 2026-10-06
 
 This file records *why* the code looks the way it does. The code says what it
@@ -569,7 +569,7 @@ main.js      WebSocket, state buffer, interpolation, readouts, render loop
 Beside them, `gamepad.html`: a page for staff that shows the raw Gamepad
 API values, self-contained and not linked from the crane page (§12).
 
-About 280 lines of JavaScript, plus about 50 in the staff page
+About 315 lines of JavaScript (with the ghost of §17), plus about 50 in the staff page
 `gamepad.html` (§12), against a budget of about 900 for the whole
 project (concept §7.4). A fault can be traced by file: wrong picture →
 `scene.js`, crane does not react → `input.js`, nothing at all → `main.js`
@@ -1307,3 +1307,81 @@ not driven before, whose drives are less clean, is the next question
 (concept §15 items 6, 7).
 
 `tests/test_evaluate.py` guards the tool's bookkeeping.
+
+---
+
+## 17. Ghost replay: the clone drives its teacher's transports beside the recording
+
+**Context.** The last acceptance point of the spike's second day: the
+difference between cautious and quick teaching must be visible, not only
+measurable (concept §6.2, §16).
+
+**Decision.** `teach-by-showing --ghost RUN` clones the run with the
+stand's default (`cloning.clone()`, §15) and serves a `ReplaySession`
+(`replay.py`) instead of the live crane. For each of the teacher's
+transports, in turn and then from the start again:
+
+- the *agent* begins in the state the teacher began in
+  (`Run.transport_begins()`, shared with `tools/evaluate.py`), with the same
+  target, and drives with the live crane's `step()` and `advance()`;
+- the *ghost* plays the recorded rows, one per frame, drawn translucent
+  behind the agent; when it reaches the teacher's last row it stays there;
+- when both are done, a pause, and a banner shows both times.
+
+Input is ignored. The session has the live session's interface (the
+`Session` protocol in `live.py`), so the pacing loop and the web layer
+serve either. The state message carries the agent as before plus `ghost`
+(position, angle, result, time) and `banner`; the config message carries
+`mode`, the headline, the label of the agent's time and the hint.
+
+**Why.**
+
+- *The ghost plays rows instead of being simulated.* It shows exactly what
+  the teacher did, including a hesitation a re-simulation from the commands
+  would also reproduce, but without depending on the physics being
+  unchanged since the recording.
+- *The teacher's own physics.* The replay uses the crane and task of the
+  run, not `--params`: the ghost must move under the physics it was
+  recorded with, and the agent must face the same.
+- *The same start, not rest:* a later transport begins where the pause left
+  the teacher's crane, still moving a little. Starting the agent at rest
+  would make the comparison unfair in the first second.
+- *Frames run on across transports,* although each restarts from a recorded
+  state: the browser interpolates by frame number (§9).
+- *German texts from the server.* Headline, labels and banner arrive in
+  messages; the scripts hold no wording of their own (tested).
+
+**Judged by eye** on the stand's left monitor (deployment machine, Firefox
+kiosk, 2026-10-09, the maintainer), both teaching runs of `tests/data/`
+replayed in turn:
+
+- The difference between the cautious and the quick agent is *clearly
+  visible*.
+- Both agents resemble their drives. The cautious agent drives rather more
+  cautiously than its teacher; the quick one is more controlled and better
+  than its teacher, "which is not necessarily bad". This matches §16: the
+  quick clone keeps the fast approach but not the long settling.
+- The ghost is easy to tell from the agent.
+
+Before that, the page was checked for script errors in a separate browser,
+and the server's message rate with `tools/measure_ws.py timing`: 60.03 Hz,
+none skipped, interval 15.60–17.71 ms (1st–99th percentile), deployment
+machine, 2026-10-09.
+
+**Not yet.** Speed and swing curves under the picture, new targets without
+a ghost, and the stand's state machine come with the full ghost replay of
+week 1 (concept §13). Green for success against green for the agent stays
+open (§5): the ghost differs from the agent only by its transparency.
+
+**Rejected alternatives.**
+
+- *Simulating the ghost from the recorded commands:* see above.
+- *Agent and ghost side by side on two girders:* the overlay shows at a
+  glance who is ahead and who swings more, on the same scale.
+- *Driving the ghost and the agent as one batch in a LiveSession with an
+  injected driver:* the live session draws its own targets; a replay
+  follows a fixed sequence, and a separate session keeps both simple.
+
+`tests/test_replay.py` guards this section; `tests/test_frontend.py` checks
+that the scripts draw the ghost and take their texts from the server.
+
