@@ -241,6 +241,19 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   §12*: the crane's Firefox receives the stick while a second Firefox
   instance has the focus. Checked with a stand-in page, not with feature-viz
   itself; to be repeated with both containers at the dress rehearsal.
+  *Checked with the real feature-viz on 2026-10-09* (setup as in "feature-viz
+  in Firefox" below): the maintainer drove the crane on the gamepad and felt
+  no delay. The crane's loop, measured with `tools/measure_ws.py timing` over
+  60 s while both kiosks ran: 3601 messages, 60.01 Hz, none skipped,
+  interval 15.08–18.22 ms (1st–99th percentile), one interval of 75.7 ms,
+  0 overruns in the loop's own count. The single long interval did not
+  recur in the 3 minutes of logging and was not felt; it is noted, not
+  explained. The input round trip, with the crane's kiosk closed (§5,
+  several browsers driving at once) and feature-viz still running, from a
+  server outside the container with `--free` and a linear input curve:
+  median 10.6 ms, p95 16.8 ms, max 17.0 ms over 107 commands, within one
+  frame as on 2026-10-06. The dress rehearsal repeats this in the venue's
+  cabling.
 - **Secure context for the Gamepad API** — *settled for Firefox on
   2026-10-06*: the gamepad works on `http://localhost` (§12). Not checked
   in Chrome.
@@ -275,6 +288,16 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   screen it is on, `screen.availLeft`).
   Decided 2026-10-02: the first way, as a task in feature-viz; the Chrome
   fallback stays open and is built only if that fails.
+  *Settled on 2026-10-09 with feature-viz 0.2.1*, whose page pulls frames
+  instead of showing the MJPEG stream (feature-viz's own DECISIONS.md §7,
+  §9). Deployment machine, both containers (the crane's with the stand's
+  steps, §18; feature-viz with GPU and webcam), both pages in Firefox kiosks
+  placed by `tools/kiosk.py` (crane on 114210 left, feature-viz on 114203
+  right), logged every 5 s for 3 minutes: feature-viz's picture stayed
+  throughout (judged by eye by the maintainer), its health check answered
+  `ok` 36 times of 36. The two Firefox main processes held 0.76–1.06 GB
+  between them without the climb of 2026-10-02; the busiest content process
+  sampled at about 0.25 GB. GPU 34 %. The Chrome fallback is not needed.
 - **Smoothness against latency in the kiosk.** Interpolation (§9) costs
   about 21 ms of display delay. In the development browser pane it removed
   all visible skips, but that pane drew only 48 frames per second. In the
@@ -536,6 +559,13 @@ random part of a frame before each send: median 6.6 ms, p95 15.4 ms, max
 17.6 ms over 53 commands. A first run without that random wait gave a
 median of 2.4 ms, the opposite extreme of the same artefact. Browser rendering and the gamepad's own polling come on top and are
 part of the spike's acceptance ("latency not noticeable").
+
+Since the input curve (§14) a state shows the shaped command, not the
+deflection sent, and `roundtrip` waited for the raw value forever; found
+on 2026-10-09. It now shapes its commands with the server's own
+`InputParams` from the config message, and refuses a server running the
+stand's steps (§18), where no state would show its command; measure
+against `--free`.
 
 **Under load** (deployment machine, 2026-10-02, 60 s): crane and
 feature-viz both in their containers, feature-viz with GPU and webcam, both

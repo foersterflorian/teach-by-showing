@@ -9,7 +9,9 @@
 `timing` listens only: message rate, intervals, simulated against wall-clock
 time. `roundtrip` sends distinctive commands and times until a state shows
 them; it needs every other browser closed, because any open page sends its
-own command every frame and the latest message wins (§5). `trace` listens
+own command every frame and the latest message wins (§5), and a server
+started with `--free`, because in the stand's steps an agent drives while
+the stand waits (§18). `trace` listens
 only and prints the command the server applies, per time bin: what a browser
 and its gamepad deliver, judged at the server and not on the screen.
 
@@ -29,6 +31,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import websockets
+
+from teach_by_showing.live import InputParams
 
 DEFAULT_URL: str = "ws://127.0.0.1:8081/ws"
 
@@ -95,6 +99,18 @@ async def listen(url: str, seconds: float) -> tuple[float, list[Sample]]:
     return float(config["hz"]), samples
 
 
+def expected_command(config: dict[str, Any], u: float) -> float:
+    """The command a state shows for the deflection `u`: the server shapes
+    it with its input curve (§14), so the tool shapes it the same way, with
+    the server's own parameters from the config message."""
+    if config.get("mode") == "stand":
+        raise SystemExit(
+            "roundtrip: the server runs the stand's steps, where an agent drives"
+            " while the stand waits; start it with --free (DECISIONS.md §18)"
+        )
+    return InputParams(**config.get("input", {})).shape(u)
+
+
 async def roundtrip(url: str, seconds: float) -> list[str]:
     """Alternate between two commands every 0.25 s and time each until the
     first state that carries it. The commands are distinctive, so a stale
@@ -105,7 +121,7 @@ async def roundtrip(url: str, seconds: float) -> list[str]:
     rng: random.Random = random.Random(0)
     delays: list[float] = []
     async with websockets.connect(url) as ws:
-        await ws.recv()  # config
+        config: dict[str, Any] = json.loads(await ws.recv())
         end: float = time.monotonic() + seconds
         values: tuple[float, float] = (0.3125, -0.4375)
         i: int = 0
@@ -114,9 +130,10 @@ async def roundtrip(url: str, seconds: float) -> list[str]:
             await asyncio.sleep(rng.uniform(0, 1 / 60))
             sent: float = time.monotonic()
             await ws.send(json.dumps({"type": "input", "u": u}))
+            shown: float = expected_command(config, u)
             while True:
                 message: dict[str, Any] = json.loads(await ws.recv())
-                if message["type"] == "state" and message["command"] == u:
+                if message["type"] == "state" and message["command"] == shown:
                     delays.append((time.monotonic() - sent) * 1000)
                     break
             i += 1

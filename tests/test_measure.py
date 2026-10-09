@@ -1,4 +1,4 @@
-"""Measurement tool (DECISIONS.md §8, §12). Only the arithmetic of its
+"""Measurement tool (DECISIONS.md §8, §12, §18). Only the arithmetic of its
 reports; the figures themselves come from runs against a live server and are
 recorded in DECISIONS.md with their machine."""
 
@@ -7,7 +7,12 @@ from __future__ import annotations
 import importlib.util
 import sys
 from types import ModuleType
+from typing import Any
 
+import numpy as np
+import pytest
+
+from teach_by_showing.live import LiveSession
 from tests.support import ROOT
 
 
@@ -57,3 +62,20 @@ def test_percentile_takes_the_nearest_rank() -> None:
     assert measure.percentile(values, 0) == 0.0
     assert measure.percentile(values, 95) == 95.0
     assert measure.percentile(values, 100) == 100.0
+
+
+def test_roundtrip_expects_the_command_the_server_shapes() -> None:
+    """Since the input curve (§14) a state shows the shaped command, not the
+    deflection sent; the tool waited for the raw value and hung until
+    2026-10-09."""
+    session: LiveSession = LiveSession.start(np.random.default_rng(0))
+    config: dict[str, Any] = session.config_message()
+    session.set_input(0.3125)
+    assert measure.expected_command(config, 0.3125) == session.effective_command != 0.3125
+
+
+def test_roundtrip_refuses_the_stands_steps() -> None:
+    """In the stand's steps an agent drives while the stand waits (§18); no
+    state would ever show the command, and the tool would wait forever."""
+    with pytest.raises(SystemExit, match="--free"):
+        measure.expected_command({"mode": "stand", "input": {"expo": 0.0}}, 0.5)
