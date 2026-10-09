@@ -1,8 +1,8 @@
 # teach-by-showing
 
 A visitor steers a simulated overhead crane whose load swings on a rope. From
-that short demonstration a small neural network learns, within seconds, to do
-the same job in the visitor's own style: cautious or brisk, depending on the
+that short demonstration a small learned model picks up, within seconds, how
+to do the same job in the visitor's own style: cautious or brisk, depending on the
 teacher. A demonstrator for an exhibition stand, not a library.
 
 The point is the mechanism behind many industrial AI applications: people
@@ -73,6 +73,16 @@ Without a terminal, `gamepad.html` shows the same after a button press: the
 id starts with `3537-1082-` (default), `3537-1010-GameSir G7 SE` (Xbox) or
 `3537-1010-Guangzhou` (View+Menu). The LED alone does not tell the Xbox mode
 from the View+Menu mode.
+
+A teacher's drive is recorded as a run, and an agent cloned from it can be
+measured and replayed beside it (`DECISIONS.md` §13–§17):
+
+```bash
+pdm run teach-by-showing --record vorsichtig      # the next 3 transports, to data/runs/
+pdm run teach-by-showing --params tools/tuning/A.json   # a candidate parameter set
+pdm run python tools/evaluate.py tests/data/*.json      # clone every run, measure the clones
+pdm run teach-by-showing --ghost tests/data/<run>.json  # the clone drives beside its teacher
+```
 
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.

@@ -1,7 +1,7 @@
 [project]
 name = "teach-by-showing"
 version = "0.1.0"
-description = "A neural network learns to drive an overhead crane from a short human demonstration - a hands-on demonstrator for an exhibition stand"
+description = "A small learned model drives an overhead crane after a short human demonstration - a hands-on demonstrator for an exhibition stand"
 authors = [
     {name = "Florian Förster",email = "florian.foerster@mb.tu-chemnitz.de"},
 ]

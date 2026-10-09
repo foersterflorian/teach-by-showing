@@ -6,9 +6,9 @@ every session.
 ## What this is
 
 A demonstrator for a research project (K-M-I, TU Chemnitz): visitors steer a
-simulated overhead crane with a swinging load; a small neural network learns
-their driving style from the demonstration within seconds (behavioural
-cloning), and an evolution strategy refines it towards goals the human sets.
+simulated overhead crane with a swinging load; a small learned model (by
+default a linear policy) picks up their driving style from the demonstration
+within seconds (behavioural cloning), and an evolution strategy refines it towards goals the human sets.
 It runs on an exhibition stand next to its sibling `feature-viz`, one monitor
 each, both in Docker containers.
 

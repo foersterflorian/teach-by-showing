@@ -2,7 +2,7 @@
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
 **Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go/No-Go with the maintainer
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-09
 
 This file records *why* the code looks the way it does. The code says what it
 does; this says what was considered and rejected, so that changing something
@@ -15,7 +15,8 @@ alternatives are the useful part.
 Scope, audience and priorities come from the concept (German, internal, not
 part of this repository), kept in `../Konzept/` as a separate local Git
 repository; the highest document version is authoritative. References of the
-form "concept §n" point to its version V02. This file must remain
+form "concept §n" point to its version V04; its section numbers have not
+changed since V02. This file must remain
 understandable without it.
 
 ---
@@ -27,8 +28,9 @@ on a rope and swings when the trolley accelerates or brakes. The task is to
 bring the load to a target and have it hang still there.
 
 A visitor drives a few transports with a gamepad. From that demonstration a
-small multilayer perceptron learns, within seconds, to map the crane's state
-to the visitor's commands (behavioural cloning). The learned agent then drives
+small model learns, within seconds, to map the crane's state to the visitor's
+commands (behavioural cloning); by default a linear policy, chosen over a
+small network by measurement (§15, §16). The learned agent then drives
 new transports in the visitor's style, shown against a ghost replay of the
 visitor's own run. An evolution strategy can refine the agent towards goals —
 fast, calm, gentle, and faithful to the teacher — that the human weights.
@@ -337,8 +339,8 @@ length *l*, hung from the trolley:
   sustained full commands for 120 s each: the acceleration never exceeded
   `max_accel` and the hard clip never acted. It stays as a last guard.
 - The drive limits and end stops are the **safety layer** under every driver
-  (concept §5.1). It is part of the crane, not of the agent, so a network
-  cannot bypass it.
+  (concept §5.1). It is part of the crane, not of the agent, so a learned
+  agent cannot bypass it.
 
 **Parameters** (`CraneParams`). `rope_length` 1.55 m gives a period of
 2.5 s (measured in the simulation: 2.498 s). `damping` 0.05/s halves an
@@ -382,7 +384,7 @@ on the rendering scale, which is decided with the renderer.
   120 s, so the load would swing up on its own.
 - *Velocity, not acceleration or force, as the command*, because that is how
   a crane is driven and what a gamepad stick maps to naturally; it also gives
-  the network a bounded, well-scaled output.
+  the agent a bounded, well-scaled output.
 
 **Measured** (deployment machine, RTX 4090 / AMD 16-core, CPU only,
 2026-10-02, after the end-stop fix). One `step()`: 70 µs for 1 crane, 78 µs
@@ -599,7 +601,7 @@ and the browser console.
   fires, and the crane brakes.
 - *Keyboard ramped* from 0 to full in 0.4 s. A key is all or nothing; without
   the ramp every key press would be a full-throttle jolt that no gamepad
-  produces, and keyboard-driven test runs would teach the network the wrong
+  produces, and keyboard-driven test runs would teach the agent the wrong
   style. The keyboard is for development and staff, not for visitors
   (concept §6.3).
 - *Reconnect* every second after the connection drops, with a notice on
