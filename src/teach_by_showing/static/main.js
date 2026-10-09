@@ -29,13 +29,7 @@ function connect() {
       config = message;
       states = [];
       // A replay brings its own headline; the live page keeps the one in index.html.
-      if (config.headline) el("headline").textContent = config.headline;
-      if (config.elapsed_label) el("elapsed-label").textContent = config.elapsed_label;
-      if (config.hint) el("hint").textContent = config.hint;
-      if (config.command_label) el("command-label").textContent = config.command_label;
-      if (config.ghost_command_label) {
-        el("ghost-command-label").textContent = config.ghost_command_label;
-      }
+      showTexts(config);
     } else if (message.type === "state") {
       message.arrival = performance.now();
       states.push(message);
@@ -78,6 +72,30 @@ function viewAt(now) {
   return states[0];
 }
 
+// Texts worded on the server, by the id of the element that shows them. The
+// stand sends them with every state, as its steps change; a replay once,
+// with the config. A text that is null hides its element.
+const TEXT_IDS = {
+  headline: "headline",
+  hint: "hint",
+  prompt: "prompt",
+  elapsed_label: "elapsed-label",
+  ghost_label: "ghost-label",
+  command_label: "command-label",
+  ghost_command_label: "ghost-command-label",
+};
+
+function showTexts(texts) {
+  for (const [key, id] of Object.entries(TEXT_IDS)) {
+    if (!(key in texts)) continue;
+    const node = el(id);
+    const text = texts[key] ?? "";
+    // Only on change: rewriting the same text every frame costs a layout.
+    if (node.textContent !== text) node.textContent = text;
+    node.hidden = texts[key] === null;
+  }
+}
+
 function fitCanvas() {
   const ratio = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
@@ -99,6 +117,7 @@ function showReadout(view) {
   el("elapsed").textContent = `${view.elapsed.toFixed(1).replace(".", ",")} s`;
   el("transports").textContent = view.transports;
   showCommand(el("command-fill"), view.command);
+  if (view.texts) showTexts(view.texts);
 
   el("ghost-readout").hidden = !view.ghost;
   el("ghost-command-readout").hidden = !view.ghost;
@@ -128,8 +147,9 @@ function tick(now) {
   const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
   lastFrameTime = now;
   const command = readCommand(dt);
+  const buttons = readButtons();
   if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({ type: "input", u: command }));
+    socket.send(JSON.stringify({ type: "input", u: command, a: buttons.a, b: buttons.b }));
   }
   if (config && states.length > 0) {
     const view = viewAt(now);

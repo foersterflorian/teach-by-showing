@@ -23,6 +23,7 @@ from teach_by_showing.recording import Run
 from teach_by_showing.task import Transport, advance
 
 HEADLINE: Final[str] = "Ihr Agent fährt – Ihre eigene Fahrt läuft als Schatten mit"
+TEACHER_SELF: Final[str] = "Ihre Fahrt"
 
 
 def _seconds(frames: int) -> str:
@@ -51,11 +52,14 @@ class ReplaySession:
     command: float = 0.0
     pause_left: int = 0
     transports_done: int = 0
+    # Whose drive the ghost plays, as the readouts and the banner name it:
+    # the visitor's own, or an earlier teacher's in the stand's idle step.
+    teacher: str = TEACHER_SELF
 
     @classmethod
-    def start(cls, run: Run, policy: Policy) -> ReplaySession:
+    def start(cls, run: Run, policy: Policy, teacher: str = TEACHER_SELF) -> ReplaySession:
         begins, targets = run.transport_begins()
-        session: ReplaySession = cls(run, policy, begins, targets)
+        session: ReplaySession = cls(run, policy, begins, targets, teacher=teacher)
         session._begin(0)
         return session
 
@@ -70,6 +74,9 @@ class ReplaySession:
 
     def set_input(self, deflection: float) -> None:
         """Nobody drives along in a replay; input is ignored."""
+
+    def set_buttons(self, a: bool, b: bool) -> None:
+        """The stand's steps live in stand.py; a replay ignores buttons."""
 
     @property
     def _ghost_done(self) -> bool:
@@ -151,7 +158,16 @@ class ReplaySession:
         assert self.rows is not None
         agent: str = time_of(self._agent_result(), self._agent_frames())
         ghost: str = time_of(self._ghost_result(), len(self.rows))
-        return f"Agent {agent} · Ihre Fahrt {ghost}"
+        return f"Agent {agent} · {self.teacher} {ghost}"
+
+    def texts(self) -> dict[str, str]:
+        """The labels of the readouts; German, from the server (§17)."""
+        return {
+            "elapsed_label": "Agent",
+            "ghost_label": self.teacher,
+            "command_label": "Stellgröße Agent",
+            "ghost_command_label": f"Stellgröße {self.teacher}",
+        }
 
     def config_message(self) -> dict[str, Any]:
         return {
@@ -161,10 +177,8 @@ class ReplaySession:
             "task": self.run.task.to_dict(),
             "mode": "replay",
             "headline": HEADLINE,
-            "elapsed_label": "Agent",
             "hint": "Wiedergabe – das Gamepad hat Pause",
-            "command_label": "Stellgröße Agent",
-            "ghost_command_label": "Stellgröße Ihre Fahrt",
+            **self.texts(),
         }
 
     def state_message(self) -> dict[str, Any]:

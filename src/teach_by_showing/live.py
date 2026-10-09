@@ -58,6 +58,9 @@ class Session(Protocol):
 
     def set_input(self, deflection: float) -> None: ...
 
+    def set_buttons(self, a: bool, b: bool) -> None:
+        """Whether A and B are held now; only the stand's steps use them."""
+
     def config_message(self) -> dict[str, Any]: ...
 
     def state_message(self) -> dict[str, Any]: ...
@@ -159,6 +162,9 @@ class LiveSession:
         """The stick's deflection, −1..1, shaped by the input curve."""
         self.command = self.input.shape(deflection)
         self.input_frame = self.state.frame
+
+    def set_buttons(self, a: bool, b: bool) -> None:
+        """Free driving has no steps to move between; buttons are ignored."""
 
     @property
     def effective_command(self) -> float:

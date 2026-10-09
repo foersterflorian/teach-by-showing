@@ -16,8 +16,12 @@ one monitor each.
 ```bash
 pdm install
 pdm run pytest
-pdm run teach-by-showing        # http://localhost:8081
+pdm run teach-by-showing        # http://localhost:8081, the stand's steps (§18)
 ```
+
+On the stand, A begins a demonstration and B ends it; on the keyboard Enter
+and Backspace stand in for them. `--free` drives the crane without the
+stand's steps.
 
 On the stand the crane is driven with the left stick of a USB gamepad; for
 development also with ← → or A / D. `http://localhost:8081/gamepad.html`

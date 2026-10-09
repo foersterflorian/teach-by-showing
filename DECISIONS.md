@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go/No-Go with the maintainer
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go given by the maintainer on 2026-10-09, the linear policy stays the default; week 1: the stand's steps, first iteration (§18)
 **Last updated:** 2026-10-09
 
 This file records *why* the code looks the way it does. The code says what it
@@ -244,6 +244,12 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **Secure context for the Gamepad API** — *settled for Firefox on
   2026-10-06*: the gamepad works on `http://localhost` (§12). Not checked
   in Chrome.
+- **The stand's guidance** — *first iteration built on 2026-10-09, see
+  §18; not yet judged on the stand*. The texts, the 45 s after which an
+  abandoned demonstration ends, the place of the call to action on the 4K
+  monitor, and whether visitors find A and B, are worked out with the
+  maintainer iteration by iteration, then with people who have not seen
+  the stand.
 - **Training time** — *measured on 2026-10-09, see §15*: 0.05–0.1 s for
   the linear policy, 0.3–2.4 s for the network (2000 epochs) on one or two
   recorded drives. Within the concept's one to three seconds, but the
@@ -286,7 +292,10 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   input, and the latest message wins. The stand has one kiosk, so this only
   matters when a second tab is open for debugging: the two then fight over
   the crane. Whether the server should accept input from one client only is
-  decided with the stand's state machine.
+  decided with the stand's state machine. Since §18 this holds for the
+  buttons too: a second tab reporting A as not held while the kiosk holds
+  it makes every message from the kiosk look like a new press. Not a
+  problem with one kiosk; left open until the stand needs a second page.
 - **Green on success against green for the agent.** The frontend colours
   the load and the target zone green when a transport succeeds (§9);
   concept §8 reserves green for the learned agent. Once agents drive, that
@@ -471,8 +480,11 @@ api.py              FastAPI: /ws, /healthz, static files — calls into live.py 
 - *An asyncio task, not a thread* — unlike feature-viz §12, whose loop is
   blocking inference. One tick here costs about 0.08 ms (§6), so it never
   holds the event loop noticeably, and with a single owner of the state no
-  lock is needed. Training and evolution will take seconds and go to a
-  worker process (§3), never into this loop.
+  lock is needed. Training and evolution that take seconds go to a
+  worker process (§3), never into this loop. The linear policy is the
+  exception, decided with the maintainer on 2026-10-09: it trains in
+  0.05 s inside the loop while the crane stands still (§18); a worker
+  would be out of all proportion to that.
 - *Outboxes:* each connection has a slot holding only the latest state
   message. The loop only overwrites slots; a sender task per connection
   sends what is there. A slow or stalled browser skips frames and can never
@@ -490,7 +502,8 @@ api.py              FastAPI: /ws, /healthz, static files — calls into live.py 
   unplugged gamepad must never leave the crane driving.
 - *Transports follow each other:* after success or timeout, a pause of
   1.5 s, then a new target is drawn from wherever the trolley stands. The
-  stand's real sequence of steps 0–4 replaces this with the state machine.
+  stand's steps (§18) use this only during a visitor's demonstration;
+  free driving without them is `--free`.
   Until 2026-10-09 a timeout skipped the pause and was not counted; the
   first recorded run (§13) showed it, and a test now covers the timeout.
 - *Health:* `/healthz` returns 503 when the loop has not ticked for a
@@ -994,8 +1007,9 @@ the seed, a label (`vorsichtig`, `zügig`, never a name, concept §6.3), the
 state before the first recorded frame, and per frame the command applied,
 the state that step produced (x, v, θ, ω), the target, the transport's index
 and whether the transport was still running. `LiveSession` appends one row
-per tick while a recording is active. For the spike it is started from the
-command line, before the stand's state machine exists:
+per tick while a recording is active. On the stand the step "Vormachen"
+starts it when the visitor presses A (§18); for teaching runs outside the
+stand it is started from the command line:
 
 ```bash
 teach-by-showing --record vorsichtig --transports 3   # saved under $DATA_DIR/runs
@@ -1049,7 +1063,7 @@ teach-by-showing --record vorsichtig --transports 3   # saved under $DATA_DIR/ru
   reader that needs it.
 - *Recording from frame 0:* see the first deflection above.
 - *A staff key in the frontend to start a recording:* the trigger belongs to
-  the state machine; until then a command-line flag needs no frontend code.
+  the stand's steps, which now hold it (§18).
 
 `tests/test_recording.py` guards this section.
 
@@ -1377,10 +1391,11 @@ and the server's message rate with `tools/measure_ws.py timing`: 60.03 Hz,
 none skipped, interval 15.60–17.71 ms (1st–99th percentile), deployment
 machine, 2026-10-09.
 
-**Not yet.** Speed, swing and command curves over time under the picture,
-new targets without
-a ghost, and the stand's state machine come with the full ghost replay of
-week 1 (concept §13). Green for success against green for the agent stays
+**Not yet.** Speed, swing and command curves over time under the picture
+and new targets without a ghost come with the full ghost replay of week 1
+(concept §13). The stand's steps (§18) now serve this replay for the
+visitor's agent and, with an earlier teacher's drive, while the stand
+waits. Green for success against green for the agent stays
 open (§5): the ghost differs from the agent only by its transparency.
 
 **Rejected alternatives.**
@@ -1395,3 +1410,95 @@ open (§5): the ghost differs from the agent only by its transparency.
 `tests/test_replay.py` guards this section; `tests/test_frontend.py` checks
 that the scripts draw the ghost and take their texts from the server.
 
+---
+
+## 18. The stand's steps: one session that switches between the others
+
+**Context.** Concept §6.1 lays out what a visitor does: watch, demonstrate,
+let the agent learn, watch it drive, and more later. Until now each of these
+was a separate command-line mode (`--record`, `--ghost`). The stand must run
+them one after the other, unattended, with the gamepad as the only input
+(concept §6.3). The maintainer gave the Go on 2026-10-09 and asked to work
+out the guidance together, iteration by iteration; this is the first.
+
+**Decision.** `stand.py` holds a `StandSession` with four steps:
+
+| Step | What runs | What the screen says | Leaves with |
+|---|---|---|---|
+| `idle` | ghost replay of the last agent beside its teacher's drive | call to action: A | A → `teach` |
+| `teach` | live crane, recording three transports | transport k of 3; before the first deflection, what to do | the third transport → `learn`; B or 45 s without input → `idle` |
+| `learn` | nothing; the crane stands where the demonstration ended | "Ihr Agent lernt …" | after 2 s → `agent` |
+| `agent` | ghost replay of the visitor's agent beside the visitor's drive, in a loop | A: again, B: end | A → `teach`; B → `idle` |
+
+It is a session like the others (the `Session` protocol in `live.py`), so
+the pacing loop and the web layer serve it unchanged. Each step hands its
+frames to a session that already exists: `LiveSession` with a recording
+request for `teach`, `ReplaySession` for `idle` and `agent`. The stand
+itself only decides which one runs and what the screen says. It is the
+default when the server starts; `--free`, `--record` and `--ghost` keep the
+single modes for tuning and teaching runs.
+
+Decided with the maintainer on 2026-10-09:
+
+- *A starts the demonstration,* not the first deflection. A visitor who
+  plays with the stick must not start a recording without knowing.
+- *While the stand waits, it shows the last agent* beside the drive it
+  learnt from. Until the first visitor, that is the maintainer's quick
+  drive of 2026-10-09, shipped in the package (`showcase/zuegig.json`, a
+  copy of the run in `tests/data/`; a test keeps the two equal).
+  `--showcase RUN` sets another. The quick one, because it moves more and
+  draws more attention than the cautious one.
+- *The visitor's agent drives in a loop* until a button decides: A
+  demonstrates again, B ends. No timeout there: the next visitor presses A
+  either way, and what the stand shows after a timeout would be the same
+  agent.
+- *Training inside the loop,* not in a worker (§8).
+
+**Why.**
+
+- *The browser reports buttons as held; Python decides what a press is.*
+  The frontend holds no logic (§3), and a held button must count once, or
+  one push would skip through several steps. Only buttons 0 and 1 are read
+  (§12). Enter and Backspace stand in for A and B on the keyboard, for
+  staff and development; a key tapped faster than one frame is kept until
+  the next read, or the browser would miss it.
+- *Texts travel with every state message,* not once with the config: the
+  steps change while the browser stays connected, and an outbox keeps only
+  the latest message (§8), so a one-off message could be overwritten
+  before it is sent. The scripts still hold no wording (tested).
+- *The stand counts its own frames* and puts them into every message. The
+  sessions it switches between each start from 0; the browser interpolates
+  by frame number (§9) and must never see time go backwards.
+- *A showcase recorded under other physics is refused at start.* The config
+  message gives one scale for all steps; an agent from other physics would
+  be drawn to the wrong scale and drive differently from the visitor's
+  crane.
+- *A visitor's run is saved* to `$DATA_DIR/runs/` with the label `besuch`,
+  never a name (concept §6.3). It becomes the stand's showcase only in
+  memory; after a restart the shipped one returns. Keeping agents across
+  restarts belongs to the gallery (concept §5.6, §15 items 2 and 10).
+
+**Measured** (deployment machine, RTX 4090 / AMD 16-core, 2026-10-09,
+server outside the container, a scripted visitor over the WebSocket: A,
+three transports by a simple controller, then the agent's step): the
+demonstration took 33 s, the run had 2003 frames, cloning it took
+0.049 s inside the loop, and the loop counted 0 overruns. The pages
+of all four steps showed no script errors in the desktop app's browser.
+
+**Not yet.** The gallery and the naive agent (step 0 of concept §6.1 shows
+both), the style profile, the curves over time, the staff keys of concept
+§6.3, and the guidance itself as judged on the stand (§5).
+
+**Rejected alternatives.**
+
+- *A state machine in the web layer,* switching between sessions in
+  `api.py`. The steps are stand logic; in the web layer they could not be
+  tested without HTTP, and `api.py` calls into the engine, nothing more.
+- *One session that does everything,* the live crane growing replay and
+  learning. The live session would carry fields that are meaningless in
+  most steps; two small sessions and a switch between them stay readable.
+- *Starting the demonstration with the first deflection* (decided against,
+  above).
+- *A config message per step.* Lost when the outbox overwrites it (above).
+
+`tests/test_stand.py` guards this section.

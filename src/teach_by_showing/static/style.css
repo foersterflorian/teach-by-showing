@@ -68,6 +68,21 @@ main {
 #banner.success { color: var(--ok); }
 #banner.timeout { color: var(--bad); }
 #offline { color: var(--muted); }
+
+/* The stand's call to action, at the foot of the scene, clear of the
+   banner above and of the girder. */
+#prompt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6%;
+  margin: 0;
+  text-align: center;
+  font-size: 5vh;
+  font-weight: 600;
+  color: var(--accent);
+}
+#prompt[hidden] { display: none; }
 #offline[hidden] { display: none; }
 
 #readout {

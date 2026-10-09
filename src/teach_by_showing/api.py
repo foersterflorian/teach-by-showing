@@ -39,12 +39,17 @@ from teach_by_showing.live import (
 )
 from teach_by_showing.recording import Run, load_run, save_run
 from teach_by_showing.replay import ReplaySession
+from teach_by_showing.stand import Showcase, StandSession
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
 DEFAULT_PORT: Final[int] = 8081  # feature-viz keeps 8080 (DECISIONS.md §3)
 # The loop ticks every 17 ms; a second without a tick means it is stuck.
 STALL_SECONDS: Final[float] = 1.0
+# What the stand shows until its first visitor has taught an agent: the
+# maintainer's quick drive of 2026-10-09, a copy of the one in tests/data/
+# (DECISIONS.md §18).
+SHOWCASE_RUN: Final[str] = "zuegig.json"
 
 
 class Outbox:
@@ -210,6 +215,8 @@ def handle_input(session: Session, text: str) -> None:
         log.warning("dropped input without a finite command")
         return
     session.set_input(command)
+    # Anything but true is a button not held; older pages send none.
+    session.set_buttons(message.get("a") is True, message.get("b") is True)
 
 
 def main() -> None:
@@ -243,6 +250,18 @@ def main() -> None:
         "--transports", type=int, default=3, help="transports per recording; default: 3"
     )
     parser.add_argument(
+        "--free",
+        action="store_true",
+        help="drive freely, one transport after another, without the stand's steps",
+    )
+    parser.add_argument(
+        "--showcase",
+        type=Path,
+        metavar="RUN",
+        help="the run whose agent the stand shows until a visitor has taught one;"
+        " default: a quick drive shipped with the package (§18)",
+    )
+    parser.add_argument(
         "--data-dir",
         type=Path,
         # The container sets DATA_DIR to its volume (§10).
@@ -263,9 +282,6 @@ def main() -> None:
 
     def saved(run: Run) -> None:
         log.info("recorded %d frames to %s", run.frames, save_run(run, runs))
-
-    if args.ghost and args.record:
-        parser.error("--ghost replays a recording; it cannot record at the same time")
 
     def make_replay() -> ReplaySession:
         # The teacher's own crane and task, not --params: the ghost must
@@ -299,7 +315,30 @@ def main() -> None:
             log.info("recording %d transports from the first deflection", args.transports)
         return session
 
-    app: FastAPI = create_app(make_replay if args.ghost else make_session, exit_on_crash=True)
+    def make_stand() -> StandSession:
+        # Unpacked on disk, as the static files are.
+        package: str = str(resources.files("teach_by_showing"))
+        shipped: Path = Path(package) / "showcase" / SHOWCASE_RUN
+        run: Run = load_run(args.showcase or shipped)
+        rng: np.random.Generator = np.random.default_rng(seed)
+        policy, _ = clone([run], rng)
+        return StandSession.start(
+            rng,
+            settings,
+            Showcase(run, policy),
+            lambda: time.strftime("%Y%m%d-%H%M%S"),
+            saved,
+            seed,
+        )
+
+    if args.ghost and args.record:
+        parser.error("--ghost replays a recording; it cannot record at the same time")
+    make: Callable[[], Session] = make_stand
+    if args.ghost:
+        make = make_replay
+    elif args.free or args.record:
+        make = make_session
+    app: FastAPI = create_app(make, exit_on_crash=True)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 

@@ -8,6 +8,8 @@
 // the GameSir G7 SE (DECISIONS.md §12). The calibration dialog of concept
 // §7.1 will replace these constants for devices that report otherwise.
 const STICK_AXIS = 0; // left stick, horizontal
+const BUTTON_A = 0;
+const BUTTON_B = 1;
 // The stick reports 8 bits and rests one step off zero; a small dead zone
 // keeps that from creeping into the recorded demonstrations.
 const DEAD_ZONE = 0.05;
@@ -15,7 +17,13 @@ const DEAD_ZONE = 0.05;
 const KEY_RAMP_PER_SECOND = 2.5; // 0 to full in 0.4 s
 
 const keysDown = new Set();
-window.addEventListener("keydown", (e) => keysDown.add(e.key));
+// Keys pressed since the last read: a tap shorter than one frame would
+// otherwise be released before it is ever seen as held.
+const keysTapped = new Set();
+window.addEventListener("keydown", (e) => {
+  keysDown.add(e.key);
+  keysTapped.add(e.key);
+});
 window.addEventListener("keyup", (e) => keysDown.delete(e.key));
 // Releasing a key while the window has no focus never sends keyup.
 window.addEventListener("blur", () => keysDown.clear());
@@ -52,4 +60,22 @@ function readCommand(dtSeconds) {
   const keys = readKeys(dtSeconds);
   const stick = readStick();
   return stick !== 0 ? stick : keys;
+}
+
+// Whether A and B are held on any gamepad, or Enter and Backspace on the
+// keyboard. Held, not pressed: when a press counts is decided in Python.
+function readButtons() {
+  const held = (index) => {
+    for (const pad of navigator.getGamepads()) {
+      if (pad && pad.buttons.length > index && pad.buttons[index].pressed) return true;
+    }
+    return false;
+  };
+  const key = (name) => keysDown.has(name) || keysTapped.has(name);
+  const buttons = {
+    a: held(BUTTON_A) || key("Enter"),
+    b: held(BUTTON_B) || key("Backspace"),
+  };
+  keysTapped.clear();
+  return buttons;
 }
