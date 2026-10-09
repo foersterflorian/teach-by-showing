@@ -86,6 +86,14 @@ class ReplaySession:
             self.rows[self.ghost_played - 1 : self.ghost_played], self.frame
         )
 
+    def _ghost_command(self) -> float:
+        """The command the teacher applied in the row just played; 0 before
+        the first row and once the teacher's transport is over."""
+        if self.ghost_played == 0 or self._ghost_done:
+            return 0.0
+        assert self.rows is not None
+        return self.run.columns["command"][int(self.rows[self.ghost_played - 1])]
+
     def tick(self) -> None:
         """Advance one frame. The agent keeps driving after its transport
         has ended, as the live crane keeps responding; the ghost stops at
@@ -155,6 +163,8 @@ class ReplaySession:
             "headline": HEADLINE,
             "elapsed_label": "Agent",
             "hint": "Wiedergabe – das Gamepad hat Pause",
+            "command_label": "Stellgröße Agent",
+            "ghost_command_label": "Stellgröße Ihre Fahrt",
         }
 
     def state_message(self) -> dict[str, Any]:
@@ -176,6 +186,7 @@ class ReplaySession:
                 "theta": ghost.theta.tolist(),
                 "result": self._ghost_result(),
                 "elapsed": self.ghost_played / SIM_HZ,
+                "command": self._ghost_command(),
             },
             "banner": self._banner(),
         }

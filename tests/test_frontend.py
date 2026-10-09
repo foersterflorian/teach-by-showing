@@ -111,4 +111,5 @@ def test_the_ghost_is_drawn_and_its_texts_come_from_the_server() -> None:
     assert (
         "config.headline" in main and "config.elapsed_label" in main and "config.hint" in main
     )
+    assert "view.ghost.command" in main and "config.ghost_command_label" in main
     assert "Schatten" not in main and "Ihre Fahrt" not in main

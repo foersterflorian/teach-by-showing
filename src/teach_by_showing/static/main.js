@@ -32,6 +32,10 @@ function connect() {
       if (config.headline) el("headline").textContent = config.headline;
       if (config.elapsed_label) el("elapsed-label").textContent = config.elapsed_label;
       if (config.hint) el("hint").textContent = config.hint;
+      if (config.command_label) el("command-label").textContent = config.command_label;
+      if (config.ghost_command_label) {
+        el("ghost-command-label").textContent = config.ghost_command_label;
+      }
     } else if (message.type === "state") {
       message.arrival = performance.now();
       states.push(message);
@@ -85,16 +89,22 @@ function fitCanvas() {
   return rect;
 }
 
+// A command of −1..1 as a bar from the centre: left negative, right positive.
+function showCommand(fill, command) {
+  fill.style.left = `${50 + Math.min(0, command) * 50}%`;
+  fill.style.width = `${Math.abs(command) * 50}%`;
+}
+
 function showReadout(view) {
   el("elapsed").textContent = `${view.elapsed.toFixed(1).replace(".", ",")} s`;
   el("transports").textContent = view.transports;
-  const fill = el("command-fill");
-  fill.style.left = `${50 + Math.min(0, view.command) * 50}%`;
-  fill.style.width = `${Math.abs(view.command) * 50}%`;
+  showCommand(el("command-fill"), view.command);
 
   el("ghost-readout").hidden = !view.ghost;
+  el("ghost-command-readout").hidden = !view.ghost;
   if (view.ghost) {
     el("ghost-elapsed").textContent = `${view.ghost.elapsed.toFixed(1).replace(".", ",")} s`;
+    showCommand(el("ghost-command-fill"), view.ghost.command);
   }
 
   const banner = el("banner");

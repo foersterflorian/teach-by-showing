@@ -129,3 +129,18 @@ def test_the_web_layer_serves_a_replay() -> None:
         state: dict[str, Any] = json.loads(ws.receive_text())
     assert config["mode"] == "replay"
     assert state["ghost"]["x"]
+
+
+def test_the_ghost_carries_the_teachers_command() -> None:
+    """Both commands side by side show how differently the two steer."""
+    s: ReplaySession = session()
+    run: Run = taught()
+    rows = run.transport_rows(0)
+    assert s.state_message()["ghost"]["command"] == 0.0
+    for row in rows[:-1]:
+        s.tick()
+        assert s.state_message()["ghost"]["command"] == run.columns["command"][row]
+    s.tick()
+    assert s.state_message()["ghost"]["command"] == 0.0
+    labels: dict[str, Any] = s.config_message()
+    assert labels["command_label"] and labels["ghost_command_label"]

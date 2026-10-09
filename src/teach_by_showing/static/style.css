@@ -91,7 +91,7 @@ main {
 }
 
 /* Command as a bar from the centre: left half negative, right positive. */
-#command-bar {
+#command-bar, #ghost-command-bar {
   position: relative;
   display: inline-block;
   width: 12vw;
@@ -100,7 +100,7 @@ main {
   background: #2a2a2a;
 }
 
-#command-fill {
+#command-fill, #ghost-command-fill {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -108,6 +108,9 @@ main {
   width: 0;
   background: var(--accent);
 }
+
+/* The teacher's command in a replay, as translucent as the ghost (§17). */
+#ghost-command-fill { opacity: 0.35; }
 
 /* White ground: the BMFTR logo must sit on white or a very light colour
    (DECISIONS.md §2). */
