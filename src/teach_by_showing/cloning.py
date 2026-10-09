@@ -22,6 +22,11 @@ from teach_by_showing.task import TaskParams, Transport, advance
 
 SCHEMA: Final[int] = 1
 INPUTS: Final[int] = len(NAMES)
+# The stand's choice, measured in DECISIONS.md §16: the linear policy reached
+# every target from both teaching drives and kept their style for every
+# seed; the network depended on its seed. Mirroring changed nothing for it.
+DEFAULT_KIND: Final[str] = "linear"
+DEFAULT_MIRROR: Final[bool] = False
 HIDDEN: Final[int] = 8  # 41 weights; concept §5.1 estimated 50–80 for five inputs
 
 
@@ -233,3 +238,19 @@ def rollout(
             running, np.maximum(max_swing, swing_amplitude(state, crane)), max_swing
         )
     return Rollout(transport, max_swing)
+
+
+def clone(
+    runs: Sequence[Run],
+    rng: np.random.Generator,
+    kind: str = DEFAULT_KIND,
+    mirror: bool = DEFAULT_MIRROR,
+) -> tuple[MLP | LinearPolicy, FloatArray]:
+    """An agent from recorded drives, the way the stand makes one; returns
+    it with its loss curve."""
+    f, u = dataset(runs, mirror=mirror)
+    if kind == "linear":
+        return train(LinearPolicy.initial(rng), f, u)
+    if kind == "mlp":
+        return train(MLP.initial(rng), f, u)
+    raise ValueError(f"unknown policy kind {kind!r}")

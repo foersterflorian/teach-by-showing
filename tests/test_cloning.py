@@ -15,6 +15,7 @@ from teach_by_showing.cloning import (
     MLP,
     LinearPolicy,
     Rollout,
+    clone,
     dataset,
     policy_from_dict,
     rollout,
@@ -129,3 +130,17 @@ def test_training_on_a_recorded_teacher_runs(path: Path) -> None:
     policy, losses = train(MLP.initial(np.random.default_rng(0)), f, u, epochs=200)
     assert np.all(np.isfinite(losses)) and losses[-1] < losses[0]
     assert all(np.all(np.isfinite(p)) for p in policy.params())
+
+
+def test_the_stand_clones_with_the_measured_default() -> None:
+    """§16: the linear policy, without mirroring."""
+    run: Run = taught("quick")
+    policy, losses = clone([run], np.random.default_rng(0))
+    assert isinstance(policy, LinearPolicy)
+    f, u = dataset([run])
+    same, _ = train(LinearPolicy.initial(np.random.default_rng(0)), f, u)
+    assert all(
+        np.array_equal(a, b) for a, b in zip(policy.params(), same.params(), strict=True)
+    )
+    with pytest.raises(ValueError, match="kind"):
+        clone([run], np.random.default_rng(0), kind="forest")

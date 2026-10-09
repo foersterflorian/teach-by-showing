@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 under way: recording (§13), tuning (§14), behavioural cloning (§15); evaluation and ghost replay next
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 under way: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16); ghost replay next
 **Last updated:** 2026-10-06
 
 This file records *why* the code looks the way it does. The code says what it
@@ -212,10 +212,12 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   before, is open; to be decided with such tests (concept §15 items 6, 7).
   Recorded runs keep every state, so they can be judged again against
   another threshold.
-- **Behavioural cloning from a short demonstration.** Whether three transports
-  of 20–30 s each suffice for an agent that reaches the target reliably and
-  visibly keeps its teacher's style. This is the project's central risk
-  (concept §5.2); the first spike tests it with real people.
+- **Behavioural cloning from a short demonstration** — *measured on
+  2026-10-09, see §16*: from the maintainer's cautious and quick drives
+  (three transports each), the linear policy reached every target in all
+  50 episodes of ten and kept the style (3.2 times as long, 0.37 times the
+  swing). Still open: drives by people who have not driven before, which
+  will be less clean; this is the project's central risk (concept §5.2).
 - **Kiosk placement under COSMIC/Wayland** — *settled on 2026-10-02, see
   §11*: Firefox with `--kiosk-monitor`, the monitor chosen by its EDID
   serial. Still open: the venue's cabling (both DisplayPort, no docking
@@ -1166,7 +1168,15 @@ the teacher gave, and then drives on its own.
   for the network display (concept §6.2).
 - *Mirroring* (`dataset(..., mirror=True)`): every example once more
   reflected left to right, all features and the command negated. Offered,
-  not the default; the evaluation decides.
+  not the default.
+- *The stand uses the linear policy without mirroring* (`DEFAULT_KIND`,
+  `DEFAULT_MIRROR`, `clone()`; decided 2026-10-09 on the figures of §16):
+  it reached every target from both teaching drives and kept their style
+  for every seed, while the network depended on its seed. The network stays
+  in the code, not as the default; whether it can be made stable is
+  measured separately if the network display (concept §6.2) needs a real
+  network. Until then that display shows three weights, which can be read
+  as the teacher's style.
 - *`rollout()`* drives n transports at once with the live crane's `step()`
   and `advance()`; evaluation, ghost replay and swarm build on it.
 
