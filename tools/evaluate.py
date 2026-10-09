@@ -68,53 +68,17 @@ def outcome_of(transport: Transport, max_swing: FloatArray) -> Outcome:
     )
 
 
-def _row_state(run: Run, rows: np.ndarray, frame: int) -> CraneState:
-    return CraneState(
-        frame,
-        run.column("x")[rows],
-        run.column("v")[rows],
-        run.column("theta")[rows],
-        run.column("omega")[rows],
-    )
-
-
-def teacher_transports(run: Run) -> tuple[CraneState, FloatArray]:
-    """The state each of the teacher's transports began in, and its target.
-    A later transport begins where the pause before it left the crane,
-    which is not quite at rest."""
-    transport: np.ndarray = np.asarray(run.transport)
-    running: np.ndarray = run.running_mask()
-    firsts: list[int] = [
-        int(np.flatnonzero((transport == i) & running)[0]) for i in range(run.transports)
-    ]
-    columns: dict[str, FloatArray] = {}
-    for name in ("x", "v", "theta", "omega"):
-        # The row before a transport's first; the first transport begins
-        # with the recording, in the state before row 0.
-        before: list[float] = [
-            float(getattr(run.initial, name)[0]) if f == 0 else run.columns[name][f - 1]
-            for f in firsts
-        ]
-        columns[name] = np.asarray(before)
-    begin: CraneState = CraneState(
-        0, columns["x"], columns["v"], columns["theta"], columns["omega"]
-    )
-    return begin, run.column("target")[np.asarray(firsts)]
-
-
 def teacher_outcome(run: Run) -> Outcome:
     """The teacher's transports judged by the same advance() as a clone's."""
-    transport: np.ndarray = np.asarray(run.transport)
-    running: np.ndarray = run.running_mask()
-    amp: FloatArray = swing_amplitude(_row_state(run, np.arange(run.frames), 0), run.crane)
+    amp: FloatArray = swing_amplitude(run.states(np.arange(run.frames)), run.crane)
     success: list[bool] = []
     seconds: list[float | None] = []
     swing: list[float] = []
     for i in range(run.transports):
-        rows: np.ndarray = np.flatnonzero((transport == i) & running)
+        rows: np.ndarray = run.transport_rows(i)
         tr: Transport = Transport.begin(run.column("target")[rows[:1]], 0)
         for k, row in enumerate(rows, start=1):
-            tr = advance(tr, _row_state(run, np.asarray([row]), k), run.crane, run.task)
+            tr = advance(tr, run.states(np.asarray([row]), k), run.crane, run.task)
         one: Outcome = outcome_of(tr, np.asarray([float(amp[rows].max())]))
         success += one.success
         seconds += one.seconds
@@ -127,7 +91,7 @@ def evaluate(run: Run, seeds: int, target_sets: int, epochs: int = 2000) -> dict
     `target_sets` episodes of EPISODE new transports and the teacher's own."""
     n: int = target_sets * EPISODE
     start, target = sample_transports(np.random.default_rng(1000), run.crane, run.task, n)
-    own_state, own_target = teacher_transports(run)
+    own_state, own_target = run.transport_begins()
     variants: dict[str, Any] = {}
     for kind, mirror in VARIANTS:
         f, u = dataset([run], mirror=mirror)

@@ -99,3 +99,16 @@ def test_no_input_reacts_to_any_button() -> None:
     for path in STATIC.glob("*.js"):
         text: str = path.read_text(encoding="utf-8")
         assert not re.search(r"buttons\.(?:some|find|filter|every)\(", text), path.name
+
+
+def test_the_ghost_is_drawn_and_its_texts_come_from_the_server() -> None:
+    """§17: the scripts draw and interpolate the ghost, and the replay's
+    German texts arrive in the config message, not in the scripts."""
+    scene: str = (STATIC / "scene.js").read_text(encoding="utf-8")
+    main: str = (STATIC / "main.js").read_text(encoding="utf-8")
+    assert "view.ghost" in scene and "GHOST_ALPHA" in scene
+    assert "a.ghost" in main and "view.banner" in main
+    assert (
+        "config.headline" in main and "config.elapsed_label" in main and "config.hint" in main
+    )
+    assert "Schatten" not in main and "Ihre Fahrt" not in main

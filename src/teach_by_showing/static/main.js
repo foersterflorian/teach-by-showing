@@ -28,6 +28,10 @@ function connect() {
     if (message.type === "config") {
       config = message;
       states = [];
+      // A replay brings its own headline; the live page keeps the one in index.html.
+      if (config.headline) el("headline").textContent = config.headline;
+      if (config.elapsed_label) el("elapsed-label").textContent = config.elapsed_label;
+      if (config.hint) el("hint").textContent = config.hint;
     } else if (message.type === "state") {
       message.arrival = performance.now();
       states.push(message);
@@ -58,11 +62,13 @@ function viewAt(now) {
     const b = states[i];
     if (a.frame <= frame) {
       const t = (frame - a.frame) / (b.frame - a.frame);
-      return {
-        ...a,
-        x: a.x.map((v, k) => v + (b.x[k] - v) * t),
-        theta: a.theta.map((v, k) => v + (b.theta[k] - v) * t),
-      };
+      const mix = (p, q) => p.map((v, k) => v + (q[k] - v) * t);
+      const view = { ...a, x: mix(a.x, b.x), theta: mix(a.theta, b.theta) };
+      if (a.ghost && b.ghost) {
+        const g = { x: mix(a.ghost.x, b.ghost.x), theta: mix(a.ghost.theta, b.ghost.theta) };
+        view.ghost = { ...a.ghost, ...g };
+      }
+      return view;
     }
   }
   return states[0];
@@ -86,10 +92,19 @@ function showReadout(view) {
   fill.style.left = `${50 + Math.min(0, view.command) * 50}%`;
   fill.style.width = `${Math.abs(view.command) * 50}%`;
 
+  el("ghost-readout").hidden = !view.ghost;
+  if (view.ghost) {
+    el("ghost-elapsed").textContent = `${view.ghost.elapsed.toFixed(1).replace(".", ",")} s`;
+  }
+
   const banner = el("banner");
   banner.className = view.result;
   banner.hidden = view.result === "running";
-  if (view.result === "success") {
+  if (view.banner !== undefined) {
+    // A replay words its banner on the server, once both have finished.
+    banner.hidden = view.banner === null;
+    banner.textContent = view.banner ?? "";
+  } else if (view.result === "success") {
     banner.textContent = `Ziel erreicht – ${view.elapsed.toFixed(1).replace(".", ",")} s`;
   } else if (view.result === "timeout") {
     banner.textContent = "Zeit abgelaufen";

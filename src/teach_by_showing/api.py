@@ -26,16 +26,19 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from teach_by_showing.cloning import clone
 from teach_by_showing.funding import FUNDING_LOGOS, FUNDING_TEXT, FUNDING_URL, funding_asset
 from teach_by_showing.live import (
     LiveSession,
     LoopStats,
     RecordingRequest,
+    Session,
     Settings,
     parse_command,
     run_paced,
 )
-from teach_by_showing.recording import Run, save_run
+from teach_by_showing.recording import Run, load_run, save_run
+from teach_by_showing.replay import ReplaySession
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
@@ -62,9 +65,7 @@ class Outbox:
         return self._latest
 
 
-def create_app(
-    make_session: Callable[[], LiveSession], exit_on_crash: bool = False
-) -> FastAPI:
+def create_app(make_session: Callable[[], Session], exit_on_crash: bool = False) -> FastAPI:
     """The app, with the session created at startup. Tests pass their own
     factory with a fixed seed.
 
@@ -74,7 +75,7 @@ def create_app(
     §10). Tests leave it off, since it would signal the test process."""
     outboxes: set[Outbox] = set()
     stats: LoopStats = LoopStats()
-    holder: dict[str, LiveSession] = {}
+    holder: dict[str, Session] = {}
 
     def publish(message: dict[str, Any]) -> None:
         text: str = json.dumps(message)
@@ -121,7 +122,7 @@ def create_app(
     @app.websocket("/ws")
     async def ws(socket: WebSocket) -> None:
         await socket.accept()
-        session: LiveSession = holder["session"]
+        session: Session = holder["session"]
         await socket.send_text(json.dumps(session.config_message()))
         box: Outbox = Outbox()
         outboxes.add(box)
@@ -193,7 +194,7 @@ def _on_loop_done(task: asyncio.Task[None], exit_on_crash: bool) -> None:
         os.kill(os.getpid(), signal.SIGTERM)
 
 
-def handle_input(session: LiveSession, text: str) -> None:
+def handle_input(session: Session, text: str) -> None:
     """Apply one message from the browser. Anything malformed is dropped
     and logged; a bad message must not close the connection."""
     try:
@@ -233,6 +234,12 @@ def main() -> None:
         help="record the next transports as a run named LABEL, e.g. vorsichtig (§13)",
     )
     parser.add_argument(
+        "--ghost",
+        type=Path,
+        metavar="RUN",
+        help="replay: an agent cloned from RUN drives its transports beside the recording",
+    )
+    parser.add_argument(
         "--transports", type=int, default=3, help="transports per recording; default: 3"
     )
     parser.add_argument(
@@ -257,6 +264,24 @@ def main() -> None:
     def saved(run: Run) -> None:
         log.info("recorded %d frames to %s", run.frames, save_run(run, runs))
 
+    if args.ghost and args.record:
+        parser.error("--ghost replays a recording; it cannot record at the same time")
+
+    def make_replay() -> ReplaySession:
+        # The teacher's own crane and task, not --params: the ghost must
+        # move under the physics it was recorded with.
+        run: Run = load_run(args.ghost)
+        start: float = time.perf_counter()
+        policy, losses = clone([run], np.random.default_rng(seed))
+        log.info(
+            "cloned %s in %.2f s, loss %.4f -> %.4f",
+            args.ghost,
+            time.perf_counter() - start,
+            losses[0],
+            losses[-1],
+        )
+        return ReplaySession.start(run, policy)
+
     def make_session() -> LiveSession:
         session: LiveSession = LiveSession.start(
             np.random.default_rng(seed), settings.crane, settings.task, settings.input
@@ -274,7 +299,7 @@ def main() -> None:
             log.info("recording %d transports from the first deflection", args.transports)
         return session
 
-    app: FastAPI = create_app(make_session, exit_on_crash=True)
+    app: FastAPI = create_app(make_replay if args.ghost else make_session, exit_on_crash=True)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 

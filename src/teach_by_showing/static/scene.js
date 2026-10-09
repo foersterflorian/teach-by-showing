@@ -20,6 +20,7 @@ const LOAD_W = 0.55;
 const LOAD_H = 0.4;
 const OVERHANG = 0.5; // girder beyond each end stop
 const FLOOR_GAP = 0.3; // between the hanging load and the floor
+const GHOST_ALPHA = 0.35;
 
 // Map metres to pixels: fit the track horizontally and the rope plus load
 // vertically, one scale for both so that angles look right.
@@ -83,28 +84,43 @@ function drawScene(ctx, width, height, config, view) {
     ctx.fillText("Ziel", L.px(target), L.floorY + 0.3 * s);
   }
 
-  // Trolleys, ropes and loads.
-  for (let i = 0; i < view.x.length; i++) {
-    const tx = L.px(view.x[i]);
-    const hookX = tx + Math.sin(view.theta[i]) * crane.rope_length * s;
-    const hookY = L.girderY + TROLLEY_H * s + Math.cos(view.theta[i]) * crane.rope_length * s;
-
-    ctx.fillStyle = COLORS.trolley;
-    ctx.fillRect(tx - (TROLLEY_W / 2) * s, L.girderY, TROLLEY_W * s, TROLLEY_H * s);
-
-    ctx.strokeStyle = COLORS.rope;
-    ctx.lineWidth = Math.max(2, 0.025 * s);
-    ctx.beginPath();
-    ctx.moveTo(tx, L.girderY + TROLLEY_H * s);
-    ctx.lineTo(hookX, hookY);
-    ctx.stroke();
-
-    // The load hangs from the hook and tilts with the rope.
-    ctx.save();
-    ctx.translate(hookX, hookY);
-    ctx.rotate(-view.theta[i]);
-    ctx.fillStyle = view.result === "success" ? COLORS.loadDone : COLORS.load;
-    ctx.fillRect(-(LOAD_W / 2) * s, 0, LOAD_W * s, LOAD_H * s);
-    ctx.restore();
+  // In a replay the teacher's recorded drive runs behind, translucent
+  // (DECISIONS.md §17); then the cranes that drive.
+  if (view.ghost) {
+    ctx.globalAlpha = GHOST_ALPHA;
+    for (let i = 0; i < view.ghost.x.length; i++) {
+      drawCrane(ctx, L, crane, view.ghost.x[i], view.ghost.theta[i], COLORS.load);
+    }
+    ctx.globalAlpha = 1;
   }
+  const load = view.result === "success" ? COLORS.loadDone : COLORS.load;
+  for (let i = 0; i < view.x.length; i++) {
+    drawCrane(ctx, L, crane, view.x[i], view.theta[i], load);
+  }
+}
+
+// One trolley with its rope and load.
+function drawCrane(ctx, L, crane, x, theta, loadColor) {
+  const s = L.scale;
+  const tx = L.px(x);
+  const hookX = tx + Math.sin(theta) * crane.rope_length * s;
+  const hookY = L.girderY + TROLLEY_H * s + Math.cos(theta) * crane.rope_length * s;
+
+  ctx.fillStyle = COLORS.trolley;
+  ctx.fillRect(tx - (TROLLEY_W / 2) * s, L.girderY, TROLLEY_W * s, TROLLEY_H * s);
+
+  ctx.strokeStyle = COLORS.rope;
+  ctx.lineWidth = Math.max(2, 0.025 * s);
+  ctx.beginPath();
+  ctx.moveTo(tx, L.girderY + TROLLEY_H * s);
+  ctx.lineTo(hookX, hookY);
+  ctx.stroke();
+
+  // The load hangs from the hook and tilts with the rope.
+  ctx.save();
+  ctx.translate(hookX, hookY);
+  ctx.rotate(-theta);
+  ctx.fillStyle = loadColor;
+  ctx.fillRect(-(LOAD_W / 2) * s, 0, LOAD_W * s, LOAD_H * s);
+  ctx.restore();
 }

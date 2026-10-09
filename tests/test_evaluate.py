@@ -54,7 +54,7 @@ def test_the_teacher_is_judged_like_a_clone() -> None:
 
 def test_the_teachers_transports_begin_where_the_teacher_began() -> None:
     run: Run = run_of("quick")
-    begin, target = ev.teacher_transports(run)
+    begin, target = run.transport_begins()
     assert begin.n == run.transports
     assert begin.x[0] == run.initial.x[0]
     transport: np.ndarray = np.asarray(run.transport)

@@ -8,7 +8,7 @@
 </head>
 <body>
 <header>
-  <h1>Bringen Sie die Last ins Ziel – ohne dass sie pendelt</h1>
+  <h1 id="headline">Bringen Sie die Last ins Ziel – ohne dass sie pendelt</h1>
   <p id="hint">Linker Stick: Katze fahren</p>
 </header>
 
@@ -19,7 +19,8 @@
 </main>
 
 <section id="readout">
-  <div><span>Fahrzeit</span><b id="elapsed">0,0 s</b></div>
+  <div><span id="elapsed-label">Fahrzeit</span><b id="elapsed">0,0 s</b></div>
+  <div id="ghost-readout" hidden><span>Ihre Fahrt</span><b id="ghost-elapsed">0,0 s</b></div>
   <div><span>Stellgröße</span><b><span id="command-bar"><i id="command-fill"></i></span></b></div>
   <div><span>Transporte</span><b id="transports">0</b></div>
 </section>

@@ -138,6 +138,7 @@ CORE: tuple[str, ...] = (
     "recording.py",
     "features.py",
     "cloning.py",
+    "replay.py",
 )
 WEB: frozenset[str] = frozenset({"fastapi", "starlette", "uvicorn", "websockets", "httpx"})
 

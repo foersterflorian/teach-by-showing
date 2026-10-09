@@ -77,6 +77,8 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+#readout div[hidden] { display: none; }
+
 #readout span {
   display: block;
   font-size: 1.4vh;

@@ -80,6 +80,44 @@ class Run:
     def running_mask(self) -> NDArray[np.bool_]:
         return np.asarray(self.running, dtype=np.bool_)
 
+    def states(self, rows: NDArray[np.int64], frame: int = 0) -> CraneState:
+        """The recorded states of `rows`, as one batch of len(rows) cranes."""
+        return CraneState(
+            frame,
+            self.column("x")[rows],
+            self.column("v")[rows],
+            self.column("theta")[rows],
+            self.column("omega")[rows],
+        )
+
+    def transport_rows(self, index: int) -> NDArray[np.int64]:
+        """Rows in which transport `index` was running, in order."""
+        return np.flatnonzero(
+            (np.asarray(self.transport) == index) & self.running_mask()
+        ).astype(np.int64)
+
+    def transport_begins(self) -> tuple[CraneState, FloatArray]:
+        """The state each transport began in, one crane per transport, and
+        its target. A later transport begins where the pause before it left
+        the crane, which is not quite at rest; the first begins in
+        `initial`, before row 0."""
+        firsts: list[int] = [int(self.transport_rows(i)[0]) for i in range(self.transports)]
+        columns: dict[str, FloatArray] = {
+            name: np.asarray(
+                [
+                    float(getattr(self.initial, name)[0])
+                    if f == 0
+                    else self.columns[name][f - 1]
+                    for f in firsts
+                ]
+            )
+            for name in ("x", "v", "theta", "omega")
+        }
+        begin: CraneState = CraneState(
+            0, columns["x"], columns["v"], columns["theta"], columns["omega"]
+        )
+        return begin, self.column("target")[np.asarray(firsts, dtype=np.int64)]
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema": SCHEMA,

@@ -13,7 +13,7 @@ import asyncio
 import math
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
-from typing import Any, Final, Self
+from typing import Any, Final, Protocol, Self
 
 import numpy as np
 
@@ -48,6 +48,19 @@ def parse_command(value: object) -> float | None:
     if not math.isfinite(u):
         return None
     return min(1.0, max(-1.0, u))
+
+
+class Session(Protocol):
+    """What the pacing loop and the web layer need from a session: the live
+    crane here, or a ghost replay (replay.py)."""
+
+    def tick(self) -> None: ...
+
+    def set_input(self, deflection: float) -> None: ...
+
+    def config_message(self) -> dict[str, Any]: ...
+
+    def state_message(self) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -270,7 +283,7 @@ class LoopStats:
 
 
 async def run_paced(
-    session: LiveSession,
+    session: Session,
     publish: Callable[[dict[str, Any]], None],
     stats: LoopStats,
 ) -> None:
