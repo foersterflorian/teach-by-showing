@@ -1233,3 +1233,67 @@ linear policy and 0.3–2.4 s for the network.
 (`tests/teachers.py`) driving and recorded through the live session like a
 visitor.
 
+
+---
+
+## 16. Evaluation: every recorded drive cloned four ways, ten seeds, the same targets
+
+**Context.** The acceptance of the spike's second day (concept §16): the
+agent reaches the target and comes to rest in most of ten episodes with new
+targets, and cautious and quick teaching differ measurably in transport
+time and largest swing. The first look in §15 rested on one set of targets
+and one seed.
+
+**The tool.** `tools/evaluate.py` clones every run on its own, as a
+visitor's would be, in four variants (linear policy or network, each with
+and without mirrored examples), with ten training seeds. Each clone drives
+five episodes of ten new transports, the same for every variant so that
+variants are compared and not their luck, and the teacher's own
+transports from the states the teacher started in. Teacher and clone are
+judged by the same `advance()`: success, seconds to calm, largest swing
+amplitude while running. "Most of ten" is read as at least eight: at the
+stand an agent that stops short looks like a bug (concept §6.3). Every
+single figure can be written to JSON; a second run gives the same JSON
+apart from the training times, and one row was recomputed by hand.
+
+**Measured** on the deployment machine (RTX 4090 / AMD 16-core, NumPy
+2.5.3), 2026-10-09, the maintainer's two teaching runs in `tests/data/`,
+86 s in all. Medians; "episodes" counts episodes of ten with at least
+eight successes, out of 50 (ten seeds × five target sets):
+
+| Drive | Variant | Successes per episode (range) | Episodes ≥ 8 | Time | Swing | Training |
+|---|---|---|---|---|---|---|
+| cautious, teacher | — | 3/3 of own | — | 25.8 s | 5.0° | — |
+| cautious | linear | 10 (10–10) | 50/50 | 27.8 s | 5.1° | 0.07 s |
+| cautious | linear, mirrored | 10 (10–10) | 50/50 | 27.6 s | 5.0° | 0.10 s |
+| cautious | network | 2 (0–10) | 7/50 | 31.9 s | 66.1° | 0.51 s |
+| cautious | network, mirrored | 2 (0–10) | 16/50 | 42.5 s | 40.4° | 2.44 s |
+| quick, teacher | — | 3/3 of own | — | 17.2 s | 24.2° | — |
+| quick | linear | 10 (10–10) | 50/50 | 8.7 s | 14.0° | 0.05 s |
+| quick | linear, mirrored | 10 (10–10) | 50/50 | 8.7 s | 14.0° | 0.08 s |
+| quick | network | 4 (0–10) | 5/50 | 11.4 s | 32.3° | 0.34 s |
+| quick | network, mirrored | 10 (10–10) | 50/50 | 13.3 s | 24.8° | 1.53 s |
+
+Style, cautious clone against quick clone on the same new transports, per
+seed: the linear policy takes 3.19 times as long and swings 0.37 times as
+much, identically for every seed; the network's ratios range from 1.8 to
+5.3 in time and from 0.12 to 5.7 in swing, so its style is not reliable.
+
+On the teacher's own transports the linear clones were within a few
+seconds and a few tenths of a degree of the cautious teacher, while the
+quick clone drove *better* than its teacher: 8.8 s against 17.2 s and 14°
+against 24°. It keeps the teacher's way of approaching at speed but not the
+long settling at the target.
+
+**Reading.** With the linear policy both acceptance criteria are met on
+these two drives: every episode at ten of ten, and the style difference is
+large and the same for every seed. The network is not usable as trained
+(§15): it depends on its seed, and when it fails it swings far more than
+its teacher. Mirroring changes nothing for the linear policy and helps the
+network only on the quick drive.
+
+**Open.** One teacher, two drives. Whether this holds for people who have
+not driven before, whose drives are less clean, is the next question
+(concept §15 items 6, 7).
+
+`tests/test_evaluate.py` guards the tool's bookkeeping.

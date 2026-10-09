@@ -214,14 +214,15 @@ class Rollout:
 
 def rollout(
     policy: Policy,
-    start: FloatArray,
+    state: CraneState,
     target: FloatArray,
     crane: CraneParams,
     task: TaskParams,
 ) -> Rollout:
-    """Drive n transports at once from rest until every one has succeeded
-    or timed out, with the same step() and advance() as the live crane."""
-    state: CraneState = CraneState.at_rest(start)
+    """Drive n transports at once from `state` until every one has succeeded
+    or timed out, with the same step() and advance() as the live crane.
+    Usually the cranes start at rest (CraneState.at_rest); replaying a
+    teacher's transport starts from the state the teacher started in."""
     transport: Transport = Transport.begin(target, state.frame)
     max_swing: FloatArray = np.zeros_like(state.x)
     while not transport.done(state.frame, task).all():

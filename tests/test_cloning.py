@@ -98,7 +98,7 @@ def clone_drives(name: str, kind: type[MLP | LinearPolicy]) -> Rollout:
     f, u = dataset([run])
     policy, _ = train(kind.initial(np.random.default_rng(0)), f, u)
     start, target = sample_transports(np.random.default_rng(1), PARAMS, TASK, 10)
-    return rollout(policy, start, target, PARAMS, TASK)
+    return rollout(policy, CraneState.at_rest(start), target, PARAMS, TASK)
 
 
 @pytest.mark.parametrize("kind", [MLP, LinearPolicy])
