@@ -244,12 +244,11 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **Secure context for the Gamepad API** — *settled for Firefox on
   2026-10-06*: the gamepad works on `http://localhost` (§12). Not checked
   in Chrome.
-- **The stand's guidance** — *first iteration built on 2026-10-09, see
-  §18; not yet judged on the stand*. The texts, the 45 s after which an
+- **The stand's guidance** — *first iteration judged by the maintainer on
+  the stand on 2026-10-09, see §18: no objections*. Still open: the texts, the 45 s after which an
   abandoned demonstration ends, the place of the call to action on the 4K
-  monitor, and whether visitors find A and B, are worked out with the
-  maintainer iteration by iteration, then with people who have not seen
-  the stand.
+  monitor, and whether visitors find A and B, judged by people who have
+  not seen the stand; further iterations with the maintainer.
 - **Training time** — *measured on 2026-10-09, see §15*: 0.05–0.1 s for
   the linear policy, 0.3–2.4 s for the network (2000 epochs) on one or two
   recorded drives. Within the concept's one to three seconds, but the
@@ -1483,11 +1482,16 @@ server outside the container, a scripted visitor over the WebSocket: A,
 three transports by a simple controller, then the agent's step): the
 demonstration took 33 s, the run had 2003 frames, cloning it took
 0.049 s inside the loop, and the loop counted 0 overruns. The pages
-of all four steps showed no script errors in the desktop app's browser.
+of the idle, teach and agent steps showed no script errors in the desktop
+app's browser.
+
+**Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-09,
+the maintainer): "looks very good", no
+objections for now.
 
 **Not yet.** The gallery and the naive agent (step 0 of concept §6.1 shows
 both), the style profile, the curves over time, the staff keys of concept
-§6.3, and the guidance itself as judged on the stand (§5).
+§6.3, and the guidance as judged by people who have not seen the stand (§5).
 
 **Rejected alternatives.**
 
