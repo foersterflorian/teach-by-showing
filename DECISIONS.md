@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go given by the maintainer on 2026-10-09, the linear policy stays the default; week 1: the stand's steps, first iteration (§18), the naive driver (§19), the full ghost replay (§20), the model display (§21)
+**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2 begun: the model display (§21)
 **Last updated:** 2026-10-16
 
 This file records *why* the code looks the way it does. The code says what it
@@ -152,7 +152,9 @@ runs, agents, gallery (JSON on a volume)
   project.
 - *Backend:* FastAPI/Starlette with uvicorn — the switch feature-viz §12
   names for the point where more than one endpoint is needed. Training and
-  evolution run in a worker process so that the simulation loop never stalls.
+  evolution that take seconds run in a worker process so that the
+  simulation loop never stalls; the linear policy, which trains in 0.05 s,
+  is the exception and trains inside the loop (§8, §18, §21).
   Added with the server (§8): `fastapi`, `uvicorn`, and `websockets`, which
   uvicorn needs to speak WebSocket at all; the alternative `wsproto` is less
   common. `uvicorn[standard]` was not taken: it adds uvloop, httptools,
@@ -229,9 +231,10 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   6 of 6 starts checked by eye, against series of 10–20 for Chrome; a
   longer series follows at the dress rehearsal at the latest.
 - **Gamepad in Firefox** — *checked on 2026-10-06, see §12*: both pads
-  report the left stick as axis 0 of the `standard` mapping. Still open:
-  Chrome for comparison (not needed while the crane runs in Firefox), and
-  the A button for the stand's steps once the state machine uses it.
+  report the left stick as axis 0 of the `standard` mapping, A and B as
+  buttons 0 and 1, which the stand's steps use since 2026-10-09 (§18).
+  Still open: Chrome for comparison, not needed while the crane runs in
+  Firefox.
 - **Firefox's scale on a fractionally scaled monitor** — *judged on
   2026-10-02*. At COSMIC's 150 % Firefox reported `devicePixelRatio` 1.36
   and a 2816-pixel-wide screen, not 1.5 and 2560. By eye the crane in the
@@ -258,9 +261,10 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   2026-10-06*: the gamepad works on `http://localhost` (§12). Not checked
   in Chrome.
 - **The stand's guidance** — *first iteration judged by the maintainer on
-  the stand on 2026-10-09, see §18: no objections*. Still open: the texts, the 45 s after which an
-  abandoned demonstration ends, the place of the call to action on the 4K
-  monitor, and whether visitors find A and B, judged by people who have
+  the stand on 2026-10-09, see §18: no objections; refined since in
+  §19–§21*. Still open: the texts, the durations of the steps (settings
+  since §21, `teach_timeout` 45 s), the place of the call to action on the
+  4K monitor, and whether visitors find A and B, judged by people who have
   not seen the stand; further iterations with the maintainer.
 - **Training time** — *measured on 2026-10-09, see §15*: 0.05–0.1 s for
   the linear policy, 0.3–2.4 s for the network (2000 epochs) on one or two
@@ -313,11 +317,13 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **Several browsers driving at once.** Every connected client may send
   input, and the latest message wins. The stand has one kiosk, so this only
   matters when a second tab is open for debugging: the two then fight over
-  the crane. Whether the server should accept input from one client only is
-  decided with the stand's state machine. Since §18 this holds for the
-  buttons too: a second tab reporting A as not held while the kiosk holds
-  it makes every message from the kiosk look like a new press. Not a
-  problem with one kiosk; left open until the stand needs a second page.
+  the crane. Since §18 this holds for the buttons too: a second tab
+  reporting A as not held while the kiosk holds it makes every message
+  from the kiosk look like a new press. It happened in development on
+  2026-10-16: a tab left open in the maintainer's everyday Firefox stayed
+  connected while a scripted visitor drove, and both sent commands. Not a
+  problem with one kiosk; whether the server should accept input from one
+  client only stays open until the stand needs a second page.
 - **Green on success against green for the agent.** The frontend colours
   the load and the target zone green when a transport succeeds (§9);
   concept §8 reserves green for the learned agent. Once agents drive, that
@@ -336,10 +342,9 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   by the maintainer the same day*. The sizes are variables at the top of
   `style.css`. Whether visitors who have never seen the stand read the
   curves at all is open for the tests with them.
-- **The model display** (§21) — *built on 2026-10-16, not yet judged on
-  the stand*: whether the diagram is large enough in its share of the
-  band, whether 5 s of slow motion and 20 s of waiting suit, and whether
-  visitors press A or wait.
+- **The model display** (§21) — *judged by the maintainer on the stand on
+  2026-10-16: "passt"*. Still open: whether visitors who have never seen
+  the stand read the diagram, and whether they press A or wait.
 - **Learning after every transport** (§21). Kept as an option on
   2026-10-16: train after each demonstrated transport, so that the
   weights move three times during the demonstration. To be weighed once
@@ -349,12 +354,12 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   too much with two cranes on one girder.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
-- **Crane and task parameters** (§6, §7). A first set chosen on paper and
-  checked only with a scripted controller. Whether the swing is dramatic
-  enough for the naive agent, whether visitors can reach the calm criterion,
-  and whether transports take the intended 20–30 s, is tuned on the gamepad
-  (concept §15 items 7 and 8). The drive limits were raised once already
-  for a visible naive swing (§6); fine-tuning on the gamepad stays open.
+- **Crane and task parameters** (§6, §7) — *tuned on the gamepad on
+  2026-10-09, see §14*. The drive limits were raised for a visible naive
+  swing (§6), the calm threshold set to 4° and an input curve added (§14),
+  judged by one practised driver; the naive swing stays visible (§19).
+  Still open: whether people who have not driven before reach the calm
+  criterion, and how long their transports take (concept §15 item 7).
 
 ---
 
@@ -514,10 +519,18 @@ carry the state out and the stick back in, and stay up for two days.
 **Decision.** Three layers, as in feature-viz §12:
 
 ```
-crane.py, task.py   simulation core           — knows nothing about HTTP
-live.py             LiveSession, run_paced()  — the engine, counts in frames
-api.py              FastAPI: /ws, /healthz, static files — calls into live.py only
+crane.py, task.py, features.py,   simulation core and learning — know nothing
+cloning.py, recording.py          about HTTP
+live.py, stand.py, replay.py,     the engine: sessions and run_paced(), count
+naive.py, model_view.py           in frames, know nothing about HTTP either
+api.py                            FastAPI: /ws, /healthz, static files — calls
+                                  into the engine, holds no simulation logic
 ```
+
+The engine grew with the stand: `LiveSession` here, the stand's steps
+(§18), the ghost replay (§17, §20), the naive driver (§19) and the model
+display (§21). Every one of them is a session or feeds one, behind the
+`Session` protocol of `live.py`.
 
 - *Pacing:* `run_paced()` is an asyncio task that ticks the session against
   absolute deadlines (`deadline += 1/60`), so the inaccuracy of each sleep
@@ -539,11 +552,16 @@ api.py              FastAPI: /ws, /healthz, static files — calls into live.py 
 - *Messages* are JSON. On connect, one `config` message carries the crane
   and task parameters, so the frontend draws to scale without physical
   constants of its own. Then one `state` message per frame: positions, angle,
-  target, effective command, calm progress, result, elapsed time. Positions
-  are lists, as the core is batched; ghosts and swarms will use the same
-  shape. The browser sends `{"type": "input", "u": <-1..1>}`.
-- *Untrusted input:* anything that is not a finite number is dropped and
-  logged without closing the connection; numbers are clipped to −1..1.
+  target, effective command, calm progress, result, elapsed time, and who
+  drives (`driver`, §19). Positions are lists, as the core is batched;
+  further cranes use the same shape (`others`, §19). The stand adds its
+  step and every text on the screen (`phase`, `texts`, §18), a replay the
+  ghost and the speeds (§17, §20), the curves (`curves`, §20) and the model
+  (`model`, §21). The browser sends `{"type": "input", "u": <-1..1>,
+  "a": <bool>, "b": <bool>}`: the stick and whether A and B are held (§18).
+- *Untrusted input:* a command that is not a finite number is dropped and
+  logged without closing the connection; numbers are clipped to −1..1. A
+  button counts as held only if it is exactly `true`.
 - *Input timeout:* without fresh input for 0.25 s the command falls back to
   zero and the drive brakes. A closed tab, a lost connection or an
   unplugged gamepad must never leave the crane driving.
@@ -582,8 +600,9 @@ always just missed it. Remeasured on 2026-10-06 (deployment machine, idle,
 outside the container) with `tools/measure_ws.py roundtrip`, which waits a
 random part of a frame before each send: median 6.6 ms, p95 15.4 ms, max
 17.6 ms over 53 commands. A first run without that random wait gave a
-median of 2.4 ms, the opposite extreme of the same artefact. Browser rendering and the gamepad's own polling come on top and are
-part of the spike's acceptance ("latency not noticeable").
+median of 2.4 ms, the opposite extreme of the same artefact. Browser
+rendering and the gamepad's own polling come on top and are part of the
+spike's acceptance ("latency not noticeable").
 
 Since the input curve (§14) a state shows the shaped command, not the
 deflection sent, and `roundtrip` waited for the raw value forever; found
@@ -619,31 +638,34 @@ browsers driving at once).
   WebSocket suffices, and an HTTP request per input at 60 Hz.
 
 `tests/test_live.py` and `tests/test_api.py` guard this section, including
-that `crane.py`, `task.py` and `live.py` import nothing from the web stack.
+that no module but `api.py` imports anything from the web stack.
 
 ---
 
 ## 9. Frontend: plain files, drawn to scale, interpolated
 
-**Decision.** Five static files, no framework, no build step (§3):
+**Decision.** Seven static files, no framework, no build step (§3):
 
 ```
-index.html   layout, German texts, placeholder for the funding notice
-style.css    sizes in viewport units for a 4K monitor read from standing distance
-scene.js     drawScene(): girder, trolley, rope, load, target zone — drawing only
+index.html   layout, placeholder for the funding notice; the texts come from the server
+style.css    sizes in viewport units for a 4K monitor read from standing distance,
+             text sizes as variables at the top (§20)
+scene.js     drawScene(): girder, trolley, rope, loads, target zone — drawing only
 curves.js    drawCurves(): speed, swing and command over time (§20) — drawing only
-input.js     readCommand(): the gamepad's left stick, or the keyboard, ramped (§12)
-main.js      WebSocket, state buffer, interpolation, readouts, render loop
+model.js     drawModel(), drawLoss(): the neuron and its learning (§21) — drawing only
+input.js     readCommand(), readButtons(): the gamepad, or the keyboard (§12, §18)
+main.js      WebSocket, state buffer, interpolation, readouts, texts, render loop
 ```
 
 Beside them, `gamepad.html`: a page for staff that shows the raw Gamepad
 API values, self-contained and not linked from the crane page (§12).
 
-About 315 lines of JavaScript (with the ghost of §17), plus about 50 in the staff page
-`gamepad.html` (§12), against a budget of about 900 for the whole
-project (concept §7.4). A fault can be traced by file: wrong picture →
-`scene.js`, crane does not react → `input.js`, nothing at all → `main.js`
-and the browser console.
+638 lines of JavaScript in the five scripts (counted 2026-10-16, with
+§17–§21), plus about 50 in the staff page `gamepad.html` (§12), against a
+budget of about 900 for the whole project (concept §7.4). A fault can be
+traced by file: wrong picture → `scene.js`, wrong curves → `curves.js`,
+wrong model → `model.js`, crane or buttons do not react → `input.js`,
+nothing at all → `main.js` and the browser console.
 
 **Details that are deliberate.**
 
@@ -681,6 +703,11 @@ and the browser console.
   along the bottom, as in feature-viz §17.
 - *Offline:* no external script, stylesheet or font (tested); system fonts
   only.
+- *German texts from the server,* with every state (§17, §18); the scripts
+  hold no wording (tested). `index.html` keeps only the texts shown before
+  the first message.
+- *Every file is revalidated, and no canvas grows beyond the window* (§20):
+  together they keep a stale stylesheet from freezing the page.
 
 **Rejected alternatives.**
 
@@ -690,8 +717,8 @@ and the browser console.
   the swing, and every correction would show as a jolt.
 - *SVG or DOM elements instead of a canvas:* comparable for one crane, but
   the swarm of the evolution step will draw a hundred.
-- *ES modules:* would need a module-aware layout for four small files;
-  plain script tags in a fixed order are easier to follow.
+- *ES modules:* would need a module-aware layout for a handful of small
+  files; plain script tags in a fixed order are easier to follow.
 - *Keyboard without a ramp:* see above.
 
 `tests/test_frontend.py` guards this section.
@@ -749,8 +776,12 @@ stand's backend, and the host's browser opens `http://localhost:8081`.
 
 **Not yet done.** The `org.opencontainers.image.source` label names the
 GitHub location; the repository exists there since 2026-10-16 (public,
-`main` and `dev`; concept §15 item 15). No archive with `docker save` yet; that follows once a version is worth
-keeping, as in feature-viz.
+`main` and `dev`; concept §15 item 15). No archive with `docker save` yet;
+that follows once a version is worth keeping, as in feature-viz. The
+package is still at 0.1.0, so the tag no longer tells images apart: the
+image of 2026-10-09 (P0, with the stand's steps) carries the same tag as
+the first one of 2026-10-02. The version is raised before the stand's
+image is built (concept §13, week 2).
 
 **Rejected alternatives.**
 
@@ -845,10 +876,10 @@ port (`screen.availLeft`) for Wayland windows, and by eye.
 - *Placement is verified by eye,* not by a test: a Wayland page does not
   learn which monitor it is on (Firefox reports `screen.left` 0 on both).
   `tests/test_kiosk.py` covers the parsing, the matching and the command.
-- *feature-viz must run in Firefox too,* and so far it does not: its MJPEG
-  picture turns black there while Chrome shows it (§5). It is being fixed in
-  feature-viz; Chrome with a placement checked after start and retried stays
-  the fallback for the feature-viz kiosk.
+- *feature-viz must run in Firefox too.* Its MJPEG picture turned black
+  there while Chrome showed it; feature-viz 0.2.1 pulls frames instead, and
+  since 2026-10-09 its picture stays beside the crane, both in Firefox
+  kiosks (§5). The Chrome fallback is not needed.
 - *Tied to COSMIC* through `cosmic-randr`. Another desktop needs another
   source for serial and position; the rest of the chain is generic.
 
@@ -1005,9 +1036,9 @@ checked and harmless, but nothing may depend on it.
 
 **Not done.** Chrome as a comparison (concept §16 asked for it only as
 such; Firefox works, and Chrome stays out of the crane kiosk, §11). The
-real feature-viz page beside the crane, rather than a stand-in Firefox:
-the stand-in is a separate Firefox instance with its own profile, which is
-what matters for focus, but feature-viz's load was not on the machine.
+real feature-viz page beside the crane, rather than a stand-in Firefox,
+was checked on 2026-10-09: no delay felt, the loop's timing unchanged
+(§5).
 
 **Rejected alternatives.**
 
@@ -1038,7 +1069,8 @@ what matters for focus, but feature-viz's load was not on the machine.
   the Xbox mode appeared five minutes before its installation, it is
   `xpad` that binds the pad, and xone's modules had been built empty. A
   kernel module outside the kernel would have to be rebuilt on every kernel
-  update.
+  update. Removed again the same day; `dkms status` lists no xone
+  (checked 2026-10-16).
 - *Taping over Share:* does not cover macro buttons and comes off within
   two days of visitors.
 - *Switching off the Print shortcut in COSMIC:* hits every keyboard,
@@ -1078,8 +1110,8 @@ teach-by-showing --record vorsichtig --transports 3   # saved under $DATA_DIR/ru
   file usable without re-simulating it, and a change to the physics shows
   as a failing test instead of silently changing old demonstrations.
 - *The command applied, not the one received:* after the input timeout
-  (§8) the crane brakes on 0 whatever the browser last sent, and the
-  network must learn what moved the crane.
+  (§8) the crane brakes on 0 whatever the browser last sent, and the agent
+  must learn what moved the crane.
 - *It begins with the first deflection.* The first transport's clock
   restarts there. The seconds a teacher needs to pick up the gamepad are not
   driving; recorded, they would teach "stand still far from the target"
@@ -1097,8 +1129,9 @@ teach-by-showing --record vorsichtig --transports 3   # saved under $DATA_DIR/ru
 
 - *The file name is `<time requested>-<label>.json`*, with everything but
   letters, digits and hyphens dropped, so that a label can never leave the
-  folder. The time is the wall clock of the server's start, passed in from
-  `api.py`; `live.py` counts frames, never wall-clock time.
+  folder. The time comes from `api.py`: on the stand the wall clock when
+  the visitor pressed A, with `--record` the server's start; `live.py` and
+  `stand.py` count frames, never wall-clock time.
 - *Written to a `.partial` name and renamed,* so a crash never leaves half a
   file that looks like a run.
 - *Saved inside the simulation loop.* Measured on the deployment machine
@@ -1112,8 +1145,8 @@ teach-by-showing --record vorsichtig --transports 3   # saved under $DATA_DIR/ru
 **Rejected alternatives.**
 
 - *Recording in the browser or through a WebSocket listener* such as
-  `tools/measure_ws.py`: the state messages carry neither v nor ω, and the
-  server alone knows the command it applied.
+  `tools/measure_ws.py`: the live crane's state messages carry neither v
+  nor ω, and the server alone knows the command it applied.
 - *One row per frame as an object:* about three times the size, for no
   reader that needs it.
 - *Recording from frame 0:* see the first deflection above.
@@ -1144,7 +1177,8 @@ and saved one of the timeouts; a wider position tolerance changed nothing.
 
 **How it was chosen.** `--params FILE` takes a JSON file that names only the
 crane, task and input parameters that differ from the defaults
-(`live.Settings`); a misspelt name is refused. Three candidates in
+(`live.Settings`; since §21 also the durations of the stand's steps); a
+misspelt name is refused. Three candidates in
 `tools/tuning/` are driven on the gamepad, three transports each, recorded:
 
 | | Change | Aim |
@@ -1235,8 +1269,8 @@ the teacher gave, and then drives on its own.
 - *Training:* full-batch Adam on the mean squared error, a fixed number of
   epochs (2000, learning rate 0.01), initial weights from an injected
   generator: the same runs and seed give the same agent bit for bit. Only
-  frames of a running transport are used (§13). The loss curve is returned
-  for the network display (concept §6.2).
+  frames of a running transport are used (§13). The loss curve is returned,
+  and `on_epoch` lets the model display keep snapshots (§21).
 - *Mirroring* (`dataset(..., mirror=True)`): every example once more
   reflected left to right, all features and the command negated. Offered,
   not the default.
@@ -1244,12 +1278,16 @@ the teacher gave, and then drives on its own.
   `DEFAULT_MIRROR`, `clone()`; decided 2026-10-09 on the figures of §16):
   it reached every target from both teaching drives and kept their style
   for every seed, while the network depended on its seed. The network stays
-  in the code, not as the default; whether it can be made stable is
-  measured separately if the network display (concept §6.2) needs a real
-  network. Until then that display shows three weights, which can be read
-  as the teacher's style.
+  in the code, not as the default; making it stable was deferred by the
+  maintainer on 2026-10-09 ("first something that works"). The model
+  display (§21) shows the linear policy's three weights. The style lies
+  almost wholly in the distance weight (0.30 cautious, 1.80 quick); the
+  swing weights are small for both drives, so they cannot be read as the
+  teacher's way of handling the swing (concept §6.2 says otherwise).
 - *`rollout()`* drives n transports at once with the live crane's `step()`
-  and `advance()`; evaluation, ghost replay and swarm build on it.
+  and `advance()`; the evaluation (§16) builds on it, and the swarm of the
+  evolution will. The ghost replay (§17) calls `step()` and `advance()`
+  itself, one transport after another.
 
 **Why the trolley speed is not a feature.** The concept listed it, and the
 first version had it. The command is a target speed which the drive reaches
@@ -1271,8 +1309,9 @@ ten new transports (seed 42), first network seed:
 The same trap is why the last command is not a feature either.
 
 **First look at real drives** (same setting; median transport time of the
-successful transports, median of each transport's largest swing). The maintainer drove 21–42 s with
-4–14° cautiously and 12–26 s with 19–32° quickly.
+successful transports, median of each transport's largest swing). The
+maintainer drove 21–42 s with 4–14° cautiously and 12–26 s with 19–32°
+quickly.
 
 | Drive | Model | Success | Time | Swing |
 |---|---|---|---|---|
@@ -1409,8 +1448,9 @@ on the stand the same day: "easy to understand".
 Input is ignored. The session has the live session's interface (the
 `Session` protocol in `live.py`), so the pacing loop and the web layer
 serve either. The state message carries the agent as before plus `ghost`
-(position, angle, result, time) and `banner`; the config message carries
-`mode`, the headline, the label of the agent's time and the hint.
+(position, speed, angle, result, time, command) and `banner`; the config
+message carries `mode` and the texts. In the stand's steps the texts travel
+with every state instead (§18).
 
 **Why.**
 
@@ -1481,10 +1521,14 @@ out the guidance together, iteration by iteration; this is the first.
 
 | Step | What runs | What the screen says | Leaves with |
 |---|---|---|---|
-| `idle` | ghost replay of the last agent beside its teacher's drive | call to action: A | A → `teach` |
-| `teach` | live crane, recording three transports | transport k of 3; before the first deflection, what to do | the third transport → `learn`; B or 45 s without input → `idle` |
+| `idle` | the last agent against the naive driver, without a ghost (§19) | call to action: A; the colour key | A → `teach` |
+| `teach` | live crane, recording three transports | transport k of 3; before the first deflection, what to do | the third transport → `learn`; B or `teach_timeout` (45 s) without input → `idle` |
 | `learn` | nothing; the crane stands where the demonstration ended | the learning in slow motion (§21) | A, or after slow motion and wait → `agent`; B → `idle` |
-| `agent` | ghost replay of the visitor's agent beside the visitor's drive, in a loop | A: again, B: end | A → `teach`; B → `idle` |
+| `agent` | ghost replay of the visitor's agent beside the visitor's drive, then two new targets, in a loop; curves (§20) and model (§21) | A: again, B: end | A → `teach`; B → `idle` |
+
+The table shows the steps as they are now; the first iteration, judged
+below, had the ghost in `idle`, fixed durations and neither curves nor
+model.
 
 It is a session like the others (the `Session` protocol in `live.py`), so
 the pacing loop and the web layer serve it unchanged. Each step hands its
@@ -1546,9 +1590,11 @@ app's browser.
 the maintainer): "looks very good", no
 objections for now.
 
-**Not yet.** The gallery and the naive agent (step 0 of concept §6.1 shows
-both), the style profile, the curves over time, the staff keys of concept
-§6.3, and the guidance as judged by people who have not seen the stand (§5).
+**Not yet.** The gallery (concept §6.1 step 4, and the earlier agents of
+step 0), the style profile, the correction during the drive, the staff
+keys of concept §6.3, and the guidance as judged by people who have not
+seen the stand (§5). The naive driver (§19) and the curves (§20) have come
+since.
 
 **Rejected alternatives.**
 
@@ -1664,8 +1710,9 @@ Both decided with the maintainer on 2026-10-16, as proposed.
 
 **Decision.**
 
-- *Three narrow strips under the scene,* over its full width: speed,
-  swing angle and command, each signed, so that a swing shows as a wave.
+- *Three narrow strips under the scene,* over its full width until §21,
+  since then in the left 58 % of the band, beside the model: speed, swing
+  angle and command, each signed, so that a swing shows as a wave.
   The agent green, the teacher orange and translucent like the ghost
   (§19). The time axis starts at 0 with every transport and covers the
   longer of the two drives, in whole steps of 5 s. Full height of each
@@ -1726,9 +1773,9 @@ Both decided with the maintainer on 2026-10-16, as proposed.
 container, a scripted visitor over the WebSocket into the agent step): the
 curves take a replay's state message from 0.43–0.51 KB to 0.81–0.95 KB
 (600 frames of the shipped showcase, in-process); in the stand, with its
-texts, about 1.2 KB; the loop stayed at 60.03 Hz, none skipped, interval 15.60–17.88 ms (1st–
-99th percentile), max 18.0 ms, 0 overruns; the visitor's run cloned in
-0.052 s. The page drew the curves, the new targets and the headline
+texts, about 1.2 KB; the loop stayed at 60.03 Hz, none skipped,
+interval 15.60–17.88 ms (1st–99th percentile), max 18.0 ms, 0 overruns;
+the visitor's run cloned in 0.052 s. The page drew the curves, the new targets and the headline
 without script errors in the desktop app's browser.
 
 **Judged on the stand** (deployment machine, 2026-10-16, the maintainer):
@@ -1850,9 +1897,12 @@ the desktop app's browser at 2816 × 1584. A first layout (model in 35 %
 of the band, formula at the label size) crowded the diagram so that labels,
 nodes and weights overlapped; hence 42 % and the formula at 1.6vh.
 
-**Not yet.** The judgement on the stand (§5). Learning after every
-transport is kept as an option (§5). A comparison with an earlier agent's
-weights waits for the gallery (concept §5.6).
+**Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-16,
+the maintainer): "passt".
+
+**Not yet.** Learning after every transport is kept as an option (§5). A
+comparison with an earlier agent's weights waits for the gallery (concept
+§5.6).
 
 **Rejected alternatives.**
 
