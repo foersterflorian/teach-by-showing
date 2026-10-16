@@ -60,6 +60,9 @@ class ReplaySession:
     # (§19). It does not hold up the next transport: it rarely comes to rest
     # within the time limit, and the stand would wait a minute for it.
     with_naive: bool = False
+    # Whether the teacher's drive is drawn. The ghost still plays, unseen,
+    # so that the transports keep the teacher's pace (§19).
+    show_ghost: bool = True
     naive: CraneState | None = None
     naive_transport: Transport | None = None
 
@@ -70,10 +73,17 @@ class ReplaySession:
         policy: Policy,
         teacher: str = TEACHER_SELF,
         with_naive: bool = False,
+        show_ghost: bool = True,
     ) -> ReplaySession:
         begins, targets = run.transport_begins()
         session: ReplaySession = cls(
-            run, policy, begins, targets, teacher=teacher, with_naive=with_naive
+            run,
+            policy,
+            begins,
+            targets,
+            teacher=teacher,
+            with_naive=with_naive,
+            show_ghost=show_ghost,
         )
         session._begin(0)
         return session
@@ -202,6 +212,15 @@ class ReplaySession:
 
         assert self.rows is not None
         agent: str = time_of(self._agent_result(), self._agent_frames())
+        if not self.show_ghost and self.naive_transport is not None:
+            # Without the ghost the comparison is learnt against naive; the
+            # naive driver rarely comes to rest, and that is the point.
+            naive: str = (
+                _seconds(int(self.naive_transport.duration_frames()[0]))
+                if self.naive_transport.succeeded[0]
+                else "pendelt noch"
+            )
+            return f"Gelernt {agent} · Ohne Lernen {naive}"
         ghost: str = time_of(self._ghost_result(), len(self.rows))
         return f"Agent {agent} · {self.teacher} {ghost}"
 
@@ -228,8 +247,7 @@ class ReplaySession:
 
     def state_message(self) -> dict[str, Any]:
         assert self.state is not None and self.transport is not None
-        ghost: CraneState = self._ghost_state()
-        return {
+        message: dict[str, Any] = {
             "type": "state",
             "frame": self.frame,
             "x": self.state.x.tolist(),
@@ -242,12 +260,15 @@ class ReplaySession:
             "transports": self.transports_done,
             "driver": "agent",
             "others": self._others(),
-            "ghost": {
+            "banner": self._banner(),
+        }
+        if self.show_ghost:
+            ghost: CraneState = self._ghost_state()
+            message["ghost"] = {
                 "x": ghost.x.tolist(),
                 "theta": ghost.theta.tolist(),
                 "result": self._ghost_result(),
                 "elapsed": self.ghost_played / SIM_HZ,
                 "command": self._ghost_command(),
-            },
-            "banner": self._banner(),
-        }
+            }
+        return message

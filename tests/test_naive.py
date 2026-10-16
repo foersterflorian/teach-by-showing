@@ -101,3 +101,24 @@ def test_only_the_waiting_stand_shows_it_for_now() -> None:
 def test_every_state_names_who_drives_so_the_load_can_be_coloured() -> None:
     assert LiveSession.start(np.random.default_rng(0)).state_message()["driver"] == "human"
     assert replay(with_naive=False).state_message()["driver"] == "agent"
+
+
+def test_the_hidden_ghost_still_sets_the_pace() -> None:
+    """Without the ghost on the screen the transports follow each other as
+    with it, and the banner compares learnt with naive (§19)."""
+    run: Run = taught()
+    policy, _ = clone([run], np.random.default_rng(0))
+    shown: ReplaySession = replay(with_naive=True)
+    hidden: ReplaySession = ReplaySession.start(
+        run, policy, with_naive=True, show_ghost=False
+    )
+    banners: set[str] = set()
+    for _ in range(3 * run.task.limit_frames):
+        shown.tick()
+        hidden.tick()
+        assert hidden.transports_done == shown.transports_done
+        m: dict[str, Any] = hidden.state_message()
+        assert "ghost" not in m
+        if m["banner"] is not None:
+            banners.add(m["banner"])
+    assert banners and all(b.startswith("Gelernt ") and "Ohne Lernen" in b for b in banners)

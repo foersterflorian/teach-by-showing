@@ -158,9 +158,14 @@ class StandSession:
 
     def _idle(self) -> None:
         self.live = None
-        # The naive driver only here, for now (decided 2026-10-16, §19).
+        # Learnt against naive, without the teacher's ghost: three cranes at
+        # once looked busy on the stand (decided 2026-10-16, §19).
         self.replay = ReplaySession.start(
-            self.showcase.run, self.showcase.policy, teacher=TEACHER_EARLIER, with_naive=True
+            self.showcase.run,
+            self.showcase.policy,
+            teacher=TEACHER_EARLIER,
+            with_naive=True,
+            show_ghost=False,
         )
         self._enter(Phase.IDLE)
 
@@ -225,7 +230,7 @@ class StandSession:
                 return {
                     "headline": "Bringen Sie einer KI das Kranfahren bei",
                     "hint": "Grün: ein Agent, der von einem Menschen gelernt hat"
-                    " · Schatten: dessen Fahrt · Rot: ohne Lernen – Vollgas, dann bremsen",
+                    " · Rot: ohne Lernen – Vollgas, dann bremsen",
                     "prompt": "Übernehmen Sie den Kran! Drücken Sie A",
                     **self._replay().texts(),
                 }

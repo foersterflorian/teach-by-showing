@@ -73,7 +73,8 @@ def test_the_stand_waits_with_an_earlier_agent_and_a_call_to_action() -> None:
         s.tick()
     m: dict[str, Any] = s.state_message()
     assert s.phase is Phase.IDLE and m["phase"] == "idle"
-    assert "ghost" in m and m["texts"]["ghost_label"] == "Vorbild"
+    # Learnt against naive, without the earlier teacher's ghost (§19).
+    assert "ghost" not in m and [o["kind"] for o in m["others"]] == ["naive"]
     assert "Drücken Sie A" in m["texts"]["prompt"]
 
 

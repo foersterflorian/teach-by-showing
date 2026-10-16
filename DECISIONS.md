@@ -331,6 +331,9 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   beside the visitor's own agent too, so that the visitor compares the
   agent with the naive driver directly (`with_naive=True` in `_agent()` of
   `stand.py`).
+- **Two girders for learnt against naive** (§19). Kept as an option on
+  2026-10-16, should the agent at the target still hide the naive driver
+  too much with two cranes on one girder.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7). A first set chosen on paper and
@@ -1573,10 +1576,18 @@ frontend colours each load by its driver: a person orange, an agent green
 
 Decided with the maintainer on 2026-10-16:
 
-- *Only while the stand waits,* beside the last agent and its teacher's
-  drive. In the visitor's agent step later perhaps (§5).
+- *Only while the stand waits.* In the visitor's agent step later perhaps
+  (§5).
 - *These colours for now;* to be tuned again on the stand (§5).
-- *Whether three cranes at once are too busy* is judged live.
+- *Learnt against naive, without the ghost* (2026-10-16, after judging the
+  first version on the stand). With the agent, the earlier teacher's ghost
+  and the naive driver on one girder, the maintainer found the picture
+  "somewhat busy". While the stand waits, its message is learnt against
+  not learnt; the ghost tells another story, that the agent drives like its
+  teacher, which belongs to the visitor's own agent step, where the visitor
+  knows the teacher. The ghost still plays unseen (`show_ghost=False`), so
+  that the transports keep the teacher's pace, and the banner compares
+  "Gelernt" with "Ohne Lernen", whose driver mostly "pendelt noch".
 
 **Why.**
 
@@ -1592,17 +1603,18 @@ Decided with the maintainer on 2026-10-16:
 - *Success no longer colours the load green:* green must mean the agent.
   A transport's success still shows in the banner and in the target zone.
 - *The colour key is in the idle hint,* worded on the server: "Grün: ein
-  Agent, der von einem Menschen gelernt hat · Schatten: dessen Fahrt · Rot:
-  ohne Lernen – Vollgas, dann bremsen".
+  Agent, der von einem Menschen gelernt hat · Rot: ohne Lernen – Vollgas,
+  dann bremsen".
 
 **Measured** (deployment machine, 2026-10-16, the shipped showcase,
 `showcase/zuegig.json`, cloned with seed 0, its three transports): when the
 pause after a transport began, the agent's load swung 0.1°, 0.8° and 0.0°;
 the naive driver stood 1 cm from the target with 19.4°, 8.0° and 16.6°,
-and had not come to rest in any. The page showed the three cranes without
-script errors in the desktop app's browser. At the target the agent, drawn
-in front, hides most of the naive driver's trolley and load; whether that
-matters is part of the judgement on the stand.
+and had not come to rest in any. The page showed the cranes without script
+errors in the desktop app's browser, with and without the ghost. At the
+target the agent, drawn in front, hides most of the naive driver's trolley
+and load; whether that still matters with two cranes is judged on the
+stand.
 
 **Rejected alternatives.**
 
@@ -1613,6 +1625,14 @@ matters is part of the judgement on the stand.
   deliberately leave out the trolley's speed (§15), and the naive driver
   needs it for its braking distance.
 - *Waiting for the naive driver before the next transport:* see above.
+- *All three cranes at once while the stand waits:* too busy (above).
+- *Two girders, one above the other,* "Ohne Lernen" above and "Gelernt"
+  below: nothing hidden, the comparison still at once, but each crane
+  smaller and the scene more complex. Kept as the next step if the two
+  cranes still hide each other at the target (§5).
+- *Taking turns,* one transport the agent alone, the next the naive driver:
+  the calmest picture, but the comparison is left to the viewer's memory,
+  and a passer-by may see only one of them.
 
 `tests/test_naive.py` guards this section; `tests/test_crane.py` keeps the
 contrast in the physics.
