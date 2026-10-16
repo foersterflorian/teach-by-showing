@@ -125,3 +125,15 @@ def test_every_file_is_revalidated_so_an_update_is_never_mixed_with_old_files(
     sized by the new scripts grew without bound."""
     r = client.get(path)
     assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
+
+
+def test_a_canvas_never_grows_beyond_the_window() -> None:
+    """§20: under a stale stylesheet a canvas took its size from its own
+    pixels and grew with every frame until Firefox stopped drawing. Bounded
+    by the window, a missing stylesheet misplaces the page but cannot freeze
+    it."""
+    main: str = (STATIC / "main.js").read_text(encoding="utf-8")
+    fit: str = main[main.index("function fitCanvas") :]
+    fit = fit[: fit.index("\n}\n")]
+    assert "Math.min(box.width, window.innerWidth)" in fit
+    assert "Math.min(box.height, window.innerHeight)" in fit

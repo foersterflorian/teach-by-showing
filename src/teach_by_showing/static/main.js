@@ -108,9 +108,17 @@ function showTexts(texts) {
   }
 }
 
+// Sizes a canvas's pixels to its size on the page. Never larger than the
+// window: a canvas whose stylesheet gives it no size takes its size from its
+// pixels, and each frame would enlarge it until the browser stops drawing.
+// That froze the page under a stale stylesheet (DECISIONS.md §20).
 function fitCanvas(target, context) {
   const ratio = window.devicePixelRatio || 1;
-  const rect = target.getBoundingClientRect();
+  const box = target.getBoundingClientRect();
+  const rect = {
+    width: Math.min(box.width, window.innerWidth),
+    height: Math.min(box.height, window.innerHeight),
+  };
   if (
     target.width !== Math.round(rect.width * ratio) ||
     target.height !== Math.round(rect.height * ratio)

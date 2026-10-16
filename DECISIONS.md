@@ -1699,6 +1699,19 @@ Both decided with the maintainer on 2026-10-16, as proposed.
   A kiosk starts with a fresh profile and would not have met it, but a
   staff browser after an update would. With ETags an unchanged file costs
   a 304.
+  It happened once more, to the maintainer, in a normal Firefox that had
+  fetched the stylesheet that morning, before the header existed: the page
+  froze after learning, when the curves appeared, while the server ran on
+  (2026-10-16). Firefox keeps a file without a cache header fresh for a
+  share of its age, so the header helps only after that copy has gone.
+- *No canvas grows beyond the window* (`fitCanvas()` in `main.js`). A
+  canvas without a size from its stylesheet is as large as its pixels;
+  sizing its pixels from that, times the device pixel ratio, enlarges it
+  in every frame. Reproduced in the desktop app's browser with the
+  stylesheet removed and a ratio of 1.36, as on the 4K monitor: the old
+  function reached 45 million pixels in width after 40 frames, the bounded
+  one stays at the window's size times 1.36. A stale or missing stylesheet
+  now misplaces the page but cannot freeze it.
 
 **Measured** (deployment machine, 2026-10-16, server outside the
 container, a scripted visitor over the WebSocket into the agent step): the
