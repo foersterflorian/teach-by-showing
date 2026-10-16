@@ -16,18 +16,23 @@ one monitor each.
 ```bash
 pdm install
 pdm run pytest
-pdm run teach-by-showing        # http://localhost:8081, the stand's steps (§18)
+pdm run teach-by-showing        # http://localhost:8081
 ```
 
-On the stand, A begins a demonstration and B ends it; on the keyboard Enter
-and Backspace stand in for them. `--free` drives the crane without the
-stand's steps.
+The server runs the stand's steps (`DECISIONS.md` §18–§21): while it waits,
+an agent that learnt from a person drives against one that learnt nothing;
+A begins a demonstration of three transports; the agent learns from it,
+shown in slow motion; then it drives the visitor's transports beside their
+recorded drive, and targets it has never seen. From the demonstration on,
+B returns the stand to waiting.
 
-On the stand the crane is driven with the left stick of a USB gamepad; for
-development also with ← → or A / D. `http://localhost:8081/gamepad.html`
-shows what the browser reads from a gamepad, and `tools/measure_ws.py`
-measures the running server from outside — timing, input round trip, and
-the command it applies (`DECISIONS.md` §8, §12):
+The crane is driven with the left stick of a USB gamepad, A and B are its
+buttons; for development the keyboard stands in, ← → or A / D for the
+stick, Enter and Backspace for the buttons. `--free` drives the crane
+without the stand's steps. `http://localhost:8081/gamepad.html` shows what
+the browser reads from a gamepad, and `tools/measure_ws.py` measures the
+running server from outside — timing, input round trip (against `--free`),
+and the command it applies (`DECISIONS.md` §8, §12):
 
 ```bash
 pdm run python tools/measure_ws.py timing --seconds 30
@@ -83,10 +88,15 @@ measured and replayed beside it (`DECISIONS.md` §13–§17):
 
 ```bash
 pdm run teach-by-showing --record vorsichtig      # the next 3 transports, to data/runs/
-pdm run teach-by-showing --params tools/tuning/A.json   # a candidate parameter set
 pdm run python tools/evaluate.py tests/data/*.json      # clone every run, measure the clones
 pdm run teach-by-showing --ghost tests/data/<run>.json  # the clone drives beside its teacher
+pdm run teach-by-showing --showcase tests/data/<run>.json  # the agent shown while the stand waits
 ```
+
+`--params FILE` takes a JSON file with the parameters that differ from the
+defaults: crane, task and input curve (`DECISIONS.md` §14, candidates in
+`tools/tuning/`), and the durations of the stand's steps, for instance
+`{"stand": {"learn_replay": 8, "learn_wait": 30}}` (`DECISIONS.md` §21).
 
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.

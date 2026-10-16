@@ -54,6 +54,8 @@ decisions and must remain understandable without the concept.
   its own branch from `dev`; after the maintainer has reviewed it, it is
   fast-forwarded into `dev`. `dev` is fast-forwarded into `main` only on the
   maintainer's command. Never merge or fast-forward without that review.
+- **Remote.** `origin` is the public GitHub repository
+  `foersterflorian/teach-by-showing`. Push only on the maintainer's command.
 
 ## Commands
 
