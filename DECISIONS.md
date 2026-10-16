@@ -1588,6 +1588,8 @@ Decided with the maintainer on 2026-10-16:
   knows the teacher. The ghost still plays unseen (`show_ghost=False`), so
   that the transports keep the teacher's pace, and the banner compares
   "Gelernt" with "Ohne Lernen", whose driver mostly "pendelt noch".
+  Judged on the stand on 2026-10-16 (deployment machine, Firefox kiosk,
+  the maintainer): "looks good".
 
 **Why.**
 
@@ -1613,8 +1615,8 @@ the naive driver stood 1 cm from the target with 19.4°, 8.0° and 16.6°,
 and had not come to rest in any. The page showed the cranes without script
 errors in the desktop app's browser, with and without the ghost. At the
 target the agent, drawn in front, hides most of the naive driver's trolley
-and load; whether that still matters with two cranes is judged on the
-stand.
+and load; with two cranes the maintainer judged the picture good, so the
+two girders stay an option (§5).
 
 **Rejected alternatives.**
 
