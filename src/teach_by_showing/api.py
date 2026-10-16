@@ -15,14 +15,14 @@ import os
 import secrets
 import signal
 import time
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from importlib import resources
 from pathlib import Path
 from typing import Any, Final
 
 import numpy as np
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -109,6 +109,18 @@ def create_app(make_session: Callable[[], Session], exit_on_crash: bool = False)
                     await loop_task
 
     app: FastAPI = FastAPI(title="teach-by-showing", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def revalidate(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """Every file is checked with the server before it is used. Without
+        this a browser kept an old stylesheet after an update, and the new
+        canvas of §20 grew without bound under it (2026-10-16); with ETags
+        an unchanged file costs a short 304."""
+        response: Response = await call_next(request)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
     @app.get("/healthz")
     async def healthz() -> JSONResponse:
@@ -296,7 +308,7 @@ def main() -> None:
             losses[0],
             losses[-1],
         )
-        return ReplaySession.start(run, policy)
+        return ReplaySession.start(run, policy, show_curves=True)
 
     def make_session() -> LiveSession:
         session: LiveSession = LiveSession.start(

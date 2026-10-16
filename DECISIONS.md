@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go given by the maintainer on 2026-10-09, the linear policy stays the default; week 1: the stand's steps, first iteration (§18), the naive driver (§19)
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go given by the maintainer on 2026-10-09, the linear policy stays the default; week 1: the stand's steps, first iteration (§18), the naive driver (§19), the full ghost replay (§20)
 **Last updated:** 2026-10-16
 
 This file records *why* the code looks the way it does. The code says what it
@@ -331,6 +331,10 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   beside the visitor's own agent too, so that the visitor compares the
   agent with the naive driver directly (`with_naive=True` in `_agent()` of
   `stand.py`).
+- **The curves of the full ghost replay** (§20) — *built on 2026-10-16,
+  not yet judged on the stand*: whether visitors read three curves at all,
+  whether swing alone would say more, and whether 26 % of the scene's
+  height is right on the 4K monitor.
 - **Two girders for learnt against naive** (§19). Kept as an option on
   2026-10-16, should the agent at the target still hide the naive driver
   too much with two cranes on one girder.
@@ -618,6 +622,7 @@ that `crane.py`, `task.py` and `live.py` import nothing from the web stack.
 index.html   layout, German texts, placeholder for the funding notice
 style.css    sizes in viewport units for a 4K monitor read from standing distance
 scene.js     drawScene(): girder, trolley, rope, load, target zone — drawing only
+curves.js    drawCurves(): speed, swing and command over time (§20) — drawing only
 input.js     readCommand(): the gamepad's left stick, or the keyboard, ramped (§12)
 main.js      WebSocket, state buffer, interpolation, readouts, render loop
 ```
@@ -1432,9 +1437,9 @@ and the server's message rate with `tools/measure_ws.py timing`: 60.03 Hz,
 none skipped, interval 15.60–17.71 ms (1st–99th percentile), deployment
 machine, 2026-10-09.
 
-**Not yet.** Speed, swing and command curves over time under the picture
-and new targets without a ghost come with the full ghost replay of week 1
-(concept §13). The stand's steps (§18) now serve this replay for the
+**Since §20** speed, swing and command curves over time run under the
+picture, and the agent drives new targets without a ghost after its
+teacher's. The stand's steps (§18) now serve this replay for the
 visitor's agent and, with an earlier teacher's drive, while the stand
 waits. Since §19 the ghost is drawn in the colour of a person, orange,
 and the agent in green; before, it differed from the agent only by its
@@ -1638,3 +1643,84 @@ two girders stay an option (§5).
 
 `tests/test_naive.py` guards this section; `tests/test_crane.py` keeps the
 contrast in the physics.
+
+---
+
+## 20. The full ghost replay: curves over time, and targets the agent never saw
+
+**Context.** §17 left two things for week 1 (concept §6.2, §13): the
+curves of speed, swing and command over time, agent and teacher on top of
+each other, and new targets beyond the teacher's (concept §6.1 step 3).
+Both decided with the maintainer on 2026-10-16, as proposed.
+
+**Decision.**
+
+- *Three narrow strips under the scene,* over its full width: speed,
+  swing angle and command, each signed, so that a swing shows as a wave.
+  The agent green, the teacher orange and translucent like the ghost
+  (§19). The time axis starts at 0 with every transport and covers the
+  longer of the two drives, in whole steps of 5 s. Full height of each
+  strip: the crane's top speed, 30° of swing, a command of 1; beyond
+  that a curve is clipped.
+- *After the visitor's three transports, two new targets* (`new_targets`
+  of `ReplaySession`, `AGENT_NEW_TARGETS` in `stand.py`), drawn as the
+  live crane draws its next target (§8), from wherever the agent stands.
+  The agent drives them alone: no ghost, only its curve, the headline
+  "Ihr Agent fährt ein neues Ziel – das hat er nie gesehen", the banner
+  only its time. Then the teacher's transports again, in a loop as in
+  §18.
+- *Only in the visitor's agent step* and in `--ghost`. While the stand
+  waits (§19) the screen stays as judged: learnt against naive, no curves.
+
+**Why.**
+
+- *Under the scene, not beside it.* The girder's 10 m set the scale on a
+  landscape monitor, so the scene is limited by its width and leaves
+  height unused: on the 4K monitor, about 450 of 1330 pixels. The curves
+  take 26 % of the scene's height and the crane keeps its size.
+- *The server sends one point per state, the browser collects them.* The
+  state message carries `curves`: the time in the transport, this
+  frame's values of agent and teacher, the axis length, the scales and the
+  German labels. Sending whole curves would repeat seconds of history 60
+  times a second; collecting is display, not logic. A segment number
+  counts every transport begun, so the browser starts afresh even when the
+  loop returns to the first transport, and after a reconnect.
+- *The teacher's curve ends with the recording, the agent's with the
+  transport:* the pause is not part of a drive, and a flat line after the
+  ghost's last row would claim the teacher stood still.
+- *New targets from where the agent stands,* not from a recorded start:
+  no teacher drove them, so there is nothing to start from, and the
+  transport follows on naturally, as on the live crane.
+- *Scales from the server* (crane parameters, §9); `curves.js` holds no
+  wording and no physical constant (tested).
+- *Every file is revalidated* (`Cache-Control: no-cache`). Checking the
+  page, a browser kept the old stylesheet beside the new scripts; without
+  its sizes the new canvas grew with every frame, to 33 million pixels.
+  A kiosk starts with a fresh profile and would not have met it, but a
+  staff browser after an update would. With ETags an unchanged file costs
+  a 304.
+
+**Measured** (deployment machine, 2026-10-16, server outside the
+container, a scripted visitor over the WebSocket into the agent step): the
+curves take a replay's state message from 0.43–0.51 KB to 0.81–0.95 KB
+(600 frames of the shipped showcase, in-process); in the stand, with its
+texts, about 1.2 KB; the loop stayed at 60.03 Hz, none skipped, interval 15.60–17.88 ms (1st–
+99th percentile), max 18.0 ms, 0 overruns; the visitor's run cloned in
+0.052 s. The page drew the curves, the new targets and the headline
+without script errors in the desktop app's browser.
+
+**Not yet.** The judgement on the stand (§5).
+
+**Rejected alternatives.**
+
+- *Curves beside the scene:* the crane would have to shrink.
+- *The whole curve in every message,* or once per transport: 60 copies of
+  growing history per second, or a one-off message the latest-only
+  outbox may overwrite (§8).
+- *New targets with a re-simulated "teacher":* there is no teacher's
+  drive to them, and a made-up one would be a claim the stand cannot back.
+- *Curves while the stand waits:* that screen was judged good without
+  them (§19).
+
+`tests/test_curves.py` guards this section; `tests/test_frontend.py` the
+revalidation of every file.

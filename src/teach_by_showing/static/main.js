@@ -13,6 +13,8 @@ const BUFFER_SECONDS = 2;
 
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d");
+const curvesCanvas = document.getElementById("curves");
+const curvesCtx = curvesCanvas.getContext("2d");
 const el = (id) => document.getElementById(id);
 
 let socket = null;
@@ -33,6 +35,7 @@ function connect() {
     } else if (message.type === "state") {
       message.arrival = performance.now();
       states.push(message);
+      recordCurves(message);
       const keep = BUFFER_SECONDS * config.hz;
       if (states.length > keep) states.splice(0, states.length - keep);
     }
@@ -105,14 +108,17 @@ function showTexts(texts) {
   }
 }
 
-function fitCanvas() {
+function fitCanvas(target, context) {
   const ratio = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  if (canvas.width !== Math.round(rect.width * ratio)) {
-    canvas.width = Math.round(rect.width * ratio);
-    canvas.height = Math.round(rect.height * ratio);
+  const rect = target.getBoundingClientRect();
+  if (
+    target.width !== Math.round(rect.width * ratio) ||
+    target.height !== Math.round(rect.height * ratio)
+  ) {
+    target.width = Math.round(rect.width * ratio);
+    target.height = Math.round(rect.height * ratio);
   }
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
   return rect;
 }
 
@@ -162,8 +168,15 @@ function tick(now) {
   }
   if (config && states.length > 0) {
     const view = viewAt(now);
-    const rect = fitCanvas();
+    // Shown or hidden first, so that the scene is sized to what is left.
+    const newest = states[states.length - 1];
+    curvesCanvas.hidden = !newest.curves;
+    const rect = fitCanvas(canvas, ctx);
     drawScene(ctx, rect.width, rect.height, config, view);
+    if (newest.curves) {
+      const c = fitCanvas(curvesCanvas, curvesCtx);
+      drawCurves(curvesCtx, c.width, c.height, newest.curves);
+    }
     showReadout(view);
   }
   requestAnimationFrame(tick);

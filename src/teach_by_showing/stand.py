@@ -23,13 +23,16 @@ from teach_by_showing.cloning import Policy, clone
 from teach_by_showing.crane import SIM_HZ
 from teach_by_showing.live import LiveSession, RecordingRequest, Settings
 from teach_by_showing.recording import Run
-from teach_by_showing.replay import HEADLINE, ReplaySession
+from teach_by_showing.replay import HEADLINE, HEADLINE_NEW, ReplaySession
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
 # Concept §6.1: three transports are enough to learn from (DECISIONS.md §16)
 # and fit the minute and a half the step may take.
 TEACH_TRANSPORTS: Final[int] = 3
+# After the visitor's own transports, targets the agent has never seen, to
+# show that it learnt a way of driving, not three drives (§20).
+AGENT_NEW_TARGETS: Final[int] = 2
 # A visitor who walks away mid-demonstration leaves the stand to the next.
 # Concept §6.3 asks for 30–60 s; 45 s is the middle, to be judged on the stand.
 TEACH_TIMEOUT_FRAMES: Final[int] = 45 * SIM_HZ
@@ -200,7 +203,13 @@ class StandSession:
 
     def _agent(self) -> None:
         self.live = None
-        self.replay = ReplaySession.start(self.showcase.run, self.showcase.policy)
+        self.replay = ReplaySession.start(
+            self.showcase.run,
+            self.showcase.policy,
+            new_targets=AGENT_NEW_TARGETS,
+            rng=self.rng,
+            show_curves=True,
+        )
         self._enter(Phase.AGENT)
 
     def _replay(self) -> ReplaySession:
@@ -257,7 +266,7 @@ class StandSession:
                 }
             case Phase.AGENT:
                 return {
-                    "headline": HEADLINE,
+                    "headline": HEADLINE_NEW if self._replay().on_new_target else HEADLINE,
                     "hint": "A: noch einmal vormachen · B: beenden",
                     "prompt": None,
                     **self._replay().texts(),

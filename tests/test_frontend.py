@@ -115,3 +115,13 @@ def test_the_ghost_is_drawn_and_its_texts_come_from_the_server() -> None:
     assert "view.ghost.command" in main and "ghost_command_label" in main
     for wording in ("Schatten", "Ihre Fahrt", "Vorbild", "Drücken Sie"):
         assert wording not in main, wording
+
+
+@pytest.mark.parametrize("path", ["/", "/style.css", "/main.js", "/curves.js"])
+def test_every_file_is_revalidated_so_an_update_is_never_mixed_with_old_files(
+    client: TestClient, path: str
+) -> None:
+    """§20: a browser kept an old stylesheet beside new scripts, and a canvas
+    sized by the new scripts grew without bound."""
+    r = client.get(path)
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
