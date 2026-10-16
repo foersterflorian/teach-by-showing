@@ -8,6 +8,18 @@
   --ok: #4ade80;
   --bad: #f87171;
   --accent: #fb923c;
+
+  /* Text sizes, all here so that they can be tuned on the stand. What a
+     visitor is meant to read is at least 2vh, about 43 physical pixels on
+     the 4K monitor (DECISIONS.md §20); judged by the maintainer from
+     standing distance. */
+  --text-headline: 3.2vh;
+  --text-hint: 2.4vh;
+  --text-label: 2vh;
+  --text-value: 3.2vh;
+  /* The curves' labels, drawn on a canvas, which reads this number as vh;
+     unitless for that reason. */
+  --text-curve-vh: 2;
 }
 
 * { box-sizing: border-box; }
@@ -32,13 +44,13 @@ header {
 
 h1 {
   margin: 0;
-  font-size: 2.6vh;
+  font-size: var(--text-headline);
   font-weight: 600;
 }
 
 #hint {
   margin: 0.4vh 0 0;
-  font-size: 1.6vh;
+  font-size: var(--text-hint);
   color: var(--muted);
 }
 
@@ -109,12 +121,12 @@ main {
 
 #readout span {
   display: block;
-  font-size: 1.4vh;
+  font-size: var(--text-label);
   color: var(--muted);
 }
 
 #readout b {
-  font-size: 2.4vh;
+  font-size: var(--text-value);
   font-weight: 600;
 }
 

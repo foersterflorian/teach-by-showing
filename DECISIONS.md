@@ -331,10 +331,11 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   beside the visitor's own agent too, so that the visitor compares the
   agent with the naive driver directly (`with_naive=True` in `_agent()` of
   `stand.py`).
-- **The curves of the full ghost replay** (§20) — *built on 2026-10-16,
-  not yet judged on the stand*: whether visitors read three curves at all,
-  whether swing alone would say more, and whether 26 % of the scene's
-  height is right on the 4K monitor.
+- **Text sizes on the stand** (§20) — *raised on 2026-10-16 after the
+  maintainer found the text hard to read from further away, not yet judged
+  again*. The sizes are variables at the top of `style.css`. Whether
+  visitors who have never seen the stand read the curves at all is open
+  for the tests with them.
 - **Two girders for learnt against naive** (§19). Kept as an option on
   2026-10-16, should the agent at the target still hide the naive driver
   too much with two cranes on one girder.
@@ -1722,7 +1723,34 @@ texts, about 1.2 KB; the loop stayed at 60.03 Hz, none skipped, interval 15.60�
 0.052 s. The page drew the curves, the new targets and the headline
 without script errors in the desktop app's browser.
 
-**Not yet.** The judgement on the stand (§5).
+**Judged on the stand** (deployment machine, 2026-10-16, the maintainer):
+
+- The curves are easy to make out and to read along the drive.
+- All three quantities stay: they show the effect on different variables,
+  and how the agent smooths its teacher's driving.
+- Their height is right; much more would make the crane scene too small.
+- The text was the problem: apart from the headline, it was hard to read
+  from further away.
+
+*Text sizes, therefore,* collected as variables at the top of `style.css`,
+so that they can be tuned on the stand without searching. What a visitor
+is meant to read is at least 2vh, about 43 physical pixels on the 4K
+monitor (1vh is about 22 at a device pixel ratio of 1.36):
+
+| Text | Before | Now |
+|---|---|---|
+| headline | 2.6vh | 3.2vh, to stay above the rest |
+| hint under it | 1.6vh | 2.4vh |
+| labels of the readouts | 1.4vh | 2vh |
+| values of the readouts | 2.4vh | 3.2vh |
+| labels of the curves | a fifth of a strip, about 1.2vh | 2vh, from the window's height |
+
+The metre scale and "Ziel" in the scene grow with the crane, about 2.5vh,
+and stay; the funding notice stays at 1.15vh, as it is not meant for
+standing distance. The scene loses about 3vh of height, which it can
+spare, being limited by its width. Checked in the desktop app's browser at
+2816 × 1584, the 4K monitor's size in CSS pixels; not yet judged on the
+stand (§5).
 
 **Rejected alternatives.**
 

@@ -5,7 +5,7 @@
 "use strict";
 
 const CURVE_KEYS = ["v", "theta", "command"];
-const CURVE_LABEL_W = 0.11; // share of the width for the labels on the left
+const CURVE_LABEL_W = 0.12; // share of the width for the labels on the left
 
 let curveSegment = null;
 let curvePoints = []; // {t, agent, teacher} of the current transport
@@ -32,7 +32,11 @@ function drawCurves(ctx, width, height, curves) {
   const rowH = height / CURVE_KEYS.length;
   const x0 = width * CURVE_LABEL_W;
   const px = (t) => x0 + (t / curves.seconds) * (width - x0);
-  ctx.font = `${Math.round(rowH * 0.2)}px system-ui, sans-serif`;
+  // Sized by the window, like the page's text, not by the strips: from
+  // standing distance a label must be as legible as the rest (§20).
+  const root = getComputedStyle(document.documentElement);
+  const vh = parseFloat(root.getPropertyValue("--text-curve-vh"));
+  ctx.font = `${Math.round((window.innerHeight * vh) / 100)}px system-ui, sans-serif`;
   ctx.textBaseline = "middle";
 
   CURVE_KEYS.forEach((key, row) => {
