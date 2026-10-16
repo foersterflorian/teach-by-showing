@@ -19,6 +19,7 @@ from teach_by_showing.cloning import Policy
 from teach_by_showing.crane import SIM_HZ, CraneState, FloatArray, step
 from teach_by_showing.features import features
 from teach_by_showing.live import PAUSE_FRAMES
+from teach_by_showing.naive import naive_command
 from teach_by_showing.recording import Run
 from teach_by_showing.task import Transport, advance
 
@@ -55,11 +56,25 @@ class ReplaySession:
     # Whose drive the ghost plays, as the readouts and the banner name it:
     # the visitor's own, or an earlier teacher's in the stand's idle step.
     teacher: str = TEACHER_SELF
+    # The naive driver beside them, from the same start to the same target
+    # (§19). It does not hold up the next transport: it rarely comes to rest
+    # within the time limit, and the stand would wait a minute for it.
+    with_naive: bool = False
+    naive: CraneState | None = None
+    naive_transport: Transport | None = None
 
     @classmethod
-    def start(cls, run: Run, policy: Policy, teacher: str = TEACHER_SELF) -> ReplaySession:
+    def start(
+        cls,
+        run: Run,
+        policy: Policy,
+        teacher: str = TEACHER_SELF,
+        with_naive: bool = False,
+    ) -> ReplaySession:
         begins, targets = run.transport_begins()
-        session: ReplaySession = cls(run, policy, begins, targets, teacher=teacher)
+        session: ReplaySession = cls(
+            run, policy, begins, targets, teacher=teacher, with_naive=with_naive
+        )
         session._begin(0)
         return session
 
@@ -71,6 +86,9 @@ class ReplaySession:
         self.transport = Transport.begin(self.targets[k], self.frame)
         self.rows = self.run.transport_rows(index)
         self.ghost_played = 0
+        if self.with_naive:
+            self.naive = CraneState(self.frame, b.x[k], b.v[k], b.theta[k], b.omega[k])
+            self.naive_transport = Transport.begin(self.targets[k], self.frame)
 
     def set_input(self, deflection: float) -> None:
         """Nobody drives along in a replay; input is ignored."""
@@ -116,6 +134,8 @@ class ReplaySession:
         self.frame = self.state.frame
         if running:
             self.transport = advance(self.transport, self.state, crane, task)
+        if self.naive is not None:
+            self._tick_naive()
         if not self._ghost_done:
             self.ghost_played += 1
         if self.pause_left > 0:
@@ -125,6 +145,31 @@ class ReplaySession:
         elif self.transport.done(self.frame, task)[0] and self._ghost_done:
             self.pause_left = PAUSE_FRAMES
             self.transports_done += 1
+
+    def _tick_naive(self) -> None:
+        assert self.naive is not None and self.naive_transport is not None
+        task = self.run.task
+        crane = self.run.crane
+        running: bool = not self.naive_transport.done(self.naive.frame, task)[0]
+        u: FloatArray = naive_command(self.naive, self.naive_transport.target, crane)
+        self.naive = step(self.naive, u, crane)
+        if running:
+            self.naive_transport = advance(self.naive_transport, self.naive, crane, task)
+
+    def _others(self) -> list[dict[str, Any]]:
+        """Further cranes beside the agent, each with its kind, so that the
+        frontend can colour it; for now only the naive driver."""
+        if self.naive is None:
+            return []
+        assert self.naive_transport is not None
+        return [
+            {
+                "kind": "naive",
+                "x": self.naive.x.tolist(),
+                "theta": self.naive.theta.tolist(),
+                "result": "success" if self.naive_transport.succeeded[0] else "running",
+            }
+        ]
 
     def _agent_result(self) -> str:
         assert self.transport is not None
@@ -195,6 +240,8 @@ class ReplaySession:
             "result": self._agent_result(),
             "elapsed": self._agent_frames() / SIM_HZ,
             "transports": self.transports_done,
+            "driver": "agent",
+            "others": self._others(),
             "ghost": {
                 "x": ghost.x.tolist(),
                 "theta": ghost.theta.tolist(),

@@ -274,6 +274,9 @@ class LiveSession:
             "result": result,
             "elapsed": elapsed * DT,
             "transports": self.transports_done,
+            # Who drives the crane in x, so that the frontend colours it
+            # (§19): here the person at the gamepad.
+            "driver": "human",
         }
 
 

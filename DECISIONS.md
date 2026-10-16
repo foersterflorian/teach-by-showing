@@ -1,8 +1,8 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go given by the maintainer on 2026-10-09, the linear policy stays the default; week 1: the stand's steps, first iteration (§18)
-**Last updated:** 2026-10-09
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go given by the maintainer on 2026-10-09, the linear policy stays the default; week 1: the stand's steps, first iteration (§18), the naive driver (§19)
+**Last updated:** 2026-10-16
 
 This file records *why* the code looks the way it does. The code says what it
 does; this says what was considered and rejected, so that changing something
@@ -321,7 +321,16 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **Green on success against green for the agent.** The frontend colours
   the load and the target zone green when a transport succeeds (§9);
   concept §8 reserves green for the learned agent. Once agents drive, that
-  reads as "the agent". Resolved with the agent display.
+  reads as "the agent". *Partly resolved on 2026-10-16 (§19):* the load is
+  coloured by who drives it, a person orange, an agent green, the naive
+  driver red, and no longer turns green on success. The target zone still
+  fills green while the load hangs calm. The maintainer accepted this set
+  for now and wants to tune the colours again later, on the stand.
+- **The naive driver in the visitor's agent step.** Decided 2026-10-16 to
+  show it only while the stand waits (§19). Kept as an option for later:
+  beside the visitor's own agent too, so that the visitor compares the
+  agent with the naive driver directly (`with_naive=True` in `_agent()` of
+  `stand.py`).
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7). A first set chosen on paper and
@@ -1424,8 +1433,9 @@ machine, 2026-10-09.
 and new targets without a ghost come with the full ghost replay of week 1
 (concept §13). The stand's steps (§18) now serve this replay for the
 visitor's agent and, with an earlier teacher's drive, while the stand
-waits. Green for success against green for the agent stays
-open (§5): the ghost differs from the agent only by its transparency.
+waits. Since §19 the ghost is drawn in the colour of a person, orange,
+and the agent in green; before, it differed from the agent only by its
+transparency.
 
 **Rejected alternatives.**
 
@@ -1536,3 +1546,73 @@ both), the style profile, the curves over time, the staff keys of concept
 - *A config message per step.* Lost when the outbox overwrites it (above).
 
 `tests/test_stand.py` guards this section.
+
+---
+
+## 19. The naive driver: full speed, then braking, beside the agents
+
+**Context.** The demonstrator lives on the contrast between a driver that
+nobody taught and one that learnt from a person (§6; concept §6.1 step 0,
+§8). The physics were tuned for it with a scripted naive driver in a test;
+on the screen there was none yet. Week 1's plan (concept §13) asks for it.
+
+**Decision.** `naive.py` holds the naive driver as one function,
+`naive_command()`: full speed towards the target while it is further away
+than the braking distance, then zero, which the drive turns into braking at
+its limit; the swing is ignored. `tests/test_crane.py` now uses the same
+function, so the driver the physics were tuned with is the one on the
+screen.
+
+`ReplaySession` takes `with_naive`: the naive driver starts each transport
+in the state the teacher started it in, with the same target, and drives
+beside the agent and the ghost. The state message carries it in `others`,
+a list of further cranes with their kind, and every state message names who
+drives the crane in `x` (`driver`: `human` or `agent`), so that the
+frontend colours each load by its driver: a person orange, an agent green
+(concept §8), the naive driver red.
+
+Decided with the maintainer on 2026-10-16:
+
+- *Only while the stand waits,* beside the last agent and its teacher's
+  drive. In the visitor's agent step later perhaps (§5).
+- *These colours for now;* to be tuned again on the stand (§5).
+- *Whether three cranes at once are too busy* is judged live.
+
+**Why.**
+
+- *It does not hold up the next transport.* It reaches the target and
+  leaves the load swinging, so it rarely counts as calm within the time
+  limit; if the stand waited for it, every transport would take a minute.
+  The transports follow each other on the agent and the ghost as before
+  (tested: positions and counts are the same with and without it).
+- *Same start, same target as the agent and the ghost,* for the same
+  reason as in §17: a comparison on different transports would show luck.
+- *Simulated, not recorded,* unlike the ghost: there is no recording of a
+  naive driver, and it must move under today's physics.
+- *Success no longer colours the load green:* green must mean the agent.
+  A transport's success still shows in the banner and in the target zone.
+- *The colour key is in the idle hint,* worded on the server: "Grün: ein
+  Agent, der von einem Menschen gelernt hat · Schatten: dessen Fahrt · Rot:
+  ohne Lernen – Vollgas, dann bremsen".
+
+**Measured** (deployment machine, 2026-10-16, the shipped showcase,
+`showcase/zuegig.json`, cloned with seed 0, its three transports): when the
+pause after a transport began, the agent's load swung 0.1°, 0.8° and 0.0°;
+the naive driver stood 1 cm from the target with 19.4°, 8.0° and 16.6°,
+and had not come to rest in any. The page showed the three cranes without
+script errors in the desktop app's browser. At the target the agent, drawn
+in front, hides most of the naive driver's trolley and load; whether that
+matters is part of the judgement on the stand.
+
+**Rejected alternatives.**
+
+- *Simulating the naive driver in one batch with the agent.* The agent's
+  policy acts on features, the naive driver on velocity; one batch would
+  need a combined driver for two cranes and save nothing measurable.
+- *The naive driver as a policy with `act()` on features:* the features
+  deliberately leave out the trolley's speed (§15), and the naive driver
+  needs it for its braking distance.
+- *Waiting for the naive driver before the next transport:* see above.
+
+`tests/test_naive.py` guards this section; `tests/test_crane.py` keeps the
+contrast in the physics.

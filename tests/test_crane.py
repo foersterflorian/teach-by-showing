@@ -167,6 +167,7 @@ def test_naive_driver_leaves_a_visible_swing_a_controller_does_not() -> None:
     """The drive limits are chosen for a visible contrast between a naive and
     a skilled driver (§6). Fine-tuning may move the figures, but not below
     what the comparison set A showed to be too tame."""
+    from teach_by_showing.naive import naive_command
     from teach_by_showing.task import TaskParams, Transport, advance, sample_transports
 
     task: TaskParams = TaskParams()
@@ -174,9 +175,7 @@ def test_naive_driver_leaves_a_visible_swing_a_controller_does_not() -> None:
 
     naive: CraneState = CraneState.at_rest(start)
     for _ in range(25 * SIM_HZ):
-        braking: FloatArray = naive.v**2 / (2 * PARAMS.max_accel)
-        gap: FloatArray = target - naive.x
-        naive = step(naive, np.where(np.abs(gap) > braking + 0.02, np.sign(gap), 0.0), PARAMS)
+        naive = step(naive, naive_command(naive, target, PARAMS), PARAMS)
     residual: FloatArray = np.degrees(swing_amplitude(naive, PARAMS))
     assert np.median(residual) > 10.0
     assert np.mean(residual < math.degrees(task.swing_tolerance)) < 0.1

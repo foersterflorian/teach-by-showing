@@ -6,8 +6,13 @@ const COLORS = {
   girder: "#5a5a5a",
   trolley: "#b0b0b0",
   rope: "#d0d0d0",
-  load: "#fb923c",
-  loadDone: "#4ade80",
+  // The load is coloured by who drives it (DECISIONS.md §19): a person
+  // orange, a learned agent green (concept §8), the naive driver red.
+  // Success shows in the target zone and the banner, not in the load, so
+  // that green always means the agent.
+  human: "#fb923c",
+  agent: "#4ade80",
+  naive: "#f87171",
   target: "#60a5fa",
   calm: "#4ade80",
   label: "#8a8a8a",
@@ -85,15 +90,21 @@ function drawScene(ctx, width, height, config, view) {
   }
 
   // In a replay the teacher's recorded drive runs behind, translucent
-  // (DECISIONS.md §17); then the cranes that drive.
+  // (DECISIONS.md §17); a person drove it. Then the other cranes, such as
+  // the naive driver, and in front the crane the readouts describe.
   if (view.ghost) {
     ctx.globalAlpha = GHOST_ALPHA;
     for (let i = 0; i < view.ghost.x.length; i++) {
-      drawCrane(ctx, L, crane, view.ghost.x[i], view.ghost.theta[i], COLORS.load);
+      drawCrane(ctx, L, crane, view.ghost.x[i], view.ghost.theta[i], COLORS.human);
     }
     ctx.globalAlpha = 1;
   }
-  const load = view.result === "success" ? COLORS.loadDone : COLORS.load;
+  for (const other of view.others ?? []) {
+    for (let i = 0; i < other.x.length; i++) {
+      drawCrane(ctx, L, crane, other.x[i], other.theta[i], COLORS[other.kind]);
+    }
+  }
+  const load = COLORS[view.driver] ?? COLORS.human;
   for (let i = 0; i < view.x.length; i++) {
     drawCrane(ctx, L, crane, view.x[i], view.theta[i], load);
   }

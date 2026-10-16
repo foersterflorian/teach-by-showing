@@ -66,6 +66,15 @@ function viewAt(now) {
         const g = { x: mix(a.ghost.x, b.ghost.x), theta: mix(a.ghost.theta, b.ghost.theta) };
         view.ghost = { ...a.ghost, ...g };
       }
+      // Other cranes are matched by position in the list; a list that
+      // changed between the two states is shown as it was, not blended.
+      if (a.others && b.others && a.others.length === b.others.length) {
+        view.others = a.others.map((o, k) => ({
+          ...o,
+          x: mix(o.x, b.others[k].x),
+          theta: mix(o.theta, b.others[k].theta),
+        }));
+      }
       return view;
     }
   }
