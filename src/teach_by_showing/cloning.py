@@ -1,5 +1,6 @@
-"""Behavioural cloning: a small network learns to map what the crane looks
-like to what the teacher did (DECISIONS.md §15).
+"""Behavioural cloning: a small model learns to map what the crane looks
+like to what the teacher did (DECISIONS.md §15). By default a linear policy;
+a small network (MLP) stays available.
 
 Plain NumPy, full batch, a fixed number of Adam steps and a generator passed
 in, so that the same runs and seed give the same agent bit for bit. Policies

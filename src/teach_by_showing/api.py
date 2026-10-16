@@ -1,6 +1,6 @@
 """Web layer: WebSocket for state and input, health check, static frontend
-(DECISIONS.md §3, §8). Calls into live.py and nothing else; no simulation
-logic lives here.
+(DECISIONS.md §3, §8). Builds a session from the engine (live.py, stand.py,
+replay.py) and calls into it; no simulation logic lives here.
 """
 
 from __future__ import annotations

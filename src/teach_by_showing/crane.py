@@ -136,7 +136,7 @@ def step(state: CraneState, command: FloatArray, params: CraneParams) -> CraneSt
     value per crane, clipped to −1..1. The drive follows it with limited
     acceleration, like a crane on a frequency converter, and slows down early
     enough to stop at the end of the track. This is the safety layer under
-    every driver, human or network: nothing it commands can leave the track
+    every driver, human or agent: nothing it commands can leave the track
     or exceed the drive's limits.
     """
     h: float = DT / SUBSTEPS

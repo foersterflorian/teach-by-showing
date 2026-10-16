@@ -131,14 +131,15 @@ def test_messages_are_json_and_carry_what_the_frontend_needs() -> None:
     )
 
 
-CORE: tuple[str, ...] = (
-    "crane.py",
-    "task.py",
-    "live.py",
-    "recording.py",
-    "features.py",
-    "cloning.py",
-    "replay.py",
+# Every module but the web layer, found rather than listed, so that a new
+# module is guarded from its first commit (stand.py, naive.py and
+# model_view.py were missing from the list until 2026-10-16).
+CORE: tuple[str, ...] = tuple(
+    sorted(
+        path.name
+        for path in (ROOT / "src" / "teach_by_showing").glob("*.py")
+        if path.name not in {"api.py", "__init__.py"}
+    )
 )
 WEB: frozenset[str] = frozenset({"fastapi", "starlette", "uvicorn", "websockets", "httpx"})
 

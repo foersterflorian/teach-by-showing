@@ -1,10 +1,11 @@
 """The live crane on the stand: one crane driven by the visitor's input, one
 transport after another, paced at SIM_HZ (DECISIONS.md §8).
 
-This is the engine between the simulation core and the web layer. It knows
-nothing about HTTP; api.py calls into it and nothing else. Everything here
-counts in frames, never in wall-clock time, so a session is reproducible from
-its seed and its input sequence.
+This is the engine between the simulation core and the web layer, with the
+stand's steps (stand.py) and the replay (replay.py) beside it. It knows
+nothing about HTTP; api.py calls into it. Everything here counts in frames,
+never in wall-clock time, so a session is reproducible from its seed and its
+input sequence.
 """
 
 from __future__ import annotations

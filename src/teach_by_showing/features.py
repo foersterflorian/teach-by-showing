@@ -3,7 +3,7 @@ few numbers of order one (DECISIONS.md §15).
 
 The trolley's speed is deliberately not among them: the drive reaches the
 commanded speed within a fraction of a second, so the speed gives away the
-teacher's last command and a network learns to copy it instead of driving.
+teacher's last command and a model learns to copy it instead of driving.
 
 Batched like the crane: one row per crane. The scales are fixed, not fitted
 to a teacher's data, so that every agent of the day shares one input space.
