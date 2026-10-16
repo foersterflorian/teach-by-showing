@@ -14,7 +14,16 @@
 
 <main>
   <canvas id="scene"></canvas>
-  <canvas id="curves" hidden></canvas>
+  <!-- Below the scene: curves over time on the left, the model on the
+       right (DECISIONS.md §20, §21). -->
+  <div id="band" hidden>
+    <canvas id="curves"></canvas>
+    <div id="model-panel" hidden>
+      <canvas id="model"></canvas>
+      <p id="formula"></p>
+      <p id="explain"></p>
+    </div>
+  </div>
   <p id="banner" hidden></p>
   <p id="prompt" hidden></p>
   <p id="offline">Verbindung zum Kran wird hergestellt …</p>
@@ -33,6 +42,7 @@
 
 <script src="scene.js"></script>
 <script src="curves.js"></script>
+<script src="model.js"></script>
 <script src="input.js"></script>
 <script src="main.js"></script>
 </body>

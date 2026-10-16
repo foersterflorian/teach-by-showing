@@ -17,6 +17,8 @@
   --text-hint: 2.4vh;
   --text-label: 2vh;
   --text-value: 3.2vh;
+  /* The formula under the model: small, for those who ask (§21). */
+  --text-small: 1.6vh;
   /* The curves' labels, drawn on a canvas, which reads this number as vh;
      unitless for that reason. */
   --text-curve-vh: 2;
@@ -70,14 +72,49 @@ main {
 }
 
 /* Below the scene, in the height the girder's width leaves unused on a
-   landscape monitor (DECISIONS.md §20). */
+   landscape monitor (DECISIONS.md §20): the curves over time, and beside
+   them the model (§21). */
+#band {
+  display: flex;
+  gap: 2vw;
+  width: 95%;
+  height: 26%;
+  margin: 0 auto 1vh;
+}
+#band[hidden] { display: none; }
+
 #curves {
   display: block;
-  width: 95%;
-  margin: 0 auto 1vh;
-  height: 26%;
+  flex: 58 1 0;
+  min-width: 0;
+  height: 100%;
 }
-#curves[hidden] { display: none; }
+
+#model-panel {
+  display: flex;
+  flex: 42 1 0;
+  flex-direction: column;
+  min-width: 0;
+}
+#model-panel[hidden] { display: none; }
+
+#model {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+#formula, #explain {
+  margin: 0.3vh 0 0;
+  font-size: var(--text-label);
+  color: var(--muted);
+}
+#formula {
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
 
 #banner, #offline {
   position: absolute;
@@ -108,6 +145,8 @@ main {
   color: var(--accent);
 }
 #prompt[hidden] { display: none; }
+/* Above the band when it is shown, so that it never covers the curves. */
+#band:not([hidden]) ~ #prompt { bottom: 30%; }
 #offline[hidden] { display: none; }
 
 #readout {

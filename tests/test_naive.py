@@ -93,8 +93,7 @@ def test_only_the_waiting_stand_shows_it_for_now() -> None:
     press(s, a=True)
     assert "others" not in s.state_message()
     demonstrate(s)
-    for _ in range(5 * 60):
-        s.tick()
+    press(s, a=True)
     assert s.phase is Phase.AGENT and s.state_message()["others"] == []
 
 

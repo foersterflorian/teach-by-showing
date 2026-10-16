@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go given by the maintainer on 2026-10-09, the linear policy stays the default; week 1: the stand's steps, first iteration (§18), the naive driver (§19), the full ghost replay (§20)
+**Status:** spike day 1 done: core, server, frontend, container, kiosk placement and gamepad (§6–§12); day 2 done: recording (§13), tuning (§14), behavioural cloning with a linear policy (§15), evaluation (§16), ghost replay (§17); Go given by the maintainer on 2026-10-09, the linear policy stays the default; week 1: the stand's steps, first iteration (§18), the naive driver (§19), the full ghost replay (§20), the model display (§21)
 **Last updated:** 2026-10-16
 
 This file records *why* the code looks the way it does. The code says what it
@@ -336,6 +336,14 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   by the maintainer the same day*. The sizes are variables at the top of
   `style.css`. Whether visitors who have never seen the stand read the
   curves at all is open for the tests with them.
+- **The model display** (§21) — *built on 2026-10-16, not yet judged on
+  the stand*: whether the diagram is large enough in its share of the
+  band, whether 5 s of slow motion and 20 s of waiting suit, and whether
+  visitors press A or wait.
+- **Learning after every transport** (§21). Kept as an option on
+  2026-10-16: train after each demonstrated transport, so that the
+  weights move three times during the demonstration. To be weighed once
+  the learning step that waits for A has been judged.
 - **Two girders for learnt against naive** (§19). Kept as an option on
   2026-10-16, should the agent at the target still hide the naive driver
   too much with two cranes on one girder.
@@ -1475,7 +1483,7 @@ out the guidance together, iteration by iteration; this is the first.
 |---|---|---|---|
 | `idle` | ghost replay of the last agent beside its teacher's drive | call to action: A | A → `teach` |
 | `teach` | live crane, recording three transports | transport k of 3; before the first deflection, what to do | the third transport → `learn`; B or 45 s without input → `idle` |
-| `learn` | nothing; the crane stands where the demonstration ended | "Ihr Agent lernt …" | after 2 s → `agent` |
+| `learn` | nothing; the crane stands where the demonstration ended | the learning in slow motion (§21) | A, or after slow motion and wait → `agent`; B → `idle` |
 | `agent` | ghost replay of the visitor's agent beside the visitor's drive, in a loop | A: again, B: end | A → `teach`; B → `idle` |
 
 It is a session like the others (the `Session` protocol in `live.py`), so
@@ -1765,3 +1773,95 @@ by the maintainer (2026-10-16): "Schrift passt".
 
 `tests/test_curves.py` guards this section; `tests/test_frontend.py` the
 revalidation of every file.
+
+---
+
+## 21. The model display: one neuron, its learning in slow motion
+
+**Context.** Concept §6.2 asks to show the model itself, the bridge to
+feature-viz: there one sees parts of a network, here the whole model. With
+the linear policy (§15) the whole model is one neuron with three weights
+and an offset. Training takes 0.05 s (§18), far too short to see.
+Worked out with the maintainer on 2026-10-16.
+
+**What the weights show.** Cloned from the maintainer's two teaching
+drives (deployment machine, seeds 0 and 1 alike):
+
+| Drive | Distance | Angle | Angular speed | Offset | Far from the target |
+|---|---|---|---|---|---|
+| cautious | 0.30 | 0.00 | −0.02 | +0.01 | tanh(0.3), 29 % of top speed |
+| quick | 1.80 | 0.10 | −0.13 | −0.01 | tanh(1.8), 95 % of top speed |
+
+The style lies almost wholly in the distance weight; the swing weights
+are small for both drives. The cautious drive's weights settle within
+about 50 of the 2000 epochs; the quick drive's distance weight grows from
+0.07 to 1.8 over about 800.
+
+**Decision.**
+
+- *A neuron diagram with a small formula under it.* Three inputs with
+  their names, one neuron, the command as output. A connection's
+  thickness is the weight's size, its colour the sign, its number beside
+  the input. Under it the formula with German decimals and a fixed line
+  of explanation: "Je größer das Gewicht beim Abstand, desto zügiger fährt
+  der Agent aufs Ziel zu." Only the quantities are named, no reading of a
+  style into them (decided with the maintainer); the offset is in the
+  formula, not in the diagram.
+- *In the learning step and while the visitor's agent drives,* at the same
+  place: the right part of the band under the scene (curves 58 %, model
+  42 %). While the agent drives, the inputs light up with their present
+  values and the output with the command. The learning step alone is too
+  short to take in, said the maintainer; the diagram stays during the
+  drive.
+- *The learning in slow motion, then a wait for A.* `model_view.learn()`
+  keeps the policy at about 40 epochs spaced evenly on a logarithmic
+  scale (`train()`'s new `on_epoch`); the learning step plays them back
+  over `learn_replay` seconds while the loss falls where the curves are
+  otherwise drawn, labelled "Abweichung von Ihrer Fahrt" over
+  "Lernschritte". The hint says how long the real training took: "Gelernt
+  in 0,05 s – hier in Zeitlupe". Then the finished model stays, with the
+  prompt "A: Ihr Agent fährt los", until A or for `learn_wait` seconds;
+  B ends. So a visitor takes as long as they want, and the stand never
+  waits for ever.
+- *The durations are settings* (`StandParams`, the section `stand` of the
+  settings file read by `--params`): `teach_timeout` 45 s, `learn_replay`
+  5 s, `learn_wait` 20 s, to be tuned on the stand.
+
+**Why.**
+
+- *Logarithmic snapshots:* on a linear scale the cautious drive's weights
+  would jump into place in the first frame of the slow motion and stand
+  still for the rest.
+- *Only for a linear policy.* A network's weights do not fit this diagram;
+  for one, the display is left out rather than drawn wrong.
+- *Weights, labels, formula and number style from the server* (§9):
+  `model.js` only draws; it holds no wording and no physical constant
+  (tested). The loss arrives as positions in 0..1.
+- *The prompt moves above the band* when the band is shown, so that it
+  never covers the curves or the model.
+- *Same agent as before:* `learn()` calls `clone()`; the snapshots change
+  nothing about the result (tested).
+
+**Measured** (deployment machine, 2026-10-16, server outside the
+container, a scripted visitor over the WebSocket into the learning step):
+a state message in the learning step is about 1.6 KB, the loop counted
+0 overruns. The learning and the agent step drew without script errors in
+the desktop app's browser at 2816 × 1584. A first layout (model in 35 %
+of the band, formula at the label size) crowded the diagram so that labels,
+nodes and weights overlapped; hence 42 % and the formula at 1.6vh.
+
+**Not yet.** The judgement on the stand (§5). Learning after every
+transport is kept as an option (§5). A comparison with an earlier agent's
+weights waits for the gallery (concept §5.6).
+
+**Rejected alternatives.**
+
+- *Dials,* one per weight: graphic, but less recognisable as the model of
+  an AI than a neuron with its connections.
+- *The formula alone:* exact, but for experts.
+- *A longer fixed learning step without a button:* too short for some, too
+  long for others; the visitor decides now.
+- *Naming the distance weight "Zielstrebigkeit":* decided against; the
+  explanation under the formula says what a large weight does.
+
+`tests/test_model.py` guards this section.

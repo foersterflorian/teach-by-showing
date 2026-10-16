@@ -86,6 +86,27 @@ class InputParams:
 
 
 @dataclass(frozen=True, slots=True)
+class StandParams:
+    """How long the stand's steps last (stand.py, DECISIONS.md §18, §21).
+    Here beside the other parameters, so that one settings file tunes the
+    stand without editing code; in seconds, as they are judged by eye."""
+
+    # A visitor who walks away mid-demonstration leaves the stand to the
+    # next. Concept §6.3 asks for 30–60 s.
+    teach_timeout: float = 45.0
+    # The learning, shown in slow motion; it takes 0.1 s at most (§15).
+    learn_replay: float = 5.0
+    # After the slow motion the model stays until A, or this long.
+    learn_wait: float = 20.0
+
+    def frames(self, seconds: float) -> int:
+        return round(seconds * SIM_HZ)
+
+    def to_dict(self) -> dict[str, float]:
+        return asdict(self)
+
+
+@dataclass(frozen=True, slots=True)
 class Settings:
     """Crane, task and input parameters as one file, so that candidate sets
     can be compared on the gamepad without editing code (DECISIONS.md §14).
@@ -94,10 +115,11 @@ class Settings:
     crane: CraneParams
     task: TaskParams
     input: InputParams
+    stand: StandParams = StandParams()
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
-        unknown: set[str] = set(data) - {"note", "crane", "task", "input"}
+        unknown: set[str] = set(data) - {"note", "crane", "task", "input", "stand"}
         if unknown:
             raise ValueError(f"unknown settings {sorted(unknown)}")
         # replace() refuses unknown field names, so a typo fails loudly.
@@ -105,6 +127,7 @@ class Settings:
             replace(CraneParams(), **data.get("crane", {})),
             replace(TaskParams(), **data.get("task", {})),
             replace(InputParams(), **data.get("input", {})),
+            replace(StandParams(), **data.get("stand", {})),
         )
 
 

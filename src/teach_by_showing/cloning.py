@@ -9,7 +9,7 @@ a single agent.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Final, Protocol, Self
 
@@ -184,16 +184,22 @@ def train[P: Policy](
     u: FloatArray,
     epochs: int = 2000,
     lr: float = 0.01,
+    on_epoch: Callable[[int, P], None] | None = None,
 ) -> tuple[P, FloatArray]:
     """Adam on the full batch for a fixed number of epochs, starting from
     `policy` (fresh from MLP.initial(rng) or LinearPolicy.initial(rng)).
-    Returns the trained policy and the loss before each epoch."""
+    Returns the trained policy and the loss before each epoch. `on_epoch`
+    sees the policy before each epoch and, with `epochs`, the trained one:
+    the stand keeps a few of them to show the learning in slow motion
+    (DECISIONS.md §21)."""
     beta1, beta2, eps = 0.9, 0.999, 1e-8
     params: list[FloatArray] = policy.params()
     m: list[FloatArray] = [np.zeros_like(p) for p in params]
     v: list[FloatArray] = [np.zeros_like(p) for p in params]
     losses: FloatArray = np.empty(epochs)
     for epoch in range(epochs):
+        if on_epoch is not None:
+            on_epoch(epoch, policy)
         loss, grads = policy.loss_and_grads(f, u)
         losses[epoch] = loss
         t: int = epoch + 1
@@ -206,6 +212,8 @@ def train[P: Policy](
             new.append(p - lr * m_hat / (np.sqrt(v_hat) + eps))
         params = new
         policy = policy.with_params(params)
+    if on_epoch is not None:
+        on_epoch(epochs, policy)
     return policy, losses
 
 
@@ -245,12 +253,13 @@ def clone(
     rng: np.random.Generator,
     kind: str = DEFAULT_KIND,
     mirror: bool = DEFAULT_MIRROR,
+    on_epoch: Callable[[int, Policy], None] | None = None,
 ) -> tuple[MLP | LinearPolicy, FloatArray]:
     """An agent from recorded drives, the way the stand makes one; returns
     it with its loss curve."""
     f, u = dataset(runs, mirror=mirror)
     if kind == "linear":
-        return train(LinearPolicy.initial(rng), f, u)
+        return train(LinearPolicy.initial(rng), f, u, on_epoch=on_epoch)
     if kind == "mlp":
-        return train(MLP.initial(rng), f, u)
+        return train(MLP.initial(rng), f, u, on_epoch=on_epoch)
     raise ValueError(f"unknown policy kind {kind!r}")

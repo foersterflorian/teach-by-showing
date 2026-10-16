@@ -16,8 +16,6 @@ from teach_by_showing.crane import CraneParams
 from teach_by_showing.live import InputParams, Settings
 from teach_by_showing.recording import Run, load_run
 from teach_by_showing.stand import (
-    LEARN_FRAMES,
-    TEACH_TIMEOUT_FRAMES,
     TEACH_TRANSPORTS,
     Phase,
     Showcase,
@@ -28,6 +26,10 @@ from tests.teachers import quick, teach
 
 # Linear, so that the scripted command is the command applied, as in teachers.py.
 SETTINGS: Settings = Settings.from_dict({"input": {"expo": 0.0}})
+STAND = SETTINGS.stand
+TEACH_TIMEOUT: int = STAND.frames(STAND.teach_timeout)
+# The whole learning step without a button: slow motion, then the wait.
+LEARN_ALL: int = STAND.frames(STAND.learn_replay + STAND.learn_wait)
 
 
 @cache
@@ -125,8 +127,8 @@ def test_the_whole_way_from_demonstration_to_the_visitors_agent() -> None:
     assert len(recorded) == 1 and recorded[0].transports == TEACH_TRANSPORTS
     assert recorded[0].label == "besuch"
     m: dict[str, Any] = s.state_message()
-    assert m["banner"] is None and m["texts"]["prompt"] is not None
-    for _ in range(LEARN_FRAMES):
+    assert m["banner"] is None and "model" in m
+    for _ in range(LEARN_ALL):
         s.tick()
     assert s.phase is Phase.AGENT
     m = s.state_message()
@@ -138,7 +140,7 @@ def test_the_visitors_agent_drives_until_a_button_decides() -> None:
     s: StandSession = stand()
     press(s, a=True)
     demonstrate(s)
-    for _ in range(LEARN_FRAMES + 2 * TEACH_TIMEOUT_FRAMES):
+    for _ in range(LEARN_ALL + 2 * TEACH_TIMEOUT):
         s.tick()
     assert s.phase is Phase.AGENT
     press(s, b=True)
@@ -152,8 +154,8 @@ def test_a_in_the_agents_step_begins_a_new_demonstration() -> None:
     s: StandSession = stand()
     press(s, a=True)
     demonstrate(s)
-    for _ in range(LEARN_FRAMES):
-        s.tick()
+    press(s, a=True)
+    assert s.phase is Phase.AGENT
     press(s, a=True)
     assert s.phase is Phase.TEACH
 
@@ -173,7 +175,7 @@ def test_b_aborts_the_demonstration_and_nothing_is_recorded() -> None:
 def test_a_visitor_who_walks_away_leaves_the_stand_waiting() -> None:
     s: StandSession = stand()
     press(s, a=True)
-    for _ in range(TEACH_TIMEOUT_FRAMES):
+    for _ in range(TEACH_TIMEOUT):
         s.set_input(0.0)
         s.tick()
     assert s.phase is Phase.TEACH

@@ -15,6 +15,8 @@ const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d");
 const curvesCanvas = document.getElementById("curves");
 const curvesCtx = curvesCanvas.getContext("2d");
+const modelCanvas = document.getElementById("model");
+const modelCtx = modelCanvas.getContext("2d");
 const el = (id) => document.getElementById(id);
 
 let socket = null;
@@ -95,6 +97,8 @@ const TEXT_IDS = {
   ghost_label: "ghost-label",
   command_label: "command-label",
   ghost_command_label: "ghost-command-label",
+  formula: "formula",
+  explain: "explain",
 };
 
 function showTexts(texts) {
@@ -128,6 +132,21 @@ function fitCanvas(target, context) {
   }
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   return rect;
+}
+
+// The band under the scene: the curves while an agent drives, the falling
+// loss while it learns, and the model beside them (§20, §21).
+function showBand(newest) {
+  if (el("band").hidden) return;
+  const c = fitCanvas(curvesCanvas, curvesCtx);
+  if (newest.curves) drawCurves(curvesCtx, c.width, c.height, newest.curves);
+  else if (newest.model && newest.model.loss) drawLoss(curvesCtx, c.width, c.height, newest.model.loss);
+  else curvesCtx.clearRect(0, 0, c.width, c.height);
+  if (newest.model) {
+    const m = fitCanvas(modelCanvas, modelCtx);
+    drawModel(modelCtx, m.width, m.height, newest.model);
+    showTexts({ formula: newest.model.formula, explain: newest.model.explain });
+  }
 }
 
 // A command of −1..1 as a bar from the centre: left negative, right positive.
@@ -178,13 +197,11 @@ function tick(now) {
     const view = viewAt(now);
     // Shown or hidden first, so that the scene is sized to what is left.
     const newest = states[states.length - 1];
-    curvesCanvas.hidden = !newest.curves;
+    el("band").hidden = !newest.curves && !newest.model;
+    el("model-panel").hidden = !newest.model;
     const rect = fitCanvas(canvas, ctx);
     drawScene(ctx, rect.width, rect.height, config, view);
-    if (newest.curves) {
-      const c = fitCanvas(curvesCanvas, curvesCtx);
-      drawCurves(curvesCtx, c.width, c.height, newest.curves);
-    }
+    showBand(newest);
     showReadout(view);
   }
   requestAnimationFrame(tick);

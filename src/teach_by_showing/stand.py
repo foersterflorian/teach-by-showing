@@ -11,7 +11,6 @@ nothing about HTTP and counts in frames.
 from __future__ import annotations
 
 import logging
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -19,9 +18,11 @@ from typing import Any, Final
 
 import numpy as np
 
-from teach_by_showing.cloning import Policy, clone
+from teach_by_showing.cloning import LinearPolicy, Policy
 from teach_by_showing.crane import SIM_HZ
-from teach_by_showing.live import LiveSession, RecordingRequest, Settings
+from teach_by_showing.features import features
+from teach_by_showing.live import LiveSession, RecordingRequest, Settings, StandParams
+from teach_by_showing.model_view import LearningTrace, learn, model_message
 from teach_by_showing.recording import Run
 from teach_by_showing.replay import HEADLINE, HEADLINE_NEW, ReplaySession
 
@@ -33,11 +34,8 @@ TEACH_TRANSPORTS: Final[int] = 3
 # After the visitor's own transports, targets the agent has never seen, to
 # show that it learnt a way of driving, not three drives (§20).
 AGENT_NEW_TARGETS: Final[int] = 2
-# A visitor who walks away mid-demonstration leaves the stand to the next.
-# Concept §6.3 asks for 30–60 s; 45 s is the middle, to be judged on the stand.
-TEACH_TIMEOUT_FRAMES: Final[int] = 45 * SIM_HZ
-# Training takes 0.1 s at most (§15); the step is held long enough to read.
-LEARN_FRAMES: Final[int] = 2 * SIM_HZ
+# How long the steps last is in settings.stand (StandParams, live.py), so
+# that it is tuned on the stand without editing code (§21).
 # What a visitor's recording is called. Never a name (concept §6.3).
 RUN_LABEL: Final[str] = "besuch"
 # Whose drive the ghost plays while the stand waits.
@@ -90,6 +88,9 @@ class StandSession:
     held_b: bool = False
     pressed_a: bool = False
     pressed_b: bool = False
+    # The visitor's learning as recorded for the slow motion (§21); None
+    # until a visitor has taught an agent, or for a network.
+    trace: LearningTrace | None = None
 
     @classmethod
     def start(
@@ -137,7 +138,8 @@ class StandSession:
                 else:
                     self._replay().tick()
             case Phase.TEACH:
-                if b or self.frame - self.last_activity > TEACH_TIMEOUT_FRAMES:
+                timeout: int = self._params.frames(self._params.teach_timeout)
+                if b or self.frame - self.last_activity > timeout:
                     self._idle()
                     return
                 assert self.live is not None
@@ -145,7 +147,11 @@ class StandSession:
                 if self.recorded is not None:
                     self._learn(self.recorded)
             case Phase.LEARN:
-                if self.frame - self.phase_frame >= LEARN_FRAMES:
+                # The slow motion, then the model stays until A; B ends.
+                p: StandParams = self._params
+                if b:
+                    self._idle()
+                elif a or self._in_phase() >= p.frames(p.learn_replay + p.learn_wait):
                     self._agent()
             case Phase.AGENT:
                 if a:
@@ -154,6 +160,14 @@ class StandSession:
                     self._idle()
                 else:
                     self._replay().tick()
+
+    @property
+    def _params(self) -> StandParams:
+        return self.settings.stand
+
+    def _in_phase(self) -> int:
+        """Frames since the current step began."""
+        return self.frame - self.phase_frame
 
     def _enter(self, phase: Phase) -> None:
         self.phase = phase
@@ -190,14 +204,15 @@ class StandSession:
     def _learn(self, run: Run) -> None:
         # Inside the loop, not in a worker: the linear policy trains in
         # 0.1 s at most, while the crane stands still (DECISIONS.md §18).
-        begin: float = time.perf_counter()
-        policy, losses = clone([run], self.rng)
-        log.info(
-            "cloned a visitor's run in %.3f s, loss %.4f -> %.4f",
-            time.perf_counter() - begin,
-            losses[0],
-            losses[-1],
-        )
+        policy, trace = learn([run], self.rng)
+        self.trace = trace
+        if trace is not None:
+            log.info(
+                "cloned a visitor's run in %.3f s, loss %.4f -> %.4f",
+                trace.seconds,
+                trace.losses[0],
+                trace.losses[-1],
+            )
         self.showcase = Showcase(run, policy)
         self._enter(Phase.LEARN)
 
@@ -215,6 +230,30 @@ class StandSession:
     def _replay(self) -> ReplaySession:
         assert self.replay is not None
         return self.replay
+
+    def _snapshot(self) -> int:
+        """Which snapshot of the learning the slow motion has reached."""
+        assert self.trace is not None
+        replay: int = max(1, self._params.frames(self._params.learn_replay))
+        progress: float = min(1.0, self._in_phase() / replay)
+        return round(progress * (self.trace.points - 1))
+
+    def _model(self) -> dict[str, Any] | None:
+        """The model display (§21): learning in slow motion while the agent
+        learns, at work while it drives; only for the visitor's own agent,
+        and only for a linear policy."""
+        policy: Policy = self.showcase.policy
+        if not isinstance(policy, LinearPolicy) or self.trace is None:
+            return None
+        if self.phase is Phase.LEARN:
+            k: int = self._snapshot()
+            return model_message(self.trace.policies[k], trace=self.trace, shown=k)
+        if self.phase is Phase.AGENT:
+            r: ReplaySession = self._replay()
+            assert r.state is not None and r.transport is not None
+            inputs = features(r.state, r.transport.target, r.run.crane)[0]
+            return model_message(policy, inputs=inputs, output=r.command)
+        return None
 
     def _transports_taught(self) -> int:
         """Finished transports of the demonstration under way."""
@@ -258,10 +297,16 @@ class StandSession:
                     **live_labels,
                 }
             case Phase.LEARN:
+                seconds: str = (
+                    f"{self.trace.seconds:.2f}".replace(".", ",") if self.trace else "0,1"
+                )
+                replaying: bool = self._in_phase() < self._params.frames(
+                    self._params.learn_replay
+                )
                 return {
                     "headline": "Ihr Agent lernt aus Ihrer Fahrt",
-                    "hint": "",
-                    "prompt": "Ihr Agent lernt …",
+                    "hint": f"Gelernt in {seconds} s – hier in Zeitlupe · B: beenden",
+                    "prompt": None if replaying else "A: Ihr Agent fährt los",
                     **live_labels,
                 }
             case Phase.AGENT:
@@ -296,6 +341,9 @@ class StandSession:
         message["frame"] = self.frame
         message["phase"] = str(self.phase)
         message["texts"] = self._texts()
+        model: dict[str, Any] | None = self._model()
+        if model is not None:
+            message["model"] = model
         if self.phase is Phase.LEARN:
             # The last transport's "Ziel erreicht" would cover the prompt.
             message["banner"] = None

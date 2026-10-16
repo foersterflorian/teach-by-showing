@@ -13,7 +13,7 @@ from teach_by_showing.cloning import clone
 from teach_by_showing.live import PAUSE_FRAMES
 from teach_by_showing.recording import Run
 from teach_by_showing.replay import HEADLINE, HEADLINE_NEW, ReplaySession
-from teach_by_showing.stand import AGENT_NEW_TARGETS, LEARN_FRAMES, Phase
+from teach_by_showing.stand import AGENT_NEW_TARGETS, Phase
 from tests.support import ROOT
 from tests.teachers import quick, teach
 from tests.test_stand import demonstrate, press, stand
@@ -144,8 +144,7 @@ def test_the_visitors_agent_step_shows_curves_and_new_targets_but_the_idle_step_
     assert "curves" not in s.state_message()
     press(s, a=True)
     demonstrate(s)
-    for _ in range(LEARN_FRAMES):
-        s.tick()
+    press(s, a=True)
     assert s.phase is Phase.AGENT
     replay: ReplaySession | None = s.replay
     assert replay is not None
