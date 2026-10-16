@@ -332,10 +332,10 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   agent with the naive driver directly (`with_naive=True` in `_agent()` of
   `stand.py`).
 - **Text sizes on the stand** (§20) — *raised on 2026-10-16 after the
-  maintainer found the text hard to read from further away, not yet judged
-  again*. The sizes are variables at the top of `style.css`. Whether
-  visitors who have never seen the stand read the curves at all is open
-  for the tests with them.
+  maintainer found the text hard to read from further away; judged right
+  by the maintainer the same day*. The sizes are variables at the top of
+  `style.css`. Whether visitors who have never seen the stand read the
+  curves at all is open for the tests with them.
 - **Two girders for learnt against naive** (§19). Kept as an option on
   2026-10-16, should the agent at the target still hide the naive driver
   too much with two cranes on one girder.
@@ -740,8 +740,8 @@ stand's backend, and the host's browser opens `http://localhost:8081`.
 | `--network none` | healthy after about 7 s, page and logos served |
 
 **Not yet done.** The `org.opencontainers.image.source` label names the
-intended GitHub location; the remote does not exist yet (concept §15 item
-15). No archive with `docker save` yet; that follows once a version is worth
+GitHub location; the repository exists there since 2026-10-16 (public,
+`main` and `dev`; concept §15 item 15). No archive with `docker save` yet; that follows once a version is worth
 keeping, as in feature-viz.
 
 **Rejected alternatives.**
@@ -1749,8 +1749,8 @@ The metre scale and "Ziel" in the scene grow with the crane, about 2.5vh,
 and stay; the funding notice stays at 1.15vh, as it is not meant for
 standing distance. The scene loses about 3vh of height, which it can
 spare, being limited by its width. Checked in the desktop app's browser at
-2816 × 1584, the 4K monitor's size in CSS pixels; not yet judged on the
-stand (§5).
+2816 × 1584, the 4K monitor's size in CSS pixels, then judged on the stand
+by the maintainer (2026-10-16): "Schrift passt".
 
 **Rejected alternatives.**
 
