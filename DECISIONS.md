@@ -15,7 +15,7 @@ alternatives are the useful part.
 Scope, audience and priorities come from the concept (German, internal, not
 part of this repository), kept in `../Konzept/` as a separate local Git
 repository; the highest document version is authoritative. References of the
-form "concept §n" point to its version V04; its section numbers have not
+form "concept §n" point to its version V05; its section numbers have not
 changed since V02. This file must remain
 understandable without it.
 
