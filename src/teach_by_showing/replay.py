@@ -74,7 +74,7 @@ def _time_cell(summary: ProfileSummary) -> str:
     return time if missed == 0 else f"{time} · {missed}× nicht erreicht"
 
 
-def _profile_column(summary: ProfileSummary) -> list[str]:
+def _profile_cells(summary: ProfileSummary) -> list[str]:
     return [
         _time_cell(summary),
         _number(summary.max_swing_deg, "°"),
@@ -83,7 +83,7 @@ def _profile_column(summary: ProfileSummary) -> list[str]:
     ]
 
 
-PROFILE_ROWS: Final[tuple[str, ...]] = (
+PROFILE_FIGURES: Final[tuple[str, ...]] = (
     "Fahrzeit",
     "Größtes Pendeln",
     "Ruhe am Ziel (Restpendeln)",
@@ -304,17 +304,13 @@ class ReplaySession:
             if both > 0
             else PROFILE_TITLE
         )
+        # Laid across, one row per driver, to fit beside the readouts.
         return {
             "title": title,
-            "columns": ["", self.teacher, AGENT_SELF],
+            "columns": ["", *PROFILE_FIGURES],
             "rows": [
-                [label, t, a]
-                for label, t, a in zip(
-                    PROFILE_ROWS,
-                    _profile_column(teacher),
-                    _profile_column(agent),
-                    strict=True,
-                )
+                [self.teacher, *_profile_cells(teacher)],
+                [AGENT_SELF, *_profile_cells(agent)],
             ],
             "note": PROFILE_NOTE,
         }

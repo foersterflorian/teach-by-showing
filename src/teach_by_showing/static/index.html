@@ -14,15 +14,10 @@
 
 <main>
   <canvas id="scene"></canvas>
-  <!-- Below the scene: curves over time on the left, the style profile in
-       the middle, the model on the right (DECISIONS.md §20, §22, §21). -->
+  <!-- Below the scene: curves over time on the left, the model on the
+       right (DECISIONS.md §20, §21). -->
   <div id="band" hidden>
     <canvas id="curves"></canvas>
-    <div id="profile-panel" hidden>
-      <p id="profile-title"></p>
-      <table id="profile"></table>
-      <p id="profile-note"></p>
-    </div>
     <div id="model-panel" hidden>
       <canvas id="model"></canvas>
       <p id="formula"></p>
@@ -40,6 +35,15 @@
   <div><span id="command-label">Stellgröße</span><b><span id="command-bar"><i id="command-fill"></i></span></b></div>
   <div id="ghost-command-readout" hidden><span id="ghost-command-label">Stellgröße</span><b><span id="ghost-command-bar"><i id="ghost-command-fill"></i></span></b></div>
   <div><span>Transporte</span><b id="transports">0</b></div>
+  <!-- The style profile, to the right of the readouts: in the band it
+       crowded the curves and the model (DECISIONS.md §22). -->
+  <div id="profile-panel" hidden>
+    <div id="profile-caption">
+      <p id="profile-title"></p>
+      <p id="profile-note"></p>
+    </div>
+    <table id="profile"></table>
+  </div>
 </section>
 
 <!-- Filled in by the server, verbatim from funding.py (DECISIONS.md §2). -->

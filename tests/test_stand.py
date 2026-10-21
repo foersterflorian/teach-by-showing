@@ -134,7 +134,7 @@ def test_the_whole_way_from_demonstration_to_the_visitors_agent() -> None:
     m = s.state_message()
     assert m["texts"]["ghost_label"] == "Ihre Fahrt" and m["texts"]["prompt"] is None
     # The style profile beside the visitor's agent only (§22).
-    assert m["profile"]["columns"] == ["", "Ihre Fahrt", "Ihr Agent"]
+    assert [row[0] for row in m["profile"]["rows"]] == ["Ihre Fahrt", "Ihr Agent"]
     assert s.showcase.run is recorded[0]
 
 

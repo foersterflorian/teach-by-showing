@@ -220,7 +220,7 @@ function tick(now) {
     const view = viewAt(now);
     // Shown or hidden first, so that the scene is sized to what is left.
     const newest = states[states.length - 1];
-    el("band").hidden = !newest.curves && !newest.model && !newest.profile;
+    el("band").hidden = !newest.curves && !newest.model;
     el("model-panel").hidden = !newest.model;
     el("profile-panel").hidden = !newest.profile;
     if (newest.profile) showProfile(newest.profile);

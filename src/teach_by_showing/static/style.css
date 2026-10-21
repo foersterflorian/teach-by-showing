@@ -72,8 +72,8 @@ main {
 }
 
 /* Below the scene, in the height the girder's width leaves unused on a
-   landscape monitor (DECISIONS.md §20): the curves over time, beside them
-   the style profile (§22) and the model (§21). */
+   landscape monitor (DECISIONS.md §20): the curves over time, and beside
+   them the model (§21). */
 #band {
   display: flex;
   gap: 2vw;
@@ -89,31 +89,6 @@ main {
   min-width: 0;
   height: 100%;
 }
-
-#profile-panel {
-  flex: 0 0 auto;
-  align-self: center;
-}
-#profile-panel[hidden] { display: none; }
-
-#profile {
-  border-collapse: collapse;
-  font-size: var(--text-label);
-}
-#profile th, #profile td {
-  padding: 0.3vh 0.8vw;
-  text-align: right;
-  white-space: nowrap;
-}
-#profile th { font-weight: normal; color: var(--muted); }
-#profile td:first-child { text-align: left; color: var(--muted); }
-#profile td:not(:first-child) { font-weight: bold; }
-
-#profile-title, #profile-note {
-  margin: 0.3vh 0;
-  font-size: var(--text-label);
-}
-#profile-note { color: var(--muted); }
 
 #model-panel {
   display: flex;
@@ -176,12 +151,14 @@ main {
 
 #readout {
   display: flex;
-  gap: 4vw;
+  gap: 3vw;
   padding: 1vh 2.5vw 1.6vh;
   font-variant-numeric: tabular-nums;
 }
 
 #readout div[hidden] { display: none; }
+/* The readouts keep their width; the style profile beside them gives way. */
+#readout > div { flex: none; }
 
 #readout span {
   display: block;
@@ -192,6 +169,51 @@ main {
 #readout b {
   font-size: var(--text-value);
   font-weight: 600;
+}
+
+/* The style profile (§22), laid across like the readouts beside it: the
+   figures as columns, the two drivers as rows. Small headers that wrap,
+   so that it is no taller than the readouts and the scene keeps its size. */
+#readout > #profile-panel {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 1vw;
+  margin-left: auto;
+  align-items: flex-start;
+}
+#profile-caption { max-width: 9vw; }
+#profile-title, #profile-note {
+  margin: 0 0 0.4vh;
+  font-size: var(--text-small);
+  line-height: 1.15;
+  color: var(--muted);
+}
+#profile-title { color: var(--fg); }
+
+#profile {
+  border-collapse: collapse;
+  font-size: var(--text-label);
+  line-height: 1.2;
+}
+#profile th, #profile td {
+  padding: 0.1vh 0.5vw;
+  text-align: right;
+}
+#profile th {
+  max-width: 8em;
+  vertical-align: bottom;
+  font-size: var(--text-small);
+  font-weight: normal;
+  color: var(--muted);
+}
+#profile td { font-weight: 600; }
+#profile td:first-child {
+  text-align: left;
+  white-space: nowrap;
+  font-size: var(--text-small);
+  font-weight: normal;
+  color: var(--muted);
 }
 
 /* Command as a bar from the centre: left half negative, right positive. */

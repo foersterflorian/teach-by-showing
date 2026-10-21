@@ -22,7 +22,7 @@ from teach_by_showing.profile import (
     summarize,
 )
 from teach_by_showing.recording import Run
-from teach_by_showing.replay import PROFILE_ROWS, ReplaySession
+from teach_by_showing.replay import PROFILE_FIGURES, ReplaySession
 from teach_by_showing.task import TaskParams, Transport
 from tests.teachers import quick, teach
 
@@ -177,9 +177,9 @@ def test_the_replay_counts_the_agent_as_a_rollout_does() -> None:
 def test_the_profile_fills_transport_by_transport_and_new_targets_do_not_count() -> None:
     s: ReplaySession = replay(new_targets=2)
     first: dict[str, Any] = s.state_message()["profile"]
-    assert [row[0] for row in first["rows"]] == list(PROFILE_ROWS)
+    assert first["columns"] == ["", *PROFILE_FIGURES]
+    assert [row[0] for row in first["rows"]] == ["Ihre Fahrt", "Ihr Agent"]
     assert all(cell == "–" for row in first["rows"] for cell in row[1:])
-    assert first["columns"] == ["", "Ihre Fahrt", "Ihr Agent"]
 
     seen: list[dict[str, Any]] = finish_round(s)
     for k, profile in enumerate(seen, start=1):
@@ -188,7 +188,7 @@ def test_the_profile_fills_transport_by_transport_and_new_targets_do_not_count()
     assert seen[-1]["note"] == "Kleiner ist ruhiger bzw. schonender."
 
     agent_means = summarize([p for p in s.agent_profiles if p is not None])
-    assert seen[-1]["rows"][3][2] == f"{agent_means.stick_travel:.1f}".replace(".", ",")
+    assert seen[-1]["rows"][1][4] == f"{agent_means.stick_travel:.1f}".replace(".", ",")
     while s.on_new_target or s.index != 0:
         s.tick()
     assert s.state_message()["profile"] == seen[-1]

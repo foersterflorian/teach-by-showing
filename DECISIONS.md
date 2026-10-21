@@ -1947,12 +1947,15 @@ teacher's recorded rows, a clone's rollout and the replay on the stand:
   transport not reached is not averaged but counted ("· 1× nicht
   erreicht", or "nicht erreicht" if none was). The agent's new targets
   (§20) do not count: the teacher has no figures there.
-- *Shown in the band under the scene, between the curves and the model,*
-  only while the visitor's agent drives, not in the idle step. It fills
-  transport by transport, each side's figures once that side has finished
-  the transport; the title says "Mittel aus k von 3 Transporten". The
-  first round fixes the figures; a later round drives the same again. A
-  note under the table: "Kleiner ist ruhiger bzw. schonender."
+- *Shown at the right of the readout row,* laid across like the readouts:
+  the four figures as columns, "Ihre Fahrt" and "Ihr Agent" as rows, the
+  headers small and wrapping so that the row grows little and the scene
+  keeps its size. Only while the visitor's agent drives, not in the idle
+  step. It fills transport by transport, each side's figures once that
+  side has finished the transport; the title says "Mittel aus k von 3
+  Transporten". The first round fixes the figures; a later round drives
+  the same again. A note beside the table: "Kleiner ist ruhiger bzw.
+  schonender."
 - *One module, `profile.py`:* a `Tally` batched like `Transport` and
   updated frame by frame like `advance()`. `cloning.rollout()` carries it
   (its `max_swing` now comes from it), `ReplaySession` updates it in
@@ -1995,6 +1998,13 @@ On the stand (deployment machine, server outside the container, a scripted
 visitor over the WebSocket): the profile filled transport by transport as
 described; a state message in the agent step is at most 2.3 KB.
 
+**Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-21,
+the maintainer): readable, and filling transport by transport
+understandable; but in the band, as first built, it left the curves and
+the model too narrow, their labels running into the drawing. Hence the
+readout row. Checked there in the desktop app's browser at 2816 × 1584:
+band and scene as before §22, the readouts on one line.
+
 **Rejected alternatives.**
 
 - *Command reversals* for "Schonung" (the count proposed first): the
@@ -2010,5 +2020,10 @@ described; a state message in the agent step is at most 2.3 KB.
   would give away what the visitor is about to watch.
 - *Only in the pause after a transport,* in place of the banner: the
   table would flash by.
+- *In the band, between the curves and the model* (built first): the
+  model kept about 27 % of the band, less than the 35 % already found too
+  narrow in §21.
+- *Under the model in place of the formula and its explanation:* the
+  diagram would have lost height instead.
 
 `tests/test_profile.py` guards this section.
