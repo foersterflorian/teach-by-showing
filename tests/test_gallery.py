@@ -143,15 +143,15 @@ def test_the_table_is_own_opponent_and_the_most_recent_sorted_by_time() -> None:
     others: list[Agent] = [fake(f"o{k}", 10.0 + k, created=str(k)) for k in range(2, 9)]
     rows: list[Agent] = table_agents(own, rival, [own, rival, *others])
     assert len(rows) == TABLE_ROWS
-    assert {"own", "rival", "o8", "o7", "o6", "o5"} == {a.name for a in rows}
+    assert {"own", "rival", "o8", "o7"} == {a.name for a in rows}
     assert [a.seconds for a in rows] == sorted(a.seconds for a in rows)
 
 
-def stand(store: GalleryStore) -> StandSession:
+def stand(store: GalleryStore, settings: Settings = SETTINGS) -> StandSession:
     run: Run = run_of("quick")
     return StandSession.start(
         np.random.default_rng(0),
-        SETTINGS,
+        settings,
         Showcase(run, policy_of("quick")),
         lambda: "20261021-120000",
         lambda run: None,
@@ -207,6 +207,40 @@ def test_the_visitors_agent_joins_and_after_one_round_meets_its_opposite(
     assert table["rows"][table["highlight"]][0] == "Ihr Agent (#1)"
     assert len(table["rows"]) == 3
     json.dumps(m)
+
+
+def test_the_agent_joins_beside_the_next_frames_as_if_driven_in_one_go(
+    tmp_path: Path,
+) -> None:
+    s: StandSession = stand(GalleryStore(tmp_path, (model("quick"),)))
+    press(s, a=True)
+    until(s, Phase.LEARN)
+    assert s.own is None and s.joining is not None
+    assert s.gallery is not None and s.gallery.agents() == []
+    for _ in range(4 * 60):
+        s.tick()
+    assert s.joining is None and s.own is not None
+    assert s.own.reference == reference_profile(s.own.policy, CRANE, TASK)
+    assert [a.number for a in s.gallery.agents()] == [1]
+
+
+def test_the_gallery_stops_at_its_time_limit_and_says_who_still_drives(
+    tmp_path: Path,
+) -> None:
+    short: Settings = Settings.from_dict(
+        {"input": {"expo": 0.0}, "stand": {"gallery_limit": 2.0}}
+    )
+    s: StandSession = stand(
+        GalleryStore(tmp_path, (model("cautious"), model("quick"))), short
+    )
+    press(s, a=True)
+    until(s, Phase.GALLERY)
+    until_held: int = 0
+    while s.hold_from is None:
+        s.tick()
+        until_held += 1
+    assert until_held == short.stand.frames(2.0)
+    assert "fährt noch" in s.state_message()["banner"]
 
 
 def test_the_gallery_holds_its_result_then_the_stand_waits(visited: StandSession) -> None:

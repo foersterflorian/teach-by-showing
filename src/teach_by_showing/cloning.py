@@ -16,7 +16,7 @@ from typing import Any, Final, Protocol, Self
 
 import numpy as np
 
-from teach_by_showing.crane import CraneParams, CraneState, FloatArray, step
+from teach_by_showing.crane import SIM_HZ, CraneParams, CraneState, FloatArray, step
 from teach_by_showing.features import NAMES, features
 from teach_by_showing.profile import Tally
 from teach_by_showing.recording import Run
@@ -233,6 +233,61 @@ class Rollout:
         return self.tally.max_swing
 
 
+@dataclass(slots=True)
+class Driving:
+    """A rollout under way, advanced a few steps at a time, so that the
+    stand can drive one beside its paced loop without stalling it (§23).
+    rollout() is the same drive taken in one go."""
+
+    policy: Policy
+    state: CraneState
+    transport: Transport
+    tally: Tally
+    crane: CraneParams
+    task: TaskParams
+
+    @classmethod
+    def begin(
+        cls,
+        policy: Policy,
+        state: CraneState,
+        target: FloatArray,
+        crane: CraneParams,
+        task: TaskParams,
+    ) -> Self:
+        return cls(
+            policy,
+            state,
+            Transport.begin(target, state.frame),
+            Tally.begin(target),
+            crane,
+            task,
+        )
+
+    @property
+    def done(self) -> bool:
+        return bool(self.transport.done(self.state.frame, self.task).all())
+
+    def drive(self, steps: int) -> bool:
+        """At most `steps` frames; True once every transport has ended."""
+        for _ in range(steps):
+            if self.done:
+                break
+            running = ~self.transport.done(self.state.frame, self.task)
+            command: FloatArray = self.policy.act(
+                features(self.state, self.transport.target, self.crane)
+            )
+            self.state = step(self.state, command, self.crane)
+            self.transport = advance(self.transport, self.state, self.crane, self.task)
+            self.tally = self.tally.update(
+                command, self.state, running, self.crane, self.task
+            )
+        return self.done
+
+    def result(self) -> Rollout:
+        return Rollout(self.transport, self.tally)
+
+
 def rollout(
     policy: Policy,
     state: CraneState,
@@ -244,15 +299,10 @@ def rollout(
     or timed out, with the same step() and advance() as the live crane.
     Usually the cranes start at rest (CraneState.at_rest); replaying a
     teacher's transport starts from the state the teacher started in."""
-    transport: Transport = Transport.begin(target, state.frame)
-    tally: Tally = Tally.begin(target)
-    while not transport.done(state.frame, task).all():
-        running = ~transport.done(state.frame, task)
-        command: FloatArray = policy.act(features(state, transport.target, crane))
-        state = step(state, command, crane)
-        transport = advance(transport, state, crane, task)
-        tally = tally.update(command, state, running, crane, task)
-    return Rollout(transport, tally)
+    driving: Driving = Driving.begin(policy, state, target, crane, task)
+    while not driving.drive(SIM_HZ):
+        pass
+    return driving.result()
 
 
 def clone(

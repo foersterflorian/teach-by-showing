@@ -12,7 +12,6 @@ nothing about HTTP and counts in frames.
 from __future__ import annotations
 
 import logging
-import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -28,8 +27,9 @@ from teach_by_showing.gallery import (
     VISITOR_NAME,
     Agent,
     GalleryStore,
-    make_agent,
+    Joining,
     opponent,
+    reference_driving,
     table_agents,
 )
 from teach_by_showing.live import LiveSession, RecordingRequest, Settings, StandParams
@@ -59,6 +59,9 @@ AGENT_NEW_TARGETS: Final[int] = 2
 RUN_LABEL: Final[str] = "besuch"
 # Whose drive the ghost plays while the stand waits.
 TEACHER_EARLIER: Final[str] = "Vorbild"
+# Frames of the reference drive per frame of the stand: about 3 ms, done
+# within two seconds; in one go it stalled the loop for 0.38 s (§23).
+REFERENCE_STEPS_PER_TICK: Final[int] = 30
 # How long the staff's key confirms that the gallery starts afresh.
 NOTICE_SECONDS: Final[float] = 3.0
 GALLERY_NOTICE: Final[str] = "Galerie neu ab jetzt"
@@ -117,6 +120,7 @@ class StandSession:
     # Where agents join (§23); without one the visitor's agent drives on
     # until a button decides, as before the gallery.
     gallery: GalleryStore | None = None
+    joining: Joining | None = None
     own: Agent | None = None
     rival: Agent | None = None
     table: list[Agent] = field(default_factory=list)
@@ -176,6 +180,8 @@ class StandSession:
         self.frame += 1
         a, b = self.pressed_a, self.pressed_b
         self.pressed_a = self.pressed_b = False
+        if self.joining is not None:
+            self._join()
         if self.pressed_reset:
             self.pressed_reset = False
             if self.gallery is not None:
@@ -223,9 +229,15 @@ class StandSession:
                 elif b:
                     self._idle()
                 elif self.hold_from is None:
-                    self._replay().tick()
-                    if self._replay().transports_done >= self._params.gallery_transports:
+                    g: ReplaySession = self._replay()
+                    g.tick()
+                    p = self._params
+                    if (
+                        g.transports_done >= p.gallery_transports
+                        or self._in_phase() >= p.frames(p.gallery_limit)
+                    ):
                         # The picture stops on the result, banner and all.
+                        g.stopped = True
                         self.hold_from = self.frame
                 elif self.frame - self.hold_from >= self._params.frames(
                     self._params.gallery_hold
@@ -286,26 +298,28 @@ class StandSession:
             )
         self.showcase = Showcase(run, policy)
         if self.gallery is not None:
-            # In the same frame as the training, while the crane stands still.
-            start: float = time.perf_counter()
+            # Driven beside the next frames (_join), not in this one.
             number: int = self.gallery.next_number()
             s: Settings = self.settings
-            self.own = make_agent(
+            self.own = None
+            self.joining = Joining(
                 number,
                 VISITOR_NAME.format(number),
                 run.created,
                 run_filename(run.created, run.label),
-                policy,
-                s.crane,
-                s.task,
-            )
-            self.gallery.add(self.own)
-            log.info(
-                "agent #%d joined the gallery, reference driven in %.3f s",
-                number,
-                time.perf_counter() - start,
+                reference_driving(policy, s.crane, s.task),
             )
         self._enter(Phase.LEARN)
+
+    def _join(self) -> None:
+        """A few more steps of the joining agent's reference drive; once it
+        is done, the agent is stored and can meet the gallery."""
+        assert self.joining is not None and self.gallery is not None
+        if self.joining.driving.drive(REFERENCE_STEPS_PER_TICK):
+            self.own = self.joining.agent()
+            self.gallery.add(self.own)
+            self.joining = None
+            log.info("agent #%s joined the gallery", self.own.number)
 
     def _agent(self) -> None:
         self.live = None

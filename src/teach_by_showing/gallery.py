@@ -24,7 +24,7 @@ from typing import Any, Final, Self
 
 import numpy as np
 
-from teach_by_showing.cloning import Policy, Rollout, policy_from_dict, rollout
+from teach_by_showing.cloning import Driving, Policy, Rollout, policy_from_dict, rollout
 from teach_by_showing.crane import CraneParams, CraneState, FloatArray
 from teach_by_showing.profile import ProfileSummary, profiles, summarize
 from teach_by_showing.task import TaskParams, sample_transports
@@ -33,8 +33,9 @@ SCHEMA: Final[int] = 1
 # The same targets for every agent, so that their figures compare.
 REFERENCE_TARGETS: Final[int] = 10
 REFERENCE_SEED: Final[int] = 2310
-# Own agent, opponent and the most recent others (decided 2026-10-21).
-TABLE_ROWS: Final[int] = 6
+# Own agent, opponent and the two most recent others: six rows made the
+# scene visibly smaller (decided 2026-10-21).
+TABLE_ROWS: Final[int] = 4
 VISITOR_NAME: Final[str] = "Kranführer·in #{}"
 
 
@@ -44,9 +45,23 @@ def reference_targets(crane: CraneParams, task: TaskParams) -> tuple[FloatArray,
     )
 
 
+def reference_driving(policy: Policy, crane: CraneParams, task: TaskParams) -> Driving:
+    """The agent setting off on the reference targets; the stand drives it a
+    few steps per frame (§23)."""
+    start, target = reference_targets(crane, task)
+    return Driving.begin(policy, CraneState.at_rest(start), target, crane, task)
+
+
+def reference_summary(driving: Driving) -> ProfileSummary:
+    """The style profile (§22) of a finished reference drive."""
+    assert driving.done
+    r: Rollout = driving.result()
+    return summarize(profiles(r.transport, r.tally))
+
+
 def reference_profile(policy: Policy, crane: CraneParams, task: TaskParams) -> ProfileSummary:
-    """The agent on the reference targets, by the same rollout() and style
-    profile as the evaluation (§16, §22)."""
+    """The agent on the reference targets in one go, by the same rollout()
+    and style profile as the evaluation (§16, §22)."""
     start, target = reference_targets(crane, task)
     r: Rollout = rollout(policy, CraneState.at_rest(start), target, crane, task)
     return summarize(profiles(r.transport, r.tally))
@@ -121,6 +136,31 @@ class Agent:
             reference_profile(self.policy, crane, task),
             crane,
             task,
+        )
+
+
+@dataclass(slots=True)
+class Joining:
+    """An agent on its way into the gallery, its reference driven a few
+    steps per frame by the stand (§23)."""
+
+    number: int
+    name: str
+    created: str
+    run: str | None
+    driving: Driving
+
+    def agent(self) -> Agent:
+        d: Driving = self.driving
+        return Agent(
+            self.number,
+            self.name,
+            self.created,
+            self.run,
+            d.policy,
+            reference_summary(d),
+            d.crane,
+            d.task,
         )
 
 

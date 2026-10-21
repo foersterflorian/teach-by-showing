@@ -54,6 +54,8 @@ AGENT_SELF: Final[str] = "Ihr Agent"
 PROFILE_TITLE: Final[str] = "Stil-Steckbrief"
 PROFILE_NOTE: Final[str] = "Kleiner ist ruhiger bzw. schonender."
 NOT_YET: Final[str] = "–"
+# A drive stopped before it reached calm, as the gallery's time limit does.
+STILL_DRIVING: Final[str] = "fährt noch"
 
 
 def _seconds(frames: int) -> str:
@@ -153,6 +155,9 @@ class ReplaySession:
     rival_name: str = ""
     rival_state: CraneState | None = None
     rival_transport: Transport | None = None
+    # Set by the stand when it stops the drive before both are done, so
+    # that the banner shows who is still under way (§23).
+    stopped: bool = False
 
     @classmethod
     def start(
@@ -439,16 +444,20 @@ class ReplaySession:
         return "timeout" if len(self.rows) >= self.run.task.limit_frames else "success"
 
     def _banner(self) -> str | None:
-        """Shown once both are done: the two times side by side."""
-        if self._agent_result() == "running" or self._ghost_result() == "running":
+        """Shown once both are done, or once the drive is stopped: the two
+        times side by side."""
+        running: bool = self._agent_result() == "running" or self._ghost_result() == "running"
+        if running and not self.stopped:
             return None
 
         def time_of(result: str, frames: int) -> str:
+            if result == "running":
+                return STILL_DRIVING
             return _seconds(frames) if result == "success" else "Zeit abgelaufen"
 
         agent: str = time_of(self._agent_result(), self._agent_frames())
         if self.rival_transport is not None:
-            if self._rival_result() == "running":
+            if self._rival_result() == "running" and not self.stopped:
                 return None
             rival: str = time_of(
                 self._rival_result(), int(self.rival_transport.duration_frames()[0])

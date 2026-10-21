@@ -99,10 +99,11 @@ class StandParams:
     learn_replay: float = 5.0
     # After the slow motion the model stays until A, or this long.
     learn_wait: float = 20.0
-    # The gallery (§23): transports against the opponent, then how long the
-    # result stays before the stand returns to waiting. Concept §6.1 asks
-    # for 15–30 s in all.
+    # The gallery (§23): transports against the opponent, at most this long,
+    # then how long the result stays before the stand returns to waiting.
+    # Concept §6.1 asks for 15–30 s; a cautious agent alone took 49 s.
     gallery_transports: int = 1
+    gallery_limit: float = 30.0
     gallery_hold: float = 8.0
 
     def frames(self, seconds: float) -> int:
