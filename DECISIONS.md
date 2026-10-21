@@ -2132,8 +2132,8 @@ server outside the container, scripted visitors over the WebSocket):
   Hence it is driven 30 steps per frame (`Driving` in `cloning.py`, the
   same steps as `rollout()`, tested equal), about 3 ms, done within two
   seconds, long before the gallery. Afterwards the loop counted 1 overrun
-  over a whole visit, from the training of a long demonstration (0.089 s,
-  §18).
+  over a whole visit (more than 0.1 s behind, §8); not traced, but the
+  training of that long demonstration took 0.089 s in one frame (§18).
 - *Step 4* against a cautious visitor's agent that took 49 s to its
   target lasted 57 s before the limit; with it, 30 s and 8 s.
 - *A state message in step 4* is at most 2.3 KB.
