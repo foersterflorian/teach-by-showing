@@ -1812,6 +1812,15 @@ spare, being limited by its width. Checked in the desktop app's browser at
 2816 × 1584, the 4K monitor's size in CSS pixels, then judged on the stand
 by the maintainer (2026-10-16): "Schrift passt".
 
+*The labels' room, measured since 2026-10-21.* The curves kept a fixed
+12 % of their width for the labels on the left; with the labels at 2vh,
+"Geschwindigkeit" needs about 250 px of the about 185 px that leaves at
+2816 × 1584, and the maintainer saw the labels run into the strips when
+judging the style profile (§22). The room is now the longest label's
+measured width plus 2 % of the width, so a text size tuned on the stand
+can no longer cause it. The loss curve (§21), which has no labels on the
+left, keeps its 12 % margin.
+
 **Rejected alternatives.**
 
 - *Curves beside the scene:* the crane would have to shrink.

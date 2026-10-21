@@ -3,6 +3,10 @@
 // and the curve's positions all come from the server.
 "use strict";
 
+// Left margin of the loss curve; it has no labels on the left, unlike the
+// curves it replaces while the agent learns.
+const LOSS_LEFT = 0.12;
+
 const MODEL_COLORS = {
   positive: "#60a5fa",
   negative: "#c084fc",
@@ -95,7 +99,7 @@ function drawLoss(ctx, width, height, loss) {
   ctx.clearRect(0, 0, width, height);
   const font = textPixels();
   ctx.font = `${font}px system-ui, sans-serif`;
-  const x0 = width * CURVE_LABEL_W;
+  const x0 = width * LOSS_LEFT;
   const top = font * 1.6;
   const bottom = height - font * 1.25;
   const px = (x) => x0 + x * (width - x0);
