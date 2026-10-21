@@ -354,8 +354,8 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   are the maintainer's two drives; a recording session with colleagues is
   open (concept §15 item 11). Whether visitors understand the opponent and
   the table, and whether 30 s plus 8 s is the right length, is open for
-  the tests with them. Whether COSMIC claims Ctrl+Alt+G before Firefox
-  sees it is checked on the stand (below, §23).
+  the tests with them. Judged by the maintainer on the stand on
+  2026-10-21: "passt"; Ctrl+Alt+G works under COSMIC.
 - **Learning after every transport** (§21). Kept as an option on
   2026-10-16: train after each demonstrated transport, so that the
   weights move three times during the demonstration. To be weighed once
@@ -2139,6 +2139,14 @@ server outside the container, scripted visitors over the WebSocket):
 - *A state message in step 4* is at most 2.3 KB.
 - *The table:* with six rows the readout row grew so much that the crane
   shrank visibly (desktop app's browser at 2816 × 1584); hence four.
+
+**Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-21,
+the maintainer, one visit driven on the gamepad): the race against the
+opponent, green against violet, "passt"; the table readable and the scene
+large enough, "passt"; 30 s and 8 s, "passt"; Ctrl+Alt+G reached the page
+under COSMIC and showed its banner, and the step from demonstration to
+learning did not stall. The loop counted 1 overrun in 17 599 ticks over
+that visit, not traced to a step.
 
 **Rejected alternatives.**
 
