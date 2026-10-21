@@ -1819,7 +1819,8 @@ by the maintainer (2026-10-16): "Schrift passt".
 judging the style profile (§22). The room is now the longest label's
 measured width plus 2 % of the width, so a text size tuned on the stand
 can no longer cause it. The loss curve (§21), which has no labels on the
-left, keeps its 12 % margin.
+left, keeps its 12 % margin. Judged on the stand by the maintainer the same
+day: "passt".
 
 **Rejected alternatives.**
 
@@ -2012,7 +2013,8 @@ the maintainer): readable, and filling transport by transport
 understandable; but in the band, as first built, it left the curves and
 the model too narrow, their labels running into the drawing. Hence the
 readout row. Checked there in the desktop app's browser at 2816 × 1584:
-band and scene as before §22, the readouts on one line.
+band and scene as before §22, the readouts on one line; then judged on the
+stand by the maintainer: size and layout "passt".
 
 **Rejected alternatives.**
 
