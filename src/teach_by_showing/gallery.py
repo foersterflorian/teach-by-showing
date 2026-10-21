@@ -316,3 +316,7 @@ def main() -> None:
             f"#{agent.number:<4} {agent.created}  {'shown ' if shown else 'hidden'}"
             f"  {agent.seconds:5.1f} s  {agent.name}"
         )
+
+
+if __name__ == "__main__":
+    main()

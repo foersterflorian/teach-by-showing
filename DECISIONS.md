@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2 begun: the model display (§21), the style profile (§22)
+**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2 begun: the model display (§21), the style profile (§22), the gallery (§23)
 **Last updated:** 2026-10-21
 
 This file records *why* the code looks the way it does. The code says what it
@@ -350,6 +350,12 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   table, and whether "Restpendeln" and "Stickweg" say anything to them, is
   open for the tests with them. The fitness of the evolution and the term
   "Treue zum Lehrer" are still to be defined (concept §15 item 9, week 3).
+- **The gallery** (§23) — *built on 2026-10-21*. Its only models so far
+  are the maintainer's two drives; a recording session with colleagues is
+  open (concept §15 item 11). Whether visitors understand the opponent and
+  the table, and whether 30 s plus 8 s is the right length, is open for
+  the tests with them. Whether COSMIC claims Ctrl+Alt+G before Firefox
+  sees it is checked on the stand (below, §23).
 - **Learning after every transport** (§21). Kept as an option on
   2026-10-16: train after each demonstrated transport, so that the
   weights move three times during the demonstration. To be weighed once
@@ -764,7 +770,10 @@ stand's backend, and the host's browser opens `http://localhost:8081`.
   exited one. A container stopped by hand stays stopped.
 - *A named volume `data` at `/data`* (`DATA_DIR`) for runs, agents and the
   gallery, so they survive rebuilds. Recorded runs go to `/data/runs`
-  (§13).
+  (§13), the gallery's agents to `/data/agents` and its filter to
+  `/data/gallery.json` (§23); the staff's command reaches them with
+  `docker compose exec teach-by-showing python -m teach_by_showing.gallery list`
+  (the image runs the package from source, without its console scripts).
 
 **Verified** (deployment machine, Docker 29.8.2, 2026-10-02):
 
@@ -1522,14 +1531,16 @@ them one after the other, unattended, with the gamepad as the only input
 (concept §6.3). The maintainer gave the Go on 2026-10-09 and asked to work
 out the guidance together, iteration by iteration; this is the first.
 
-**Decision.** `stand.py` holds a `StandSession` with four steps:
+**Decision.** `stand.py` holds a `StandSession` with four steps, and a
+fifth since §23:
 
 | Step | What runs | What the screen says | Leaves with |
 |---|---|---|---|
 | `idle` | the last agent against the naive driver, without a ghost (§19) | call to action: A; the colour key | A → `teach` |
 | `teach` | live crane, recording three transports | transport k of 3; before the first deflection, what to do | the third transport → `learn`; B or `teach_timeout` (45 s) without input → `idle` |
 | `learn` | nothing; the crane stands where the demonstration ended | the learning in slow motion (§21) | A, or after slow motion and wait → `agent`; B → `idle` |
-| `agent` | ghost replay of the visitor's agent beside the visitor's drive, then two new targets, in a loop; curves (§20) and model (§21) | A: again, B: end | A → `teach`; B → `idle` |
+| `agent` | ghost replay of the visitor's agent beside the visitor's drive, then two new targets; curves (§20), model (§21), style profile (§22) | A: again, B: end | after the first round → `gallery` (§23); A → `teach`; B → `idle` |
+| `gallery` | the visitor's agent against the gallery's agent most unlike it, one new target, at most 30 s, then the result held 8 s (§23) | against whom; the gallery's table | after the hold → `idle`; A → `teach`; B → `idle` |
 
 The table shows the steps as they are now; the first iteration, judged
 below, had the ghost in `idle`, fixed durations and neither curves nor
@@ -1556,7 +1567,10 @@ Decided with the maintainer on 2026-10-09:
 - *The visitor's agent drives in a loop* until a button decides: A
   demonstrates again, B ends. No timeout there: the next visitor presses A
   either way, and what the stand shows after a timeout would be the same
-  agent.
+  agent. *Since 2026-10-21* the loop ends after its first round in the
+  gallery (§23), which returns to waiting by itself; without a gallery
+  (`StandSession.start` without one, as in the tests of this section) the
+  loop is as before.
 - *Training inside the loop,* not in a worker (§8).
 
 **Why.**
@@ -1595,9 +1609,9 @@ app's browser.
 the maintainer): "looks very good", no
 objections for now.
 
-**Not yet.** The gallery (concept §6.1 step 4, and the earlier agents of
-step 0), the style profile, the correction during the drive, the staff
-keys of concept §6.3, and the guidance as judged by people who have not
+**Not yet.** The earlier agents of step 0 (the gallery itself, step 4,
+followed in §23, the style profile in §22), the correction during the
+drive, the staff keys of concept §6.3 beyond the gallery's filter (§23), and the guidance as judged by people who have not
 seen the stand (§5). The naive driver (§19) and the curves (§20) have come
 since.
 
@@ -2038,3 +2052,103 @@ stand by the maintainer: size and layout "passt".
   diagram would have lost height instead.
 
 `tests/test_profile.py` guards this section.
+
+---
+
+## 23. The gallery: every visitor's agent joins, and meets its opposite
+
+**Context.** Concept §5.6 and §6.1 make it mandatory: each visitor's agent
+joins a gallery and drives against other agents, so that the second
+message shows by itself, different teachers make different agents. Concept
+§15 items 2 and 10 left open how long a gallery lasts, how many agents it
+shows, and which are there from the start. Decided with the maintainer on
+2026-10-21.
+
+**Decision.**
+
+- *Nothing is reset automatically.* A filter "from T on" hides the agents
+  taught before T and deletes nothing. The staff set it at the stand with
+  Ctrl+Alt+G ("from now on", confirmed by the banner "Galerie neu ab jetzt"
+  for 3 s), or on the machine with `teach-by-showing-gallery`: `list` shows
+  every agent with its date and whether it is shown; `since now|all|STAMP|#n`
+  sets the filter, also back, so that a reset by mistake is undone with
+  `since all` or `since #n`.
+- *The models* are the maintainer's two teaching drives of 2026-10-09,
+  shipped as `showcase/vorsichtig.json` and `showcase/zuegig.json`, cloned
+  with seed 0 at start and named "Vorbild vorsichtig" and "Vorbild zügig".
+  They are never hidden. Further models wait for a recording session with
+  colleagues (concept §15 item 11).
+- *Every visitor's agent joins as it learns,* named "Kranführer·in #n"
+  (concept §6.3: no real names); n runs on over every agent ever stored and
+  is never reused, hidden or not. It is stored as
+  `$DATA_DIR/agents/agent-NNNN.json`: its policy, its run's file name, and
+  its figures on the reference targets with the parameters they were
+  driven under. Under other parameters (`--params`) the figures are driven
+  again, so they are never stale.
+- *The reference: ten fixed targets* (`sample_transports` with seed 2310),
+  the same for every agent, driven from rest; the figures are the style
+  profile of §22, means over the reached transports.
+- *Step 4 follows the first round* of the agent's step (three own
+  transports and two new targets): two cranes on one girder, the visitor's
+  agent green and the opponent violet, one new target from rest. The
+  opponent is the visible agent whose reference time differs most from the
+  own agent's, as a ratio; between equals the most recent. An agent that
+  reached no reference target counts with the time limit.
+- *At most 30 s of driving* (`gallery_limit`), then the picture stops and
+  holds for 8 s (`gallery_hold`) with the banner, for instance "Ihr Agent
+  9,1 s · Vorbild vorsichtig 27,8 s", or "fährt noch" for whoever has not
+  come to rest; then the stand waits again. A and B work as in step 3.
+- *The table* has the shape of §22's style profile: one row per agent, its
+  reference figures, at most four rows (the own agent, the opponent and the
+  two most recently joined), sorted by time, the own row in green.
+- *The idle step is unchanged* (§19).
+
+**Why.**
+
+- *A filter rather than a reset:* the maintainer wants to decide whether
+  and when, and to lose nothing; the two days of the fair may be shown
+  together or apart, and that can still be chosen on the day.
+- *Ctrl+Alt+G, not Ctrl+R:* Ctrl+R reloads the page in Firefox.
+- *The tool is a module of the package* (`teach-by-showing-gallery` in the
+  venv, `python -m teach_by_showing.gallery` in the container), not a
+  script in `tools/`, since `tools/` is not in the image and the gallery
+  lives on the container's volume.
+- *The opposite by time:* the style lies almost wholly in the speed (§16,
+  §21), and a difference in time is seen at once.
+- *Two cranes, one opponent:* three cranes on one girder looked busy
+  (§19); several girders would shrink the scene.
+- *Fixed reference targets* make the figures of agents taught days apart
+  comparable; the drive the visitor watches is a single new target and
+  would be luck.
+- *Files read on every call:* a filter set with the command takes effect
+  with the next visitor, without a restart.
+
+**Measured** (deployment machine, RTX 4090 / AMD 16-core, 2026-10-21,
+server outside the container, scripted visitors over the WebSocket):
+
+- *The reference drive in one go,* in the frame in which the agent learnt,
+  took 0.38 s (one of the ten transports timed out, so 3600 frames); with
+  the training the loop stood for half a second and counted 2 overruns.
+  Hence it is driven 30 steps per frame (`Driving` in `cloning.py`, the
+  same steps as `rollout()`, tested equal), about 3 ms, done within two
+  seconds, long before the gallery. Afterwards the loop counted 1 overrun
+  over a whole visit, from the training of a long demonstration (0.089 s,
+  §18).
+- *Step 4* against a cautious visitor's agent that took 49 s to its
+  target lasted 57 s before the limit; with it, 30 s and 8 s.
+- *A state message in step 4* is at most 2.3 KB.
+- *The table:* with six rows the readout row grew so much that the crane
+  shrank visibly (desktop app's browser at 2816 × 1584); hence four.
+
+**Rejected alternatives.**
+
+- *A new gallery at midnight:* the maintainer wants no automatic reset.
+- *Several opponents on one girder,* or *several girders:* see Why.
+- *A random opponent:* the difference would sometimes not show.
+- *A distance over all four figures:* more exact, but a visitor cannot
+  follow it.
+- *Six rows:* see Measured.
+- *The visitors' runs of 2026-10-09 and 2026-10-16 as models:* left for
+  the recording session with colleagues, whose drives may be shown.
+
+`tests/test_gallery.py` guards this section.

@@ -19,13 +19,21 @@ pdm run pytest
 pdm run teach-by-showing        # http://localhost:8081
 ```
 
-The server runs the stand's steps (`DECISIONS.md` §18–§22): while it waits,
+The server runs the stand's steps (`DECISIONS.md` §18–§23): while it waits,
 an agent that learnt from a person drives against one that learnt nothing;
 A begins a demonstration of three transports; the agent learns from it,
 shown in slow motion; then it drives the visitor's transports beside their
 recorded drive, and targets it has never seen, while a style profile sets
-the two drives side by side. From the demonstration on, B returns the stand
-to waiting.
+the two drives side by side; then it joins the gallery and drives against
+the agent most unlike it (§23). From the demonstration on, B returns the
+stand to waiting.
+
+The gallery keeps every agent under `agents/` in the data directory.
+Ctrl+Alt+G at the stand shows only the agents taught from now on; nothing
+is deleted. `teach-by-showing-gallery list` shows them all,
+`teach-by-showing-gallery since all` (or `since #n`, or a time stamp) sets
+the filter on the machine; in the container the same is
+`docker compose exec teach-by-showing python -m teach_by_showing.gallery list`.
 
 The crane is driven with the left stick of a USB gamepad, A and B are its
 buttons; for development the keyboard stands in, ← → or A / D for the
