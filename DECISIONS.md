@@ -1,8 +1,8 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2 begun: the model display (§21)
-**Last updated:** 2026-10-16
+**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2 begun: the model display (§21), the style profile (§22)
+**Last updated:** 2026-10-21
 
 This file records *why* the code looks the way it does. The code says what it
 does; this says what was considered and rejected, so that changing something
@@ -345,6 +345,11 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **The model display** (§21) — *judged by the maintainer on the stand on
   2026-10-16: "passt"*. Still open: whether visitors who have never seen
   the stand read the diagram, and whether they press A or wait.
+- **The style profile** (§22) — *defined with the maintainer on
+  2026-10-21*. Not yet judged on the stand; whether visitors read the
+  table, and whether "Restpendeln" and "Stickweg" say anything to them, is
+  open for the tests with them. The fitness of the evolution and the term
+  "Treue zum Lehrer" are still to be defined (concept §15 item 9, week 3).
 - **Learning after every transport** (§21). Kept as an option on
   2026-10-16: train after each demonstrated transport, so that the
   weights move three times during the demonstration. To be weighed once
@@ -489,8 +494,7 @@ the trolley stood still from now on.
 per period with θ = 0. A test on θ alone would count those moments as calm;
 the one-second hold would mostly catch it, but not reliably for small
 swings. The amplitude is constant over a free swing (tested) and is also the
-natural measure for the style profile's "calm" and "residual swing" (concept
-§6.2).
+measure of the style profile's largest and residual swing (§22).
 
 **Details that are deliberate.**
 
@@ -1371,7 +1375,8 @@ five episodes of ten new transports, the same for every variant so that
 variants are compared and not their luck, and the teacher's own
 transports from the states the teacher started in. Teacher and clone are
 judged by the same `advance()`: success, seconds to calm, largest swing
-amplitude while running. "Most of ten" is read as at least eight: at the
+amplitude while running; since 2026-10-21 also the residual swing and the
+stick travel, all counted by `profile.py` (§22). "Most of ten" is read as at least eight: at the
 stand an agent that stops short looks like a bug (concept §6.3). Every
 single figure can be written to JSON; a second run gives the same JSON
 apart from the training times, and one row was recomputed by hand.
@@ -1915,3 +1920,95 @@ comparison with an earlier agent's weights waits for the gallery (concept
   explanation under the formula says what a large weight does.
 
 `tests/test_model.py` guards this section.
+
+---
+
+## 22. The style profile: four figures per transport, teacher beside agent
+
+**Context.** Concept §6.2 asks for a style profile, human and agent side by
+side, and concept §5.3 for an evolution whose fitness weighs the same
+quantities, so that the story stays one. Transport time and largest swing
+were defined and measured for both since §16; "Ruhe" and "Schonung" were
+open (concept §15 item 9). Defined with the maintainer on 2026-10-21, after
+the candidates had been computed on every recorded drive.
+
+**Decision.** Per transport, counted only while it runs, the same for a
+teacher's recorded rows, a clone's rollout and the replay on the stand:
+
+| Row on the screen | Definition |
+|---|---|
+| Fahrzeit | seconds from the start to the end of the calm second (§7) |
+| Größtes Pendeln | largest swing amplitude, in degrees (§7, §16) |
+| Ruhe am Ziel (Restpendeln) | mean swing amplitude in degrees, from the first frame with the trolley within `position_tolerance` (0.15 m) of the target to the end of the transport |
+| Schonung (Stickweg) | Σ\|u_k − u_{k−1}\| over the frames, the stick starting at the centre (u = 0) for every transport; 1 is a deflection from the centre to the stop |
+
+- *Teacher against agent on the teacher's own transports* (three), from
+  the same starts to the same targets; the mean over the reached ones. A
+  transport not reached is not averaged but counted ("· 1× nicht
+  erreicht", or "nicht erreicht" if none was). The agent's new targets
+  (§20) do not count: the teacher has no figures there.
+- *Shown in the band under the scene, between the curves and the model,*
+  only while the visitor's agent drives, not in the idle step. It fills
+  transport by transport, each side's figures once that side has finished
+  the transport; the title says "Mittel aus k von 3 Transporten". The
+  first round fixes the figures; a later round drives the same again. A
+  note under the table: "Kleiner ist ruhiger bzw. schonender."
+- *One module, `profile.py`:* a `Tally` batched like `Transport` and
+  updated frame by frame like `advance()`. `cloning.rollout()` carries it
+  (its `max_swing` now comes from it), `ReplaySession` updates it in
+  `tick()`, `run_profiles()` plays a recording through it, and
+  `tools/evaluate.py` reports from it. "Treue zum Lehrer" and the fitness
+  come with the evolution (week 3) and will build on these sums.
+
+**Why these.**
+
+- *Residual swing from the target zone on* is the calm the task asks for,
+  in the amplitude the calm criterion already uses (§7). An overshoot past
+  the zone still counts, since it is part of settling.
+- *Stick travel* is continuous, so it separates agents from one another
+  and can enter a fitness; it measures how much the driver works the
+  stick, which is what wears a real drive.
+- Both are smaller for the calmer and gentler drive, so one note under the
+  table reads them both.
+
+**Measured** on the deployment machine (RTX 4090 / AMD 16-core),
+2026-10-21, with `tools/evaluate.py`: the maintainer's two teaching runs in
+`tests/data/` (ten seeds, as in §16), and the eight visitor runs of
+2026-10-09 and 2026-10-16 in `data/runs/` (one seed; git-ignored, so not
+reproducible from the repository). Medians over transports; the clones
+are linear policies:
+
+| Drive | Teacher: rest | Teacher: travel | Clone, new targets: rest | Clone: travel |
+|---|---|---|---|---|
+| cautious | 2.2° | 2.3 | 2.1° | 0.7 |
+| quick | 10.2° | 22.1 | 4.5° | 2.2 |
+| 8 visitors, range of medians | 3.2–11.3° | 6.3–21.3 | 0.7–6.7° | 1.6–2.6 |
+
+The cautious and the quick clone differ in both new figures, as in time
+and swing (§16). Every clone works the stick far less than its teacher:
+it smooths the drive, which the curves (§20) also show. In residual swing
+the clone is mostly calmer than its teacher, but not always: the clone of
+the visitor run of 2026-10-16 14:35 took 21 s where its teacher took 7 s,
+settling long at the target (6.7° against 3.2°).
+
+On the stand (deployment machine, server outside the container, a scripted
+visitor over the WebSocket): the profile filled transport by transport as
+described; a state message in the agent step is at most 2.3 KB.
+
+**Rejected alternatives.**
+
+- *Command reversals* for "Schonung" (the count proposed first): the
+  linear clone scores 0 on every drive, so the table would always read "n
+  against 0" and neither the gallery nor a fitness could tell agents
+  apart.
+- *The swing integral over the transport* for "Ruhe": it mixes swing with
+  duration. A visitor's 7-second drive swinging up to 20° scored about as
+  low (69°·s, median) as the cautious drive swinging 5° (53°·s).
+- *Settling time* from the target zone to calm: easy to name, but it
+  overlaps with the transport time.
+- *The agent's figures computed in advance* when the step begins: they
+  would give away what the visitor is about to watch.
+- *Only in the pause after a transport,* in place of the banner: the
+  table would flash by.
+
+`tests/test_profile.py` guards this section.

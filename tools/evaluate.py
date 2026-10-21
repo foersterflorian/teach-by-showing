@@ -12,9 +12,11 @@ seed. Each clone drives the same sets of new transports, so that variants
 are compared and not their luck, and once more the teacher's own
 transports, from the states the teacher started in.
 
-Teacher and clone are measured the same way: success by task.advance(),
-transport time to calm, largest swing amplitude while running. Every figure
-recorded from this tool names the machine it ran on.
+Teacher and clone are measured the same way, by the style profile
+(profile.py, DECISIONS.md §22): success by task.advance(), transport time to
+calm, largest swing amplitude while running, residual swing from the target
+zone on, stick travel. Every figure recorded from this tool names the
+machine it ran on.
 """
 
 from __future__ import annotations
@@ -31,9 +33,10 @@ from typing import Any, Final
 import numpy as np
 
 from teach_by_showing.cloning import MLP, LinearPolicy, Rollout, dataset, rollout, train
-from teach_by_showing.crane import SIM_HZ, CraneState, FloatArray, swing_amplitude
+from teach_by_showing.crane import CraneState
+from teach_by_showing.profile import TransportProfile, profiles, run_profiles
 from teach_by_showing.recording import Run, load_run
-from teach_by_showing.task import Transport, advance, sample_transports
+from teach_by_showing.task import sample_transports
 
 EPISODE: Final[int] = 10  # transports per episode, as in the acceptance
 ENOUGH: Final[int] = 8  # "most of ten": a clone that stops looks like a bug
@@ -47,43 +50,38 @@ VARIANTS: Final[tuple[tuple[str, bool], ...]] = (
 
 @dataclass(frozen=True)
 class Outcome:
-    """Per transport: success, seconds to calm (None if not reached), and
-    the largest swing amplitude while running, in degrees."""
+    """Per transport: success, seconds to calm (None if not reached), the
+    largest swing amplitude while running and the residual swing from the
+    target zone on (None if never there), in degrees, and the stick travel."""
 
     success: list[bool]
     seconds: list[float | None]
     swing: list[float]
+    rest: list[float | None]
+    travel: list[float]
 
 
 def variant_name(kind: str, mirror: bool) -> str:
     return f"{kind}{' mirrored' if mirror else ''}"
 
 
-def outcome_of(transport: Transport, max_swing: FloatArray) -> Outcome:
-    frames: list[int] = transport.duration_frames().tolist()
+def outcome_of(items: list[TransportProfile]) -> Outcome:
     return Outcome(
-        transport.succeeded.tolist(),
-        [f / SIM_HZ if f >= 0 else None for f in frames],
-        np.degrees(max_swing).tolist(),
+        [p.reached for p in items],
+        [p.seconds for p in items],
+        [p.max_swing_deg for p in items],
+        [p.rest_deg for p in items],
+        [p.stick_travel for p in items],
     )
+
+
+def rollout_outcome(r: Rollout) -> Outcome:
+    return outcome_of(profiles(r.transport, r.tally))
 
 
 def teacher_outcome(run: Run) -> Outcome:
     """The teacher's transports judged by the same advance() as a clone's."""
-    amp: FloatArray = swing_amplitude(run.states(np.arange(run.frames)), run.crane)
-    success: list[bool] = []
-    seconds: list[float | None] = []
-    swing: list[float] = []
-    for i in range(run.transports):
-        rows: np.ndarray = run.transport_rows(i)
-        tr: Transport = Transport.begin(run.column("target")[rows[:1]], 0)
-        for k, row in enumerate(rows, start=1):
-            tr = advance(tr, run.states(np.asarray([row]), k), run.crane, run.task)
-        one: Outcome = outcome_of(tr, np.asarray([float(amp[rows].max())]))
-        success += one.success
-        seconds += one.seconds
-        swing += one.swing
-    return Outcome(success, seconds, swing)
+    return outcome_of(run_profiles(run))
 
 
 def evaluate(run: Run, seeds: int, target_sets: int, epochs: int = 2000) -> dict[str, Any]:
@@ -109,9 +107,9 @@ def evaluate(run: Run, seeds: int, target_sets: int, epochs: int = 2000) -> dict
             r: Rollout = rollout(
                 policy, CraneState.at_rest(start), target, run.crane, run.task
             )
-            new.append(asdict(outcome_of(r.transport, r.max_swing)))
+            new.append(asdict(rollout_outcome(r)))
             r = rollout(policy, own_state, own_target, run.crane, run.task)
-            own.append(asdict(outcome_of(r.transport, r.max_swing)))
+            own.append(asdict(rollout_outcome(r)))
         variants[variant_name(kind, mirror)] = {
             "new": new,
             "own": own,
@@ -138,14 +136,31 @@ def _median_swing(outcomes: Sequence[dict[str, Any]]) -> float:
     return statistics.median([s for o in outcomes for s in o["swing"]])
 
 
+def _median_profile(outcomes: Sequence[dict[str, Any]]) -> str:
+    """Residual swing and stick travel over the reached transports (§22)."""
+    rest: list[float] = [
+        r
+        for o in outcomes
+        for r, ok in zip(o["rest"], o["success"], strict=True)
+        if ok and r is not None
+    ]
+    travel: list[float] = [
+        t for o in outcomes for t, ok in zip(o["travel"], o["success"], strict=True) if ok
+    ]
+    return (
+        f"rest {statistics.median(rest) if rest else float('nan'):.1f}°,"
+        f" travel {statistics.median(travel) if travel else float('nan'):.1f}"
+    )
+
+
 def report(results: Sequence[dict[str, Any]], cautious: str, quick: str) -> list[str]:
     lines: list[str] = []
     for res in results:
         teacher: dict[str, Any] = res["teacher"]
         lines.append(
             f"{res['label']}: teacher {sum(teacher['success'])}/{len(teacher['success'])},"
-            f" {_median_seconds([teacher]):.1f} s, swing {_median_swing([teacher]):.1f}°"
-            " (medians over the teacher's transports)"
+            f" {_median_seconds([teacher]):.1f} s, swing {_median_swing([teacher]):.1f}°,"
+            f" {_median_profile([teacher])} (medians over the teacher's transports)"
         )
         for name, v in res["variants"].items():
             counts: list[int] = episode_successes(v["new"])
@@ -155,9 +170,10 @@ def report(results: Sequence[dict[str, Any]], cautious: str, quick: str) -> list
                 f" (range {min(counts)}–{max(counts)}),"
                 f" {sum(c >= ENOUGH for c in counts)}/{len(counts)} episodes"
                 f" with ≥{ENOUGH}; {_median_seconds(v['new']):.1f} s,"
-                f" swing {_median_swing(v['new']):.1f}°",
+                f" swing {_median_swing(v['new']):.1f}°, {_median_profile(v['new'])}",
                 f"  {'':16s} own: {own:.0f}/{len(teacher['success'])} median,"
-                f" {_median_seconds(v['own']):.1f} s, swing {_median_swing(v['own']):.1f}°;"
+                f" {_median_seconds(v['own']):.1f} s, swing {_median_swing(v['own']):.1f}°,"
+                f" {_median_profile(v['own'])};"
                 f" training {statistics.median(v['train_seconds']):.2f} s median",
             ]
     by_label: dict[str, dict[str, Any]] = {r["label"]: r for r in results}

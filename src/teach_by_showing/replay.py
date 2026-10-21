@@ -5,14 +5,15 @@ The agent is simulated with the live crane's step() and advance(); the ghost
 is not simulated at all but plays the recorded rows, so it shows exactly
 what the teacher did. Both begin each transport in the state the teacher
 began it in, with the same target. After the teacher's transports the agent
-may drive new targets of its own, without a ghost (§20). The module knows
+may drive new targets of its own, without a ghost (§20). On the teacher's
+transports both are counted for the style profile (§22). The module knows
 nothing about HTTP.
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Final
 
 import numpy as np
@@ -23,6 +24,14 @@ from teach_by_showing.crane import SIM_HZ, CraneState, FloatArray, step
 from teach_by_showing.features import features
 from teach_by_showing.live import PAUSE_FRAMES
 from teach_by_showing.naive import naive_command
+from teach_by_showing.profile import (
+    ProfileSummary,
+    Tally,
+    TransportProfile,
+    profiles,
+    run_profiles,
+    summarize,
+)
 from teach_by_showing.recording import Run
 from teach_by_showing.task import Transport, advance, sample_targets
 
@@ -40,10 +49,46 @@ CURVE_LABELS: Final[dict[str, str]] = {
     "theta": "Pendelwinkel",
     "command": "Stellgröße",
 }
+AGENT_SELF: Final[str] = "Ihr Agent"
+PROFILE_TITLE: Final[str] = "Stil-Steckbrief"
+PROFILE_NOTE: Final[str] = "Kleiner ist ruhiger bzw. schonender."
+NOT_YET: Final[str] = "–"
 
 
 def _seconds(frames: int) -> str:
     return f"{frames / SIM_HZ:.1f}".replace(".", ",") + " s"
+
+
+def _number(value: float | None, unit: str = "") -> str:
+    return NOT_YET if value is None else f"{value:.1f}".replace(".", ",") + unit
+
+
+def _time_cell(summary: ProfileSummary) -> str:
+    """Mean time over the reached transports, and how many were not."""
+    if summary.transports == 0:
+        return NOT_YET
+    if summary.reached == 0:
+        return "nicht erreicht"
+    missed: int = summary.transports - summary.reached
+    time: str = _number(summary.seconds, " s")
+    return time if missed == 0 else f"{time} · {missed}× nicht erreicht"
+
+
+def _profile_column(summary: ProfileSummary) -> list[str]:
+    return [
+        _time_cell(summary),
+        _number(summary.max_swing_deg, "°"),
+        _number(summary.rest_deg, "°"),
+        _number(summary.stick_travel),
+    ]
+
+
+PROFILE_ROWS: Final[tuple[str, ...]] = (
+    "Fahrzeit",
+    "Größtes Pendeln",
+    "Ruhe am Ziel (Restpendeln)",
+    "Schonung (Stickweg)",
+)
 
 
 @dataclass(slots=True)
@@ -89,6 +134,15 @@ class ReplaySession:
     # Counts every transport begun, so that the frontend starts its curves
     # afresh even when the loop returns to the same index.
     segment: int = 0
+    # Whether states carry the style profile, teacher against agent on the
+    # teacher's transports (§22). Each side's figures of a transport appear
+    # once that side has finished it; the first round fixes them, since a
+    # later one drives the same again.
+    show_profile: bool = False
+    tally: Tally | None = None
+    teacher_profiles: list[TransportProfile] = field(default_factory=list)
+    teacher_shown: list[bool] = field(default_factory=list)
+    agent_profiles: list[TransportProfile | None] = field(default_factory=list)
 
     @classmethod
     def start(
@@ -101,6 +155,7 @@ class ReplaySession:
         new_targets: int = 0,
         rng: np.random.Generator | None = None,
         show_curves: bool = False,
+        show_profile: bool = False,
     ) -> ReplaySession:
         if new_targets > 0 and rng is None:
             raise ValueError("new targets are drawn with a random generator; pass rng")
@@ -116,6 +171,10 @@ class ReplaySession:
             new_targets=new_targets,
             rng=rng,
             show_curves=show_curves,
+            show_profile=show_profile,
+            teacher_profiles=run_profiles(run) if show_profile else [],
+            teacher_shown=[False] * run.transports,
+            agent_profiles=[None] * run.transports,
         )
         session._begin(0)
         return session
@@ -146,6 +205,7 @@ class ReplaySession:
             self.rows = self.run.transport_rows(index)
         self.state = start
         self.transport = Transport.begin(target, self.frame)
+        self.tally = Tally.begin(target)
         if self.with_naive:
             self.naive = start
             self.naive_transport = Transport.begin(target, self.frame)
@@ -185,6 +245,7 @@ class ReplaySession:
         the teacher's last row. When both are done, a pause, then the next
         transport."""
         assert self.state is not None and self.transport is not None
+        assert self.tally is not None
         task = self.run.task
         crane = self.run.crane
         running: bool = not self.transport.done(self.state.frame, task)[0]
@@ -194,10 +255,15 @@ class ReplaySession:
         self.frame = self.state.frame
         if running:
             self.transport = advance(self.transport, self.state, crane, task)
+            self.tally = self.tally.update(
+                u, self.state, np.ones(1, dtype=np.bool_), crane, task
+            )
         if self.naive is not None:
             self._tick_naive()
         if not self._ghost_done:
             self.ghost_played += 1
+        if self.show_profile and not self.on_new_target:
+            self._note_profile()
         if self.pause_left > 0:
             self.pause_left -= 1
             if self.pause_left == 0:
@@ -205,6 +271,53 @@ class ReplaySession:
         elif self.transport.done(self.frame, task)[0] and self._ghost_done:
             self.pause_left = PAUSE_FRAMES
             self.transports_done += 1
+
+    def _note_profile(self) -> None:
+        """Record which side has finished the teacher's transport under way."""
+        assert self.transport is not None and self.tally is not None
+        i: int = self.index
+        if self._ghost_done:
+            self.teacher_shown[i] = True
+        if (
+            self.agent_profiles[i] is None
+            and self.transport.done(self.frame, self.run.task)[0]
+        ):
+            self.agent_profiles[i] = profiles(self.transport, self.tally)[0]
+
+    def _profile(self) -> dict[str, Any]:
+        """The style profile as the screen shows it, worded here (§17, §22):
+        means over the teacher's transports each side has finished."""
+        teacher: ProfileSummary = summarize(
+            [
+                p
+                for p, shown in zip(self.teacher_profiles, self.teacher_shown, strict=True)
+                if shown
+            ]
+        )
+        agent: ProfileSummary = summarize([p for p in self.agent_profiles if p is not None])
+        both: int = sum(
+            shown and p is not None
+            for shown, p in zip(self.teacher_shown, self.agent_profiles, strict=True)
+        )
+        title: str = (
+            f"{PROFILE_TITLE} – Mittel aus {both} von {self.run.transports} Transporten"
+            if both > 0
+            else PROFILE_TITLE
+        )
+        return {
+            "title": title,
+            "columns": ["", self.teacher, AGENT_SELF],
+            "rows": [
+                [label, t, a]
+                for label, t, a in zip(
+                    PROFILE_ROWS,
+                    _profile_column(teacher),
+                    _profile_column(agent),
+                    strict=True,
+                )
+            ],
+            "note": PROFILE_NOTE,
+        }
 
     def _tick_naive(self) -> None:
         assert self.naive is not None and self.naive_transport is not None
@@ -367,4 +480,6 @@ class ReplaySession:
             }
         if self.show_curves:
             message["curves"] = self._curves()
+        if self.show_profile:
+            message["profile"] = self._profile()
         return message

@@ -50,6 +50,9 @@ def test_the_teacher_is_judged_like_a_clone() -> None:
     for i, seconds in enumerate(outcome.seconds):
         assert seconds == np.sum((transport == i) & running) / SIM_HZ
     assert all(0.0 < s < 45.0 for s in outcome.swing)
+    # The style profile's figures (§22), counted by profile.py.
+    assert all(r is not None and 0.0 < r < 45.0 for r in outcome.rest)
+    assert all(t > 0.0 for t in outcome.travel)
 
 
 def test_the_teachers_transports_begin_where_the_teacher_began() -> None:

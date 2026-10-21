@@ -16,8 +16,9 @@ from typing import Any, Final, Protocol, Self
 
 import numpy as np
 
-from teach_by_showing.crane import CraneParams, CraneState, FloatArray, step, swing_amplitude
+from teach_by_showing.crane import CraneParams, CraneState, FloatArray, step
 from teach_by_showing.features import NAMES, features
+from teach_by_showing.profile import Tally
 from teach_by_showing.recording import Run
 from teach_by_showing.task import TaskParams, Transport, advance
 
@@ -223,7 +224,13 @@ class Rollout:
     """Outcome of n transports driven by a policy."""
 
     transport: Transport
-    max_swing: FloatArray  # largest swing amplitude while running, rad
+    # The style profile's sums (§22), counted while the drive runs.
+    tally: Tally
+
+    @property
+    def max_swing(self) -> FloatArray:
+        """Largest swing amplitude while running, rad."""
+        return self.tally.max_swing
 
 
 def rollout(
@@ -238,15 +245,14 @@ def rollout(
     Usually the cranes start at rest (CraneState.at_rest); replaying a
     teacher's transport starts from the state the teacher started in."""
     transport: Transport = Transport.begin(target, state.frame)
-    max_swing: FloatArray = np.zeros_like(state.x)
+    tally: Tally = Tally.begin(target)
     while not transport.done(state.frame, task).all():
         running = ~transport.done(state.frame, task)
-        state = step(state, policy.act(features(state, transport.target, crane)), crane)
+        command: FloatArray = policy.act(features(state, transport.target, crane))
+        state = step(state, command, crane)
         transport = advance(transport, state, crane, task)
-        max_swing = np.where(
-            running, np.maximum(max_swing, swing_amplitude(state, crane)), max_swing
-        )
-    return Rollout(transport, max_swing)
+        tally = tally.update(command, state, running, crane, task)
+    return Rollout(transport, tally)
 
 
 def clone(

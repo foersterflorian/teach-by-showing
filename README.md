@@ -19,12 +19,13 @@ pdm run pytest
 pdm run teach-by-showing        # http://localhost:8081
 ```
 
-The server runs the stand's steps (`DECISIONS.md` §18–§21): while it waits,
+The server runs the stand's steps (`DECISIONS.md` §18–§22): while it waits,
 an agent that learnt from a person drives against one that learnt nothing;
 A begins a demonstration of three transports; the agent learns from it,
 shown in slow motion; then it drives the visitor's transports beside their
-recorded drive, and targets it has never seen. From the demonstration on,
-B returns the stand to waiting.
+recorded drive, and targets it has never seen, while a style profile sets
+the two drives side by side. From the demonstration on, B returns the stand
+to waiting.
 
 The crane is driven with the left stick of a USB gamepad, A and B are its
 buttons; for development the keyboard stands in, ← → or A / D for the

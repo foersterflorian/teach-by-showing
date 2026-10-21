@@ -224,6 +224,7 @@ class StandSession:
             new_targets=AGENT_NEW_TARGETS,
             rng=self.rng,
             show_curves=True,
+            show_profile=True,
         )
         self._enter(Phase.AGENT)
 

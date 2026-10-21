@@ -149,6 +149,29 @@ function showBand(newest) {
   }
 }
 
+// The style profile as the server words it (§22): a title, rows of cells,
+// a note. Rebuilt only when a cell changes, which is once per transport.
+let shownProfile = "";
+function showProfile(profile) {
+  const text = JSON.stringify(profile);
+  if (text === shownProfile) return;
+  shownProfile = text;
+  el("profile-title").textContent = profile.title;
+  el("profile-note").textContent = profile.note;
+  const table = el("profile");
+  table.replaceChildren();
+  const head = table.insertRow();
+  for (const name of profile.columns) {
+    const th = document.createElement("th");
+    th.textContent = name;
+    head.appendChild(th);
+  }
+  for (const cells of profile.rows) {
+    const row = table.insertRow();
+    for (const cell of cells) row.insertCell().textContent = cell;
+  }
+}
+
 // A command of −1..1 as a bar from the centre: left negative, right positive.
 function showCommand(fill, command) {
   fill.style.left = `${50 + Math.min(0, command) * 50}%`;
@@ -197,8 +220,10 @@ function tick(now) {
     const view = viewAt(now);
     // Shown or hidden first, so that the scene is sized to what is left.
     const newest = states[states.length - 1];
-    el("band").hidden = !newest.curves && !newest.model;
+    el("band").hidden = !newest.curves && !newest.model && !newest.profile;
     el("model-panel").hidden = !newest.model;
+    el("profile-panel").hidden = !newest.profile;
+    if (newest.profile) showProfile(newest.profile);
     const rect = fitCanvas(canvas, ctx);
     drawScene(ctx, rect.width, rect.height, config, view);
     showBand(newest);

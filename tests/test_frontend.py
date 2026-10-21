@@ -117,6 +117,18 @@ def test_the_ghost_is_drawn_and_its_texts_come_from_the_server() -> None:
         assert wording not in main, wording
 
 
+def test_the_style_profile_is_shown_as_the_server_words_it() -> None:
+    """§22: the page has a place for the profile, and the script fills it
+    with the server's cells; no figure or label is computed or worded in it."""
+    page: str = (STATIC / "index.html").read_text(encoding="utf-8")
+    main: str = (STATIC / "main.js").read_text(encoding="utf-8")
+    for name in ("profile-panel", "profile-title", "profile", "profile-note"):
+        assert f'id="{name}"' in page, name
+    assert "showProfile(newest.profile)" in main
+    for wording in ("Steckbrief", "Fahrzeit", "Stickweg", "Restpendeln", "nicht erreicht"):
+        assert wording not in main, wording
+
+
 @pytest.mark.parametrize("path", ["/", "/style.css", "/main.js", "/curves.js"])
 def test_every_file_is_revalidated_so_an_update_is_never_mixed_with_old_files(
     client: TestClient, path: str

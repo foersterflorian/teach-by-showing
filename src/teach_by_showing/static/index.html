@@ -14,10 +14,15 @@
 
 <main>
   <canvas id="scene"></canvas>
-  <!-- Below the scene: curves over time on the left, the model on the
-       right (DECISIONS.md §20, §21). -->
+  <!-- Below the scene: curves over time on the left, the style profile in
+       the middle, the model on the right (DECISIONS.md §20, §22, §21). -->
   <div id="band" hidden>
     <canvas id="curves"></canvas>
+    <div id="profile-panel" hidden>
+      <p id="profile-title"></p>
+      <table id="profile"></table>
+      <p id="profile-note"></p>
+    </div>
     <div id="model-panel" hidden>
       <canvas id="model"></canvas>
       <p id="formula"></p>

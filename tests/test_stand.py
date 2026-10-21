@@ -127,12 +127,14 @@ def test_the_whole_way_from_demonstration_to_the_visitors_agent() -> None:
     assert len(recorded) == 1 and recorded[0].transports == TEACH_TRANSPORTS
     assert recorded[0].label == "besuch"
     m: dict[str, Any] = s.state_message()
-    assert m["banner"] is None and "model" in m
+    assert m["banner"] is None and "model" in m and "profile" not in m
     for _ in range(LEARN_ALL):
         s.tick()
     assert s.phase is Phase.AGENT
     m = s.state_message()
     assert m["texts"]["ghost_label"] == "Ihre Fahrt" and m["texts"]["prompt"] is None
+    # The style profile beside the visitor's agent only (§22).
+    assert m["profile"]["columns"] == ["", "Ihre Fahrt", "Ihr Agent"]
     assert s.showcase.run is recorded[0]
 
 
@@ -148,6 +150,7 @@ def test_the_visitors_agent_drives_until_a_button_decides() -> None:
     # The stand now waits with this visitor's agent.
     assert s.replay is not None and s.replay.run is s.showcase.run
     assert texts(s)["ghost_label"] == "Vorbild"
+    assert "profile" not in s.state_message()
 
 
 def test_a_in_the_agents_step_begins_a_new_demonstration() -> None:
