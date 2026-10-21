@@ -215,6 +215,8 @@ main {
   font-weight: normal;
   color: var(--muted);
 }
+/* The visitor's own agent among the gallery's (§23), in the agent's green. */
+#profile tr.own td, #profile tr.own td:first-child { color: var(--ok); }
 
 /* Command as a bar from the centre: left half negative, right positive. */
 #command-bar, #ghost-command-bar {

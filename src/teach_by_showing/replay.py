@@ -6,8 +6,9 @@ is not simulated at all but plays the recorded rows, so it shows exactly
 what the teacher did. Both begin each transport in the state the teacher
 began it in, with the same target. After the teacher's transports the agent
 may drive new targets of its own, without a ghost (§20). On the teacher's
-transports both are counted for the style profile (§22). The module knows
-nothing about HTTP.
+transports both are counted for the style profile (§22). In the gallery
+another agent drives beside it, from the same start to the same target
+(§23). The module knows nothing about HTTP.
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ from teach_by_showing.profile import (
     summarize,
 )
 from teach_by_showing.recording import Run
-from teach_by_showing.task import Transport, advance, sample_targets
+from teach_by_showing.task import Transport, advance, sample_targets, sample_transports
 
 HEADLINE: Final[str] = "Ihr Agent fährt – Ihre eigene Fahrt läuft als Schatten mit"
 HEADLINE_NEW: Final[str] = "Ihr Agent fährt ein neues Ziel – das hat er nie gesehen"
@@ -74,7 +75,7 @@ def _time_cell(summary: ProfileSummary) -> str:
     return time if missed == 0 else f"{time} · {missed}× nicht erreicht"
 
 
-def _profile_cells(summary: ProfileSummary) -> list[str]:
+def profile_cells(summary: ProfileSummary) -> list[str]:
     return [
         _time_cell(summary),
         _number(summary.max_swing_deg, "°"),
@@ -143,6 +144,15 @@ class ReplaySession:
     teacher_profiles: list[TransportProfile] = field(default_factory=list)
     teacher_shown: list[bool] = field(default_factory=list)
     agent_profiles: list[TransportProfile | None] = field(default_factory=list)
+    # Whether the teacher's transports are driven at all; without them only
+    # new targets, as in the gallery (§23).
+    teacher_transports: bool = True
+    # Another agent beside this one, from the same start to the same target;
+    # the next transport waits for it, as for the ghost (§23).
+    rival: Policy | None = None
+    rival_name: str = ""
+    rival_state: CraneState | None = None
+    rival_transport: Transport | None = None
 
     @classmethod
     def start(
@@ -156,9 +166,14 @@ class ReplaySession:
         rng: np.random.Generator | None = None,
         show_curves: bool = False,
         show_profile: bool = False,
+        teacher_transports: bool = True,
+        rival: Policy | None = None,
+        rival_name: str = "",
     ) -> ReplaySession:
         if new_targets > 0 and rng is None:
             raise ValueError("new targets are drawn with a random generator; pass rng")
+        if not teacher_transports and new_targets == 0:
+            raise ValueError("without the teacher's transports there must be new targets")
         begins, targets = run.transport_begins()
         session: ReplaySession = cls(
             run,
@@ -175,8 +190,11 @@ class ReplaySession:
             teacher_profiles=run_profiles(run) if show_profile else [],
             teacher_shown=[False] * run.transports,
             agent_profiles=[None] * run.transports,
+            teacher_transports=teacher_transports,
+            rival=rival,
+            rival_name=rival_name,
         )
-        session._begin(0)
+        session._begin(0 if teacher_transports else run.transports)
         return session
 
     @property
@@ -191,11 +209,16 @@ class ReplaySession:
         if self.on_new_target:
             # From wherever the agent stands after the pause, as the live
             # crane draws its next target (§8); no teacher drove this one.
-            assert self.state is not None and self.rng is not None
-            start: CraneState = self.state
-            target: FloatArray = sample_targets(
-                self.rng, start.x, self.run.crane, self.run.task
-            )
+            # Without the teacher's transports the first starts at rest.
+            assert self.rng is not None
+            crane, task = self.run.crane, self.run.task
+            if self.state is None:
+                x, target = sample_transports(self.rng, crane, task, 1)
+                start = CraneState.at_rest(x)
+                start = CraneState(self.frame, start.x, start.v, start.theta, start.omega)
+            else:
+                start = self.state
+                target = sample_targets(self.rng, start.x, crane, task)
             self.rows = None
         else:
             b: CraneState = self.begins
@@ -206,6 +229,9 @@ class ReplaySession:
         self.state = start
         self.transport = Transport.begin(target, self.frame)
         self.tally = Tally.begin(target)
+        if self.rival is not None:
+            self.rival_state = start
+            self.rival_transport = Transport.begin(target, self.frame)
         if self.with_naive:
             self.naive = start
             self.naive_transport = Transport.begin(target, self.frame)
@@ -260,6 +286,8 @@ class ReplaySession:
             )
         if self.naive is not None:
             self._tick_naive()
+        if self.rival is not None:
+            self._tick_rival()
         if not self._ghost_done:
             self.ghost_played += 1
         if self.show_profile and not self.on_new_target:
@@ -267,8 +295,10 @@ class ReplaySession:
         if self.pause_left > 0:
             self.pause_left -= 1
             if self.pause_left == 0:
-                self._begin((self.index + 1) % (self.run.transports + self.new_targets))
-        elif self.transport.done(self.frame, task)[0] and self._ghost_done:
+                self._begin(self._next_index())
+        elif (
+            self.transport.done(self.frame, task)[0] and self._ghost_done and self._rival_done
+        ):
             self.pause_left = PAUSE_FRAMES
             self.transports_done += 1
 
@@ -309,11 +339,47 @@ class ReplaySession:
             "title": title,
             "columns": ["", *PROFILE_FIGURES],
             "rows": [
-                [self.teacher, *_profile_cells(teacher)],
-                [AGENT_SELF, *_profile_cells(agent)],
+                [self.teacher, *profile_cells(teacher)],
+                [AGENT_SELF, *profile_cells(agent)],
             ],
             "note": PROFILE_NOTE,
         }
+
+    def _next_index(self) -> int:
+        if self.teacher_transports:
+            return (self.index + 1) % (self.run.transports + self.new_targets)
+        first: int = self.run.transports
+        return first + (self.index - first + 1) % self.new_targets
+
+    @property
+    def _rival_done(self) -> bool:
+        """True also when there is no rival."""
+        if self.rival_transport is None:
+            return True
+        assert self.rival_state is not None
+        return bool(self.rival_transport.done(self.rival_state.frame, self.run.task)[0])
+
+    def _tick_rival(self) -> None:
+        """As the agent: it keeps driving after its transport has ended."""
+        assert self.rival is not None and self.rival_state is not None
+        assert self.rival_transport is not None
+        task = self.run.task
+        crane = self.run.crane
+        running: bool = not self.rival_transport.done(self.rival_state.frame, task)[0]
+        u: FloatArray = self.rival.act(
+            features(self.rival_state, self.rival_transport.target, crane)
+        )
+        self.rival_state = step(self.rival_state, u, crane)
+        if running:
+            self.rival_transport = advance(
+                self.rival_transport, self.rival_state, crane, task
+            )
+
+    def _rival_result(self) -> str:
+        assert self.rival_transport is not None and self.rival_state is not None
+        if self.rival_transport.succeeded[0]:
+            return "success"
+        return "timeout" if self._rival_done else "running"
 
     def _tick_naive(self) -> None:
         assert self.naive is not None and self.naive_transport is not None
@@ -328,17 +394,27 @@ class ReplaySession:
     def _others(self) -> list[dict[str, Any]]:
         """Further cranes beside the agent, each with its kind, so that the
         frontend can colour it; for now only the naive driver."""
-        if self.naive is None:
-            return []
-        assert self.naive_transport is not None
-        return [
-            {
-                "kind": "naive",
-                "x": self.naive.x.tolist(),
-                "theta": self.naive.theta.tolist(),
-                "result": "success" if self.naive_transport.succeeded[0] else "running",
-            }
-        ]
+        others: list[dict[str, Any]] = []
+        if self.naive is not None:
+            assert self.naive_transport is not None
+            others.append(
+                {
+                    "kind": "naive",
+                    "x": self.naive.x.tolist(),
+                    "theta": self.naive.theta.tolist(),
+                    "result": "success" if self.naive_transport.succeeded[0] else "running",
+                }
+            )
+        if self.rival_state is not None:
+            others.append(
+                {
+                    "kind": "rival",
+                    "x": self.rival_state.x.tolist(),
+                    "theta": self.rival_state.theta.tolist(),
+                    "result": self._rival_result(),
+                }
+            )
+        return others
 
     def _agent_result(self) -> str:
         assert self.transport is not None
@@ -371,6 +447,13 @@ class ReplaySession:
             return _seconds(frames) if result == "success" else "Zeit abgelaufen"
 
         agent: str = time_of(self._agent_result(), self._agent_frames())
+        if self.rival_transport is not None:
+            if self._rival_result() == "running":
+                return None
+            rival: str = time_of(
+                self._rival_result(), int(self.rival_transport.duration_frames()[0])
+            )
+            return f"{AGENT_SELF} {agent} · {self.rival_name} {rival}"
         if self.rows is None:
             return f"Agent {agent}"
         if not self.show_ghost and self.naive_transport is not None:

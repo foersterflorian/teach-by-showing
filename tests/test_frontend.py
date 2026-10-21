@@ -101,6 +101,16 @@ def test_no_input_reacts_to_any_button() -> None:
         assert not re.search(r"buttons\.(?:some|find|filter|every)\(", text), path.name
 
 
+def test_the_staffs_key_is_read_in_the_input_script_and_decided_in_python() -> None:
+    """§23: Ctrl+Alt+G, not Ctrl+R, which reloads the page; the script only
+    reports it, as it reports A and B."""
+    script: str = (STATIC / "input.js").read_text(encoding="utf-8")
+    main: str = (STATIC / "main.js").read_text(encoding="utf-8")
+    assert "e.ctrlKey && e.altKey" in script and '"g"' in script
+    assert "reset: buttons.reset" in main
+    assert "Galerie" not in script + main and "Date" not in script + main
+
+
 def test_the_ghost_is_drawn_and_its_texts_come_from_the_server() -> None:
     """§17, §18: the scripts draw and interpolate the ghost, and the German
     texts arrive from the server, in the config or with each state, not in

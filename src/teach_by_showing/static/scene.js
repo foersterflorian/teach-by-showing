@@ -7,12 +7,14 @@ const COLORS = {
   trolley: "#b0b0b0",
   rope: "#d0d0d0",
   // The load is coloured by who drives it (DECISIONS.md §19): a person
-  // orange, a learned agent green (concept §8), the naive driver red.
+  // orange, a learned agent green (concept §8), the naive driver red, the
+  // gallery's opponent violet, since blue is the target's (§23).
   // Success shows in the target zone and the banner, not in the load, so
   // that green always means the agent.
   human: "#fb923c",
   agent: "#4ade80",
   naive: "#f87171",
+  rival: "#a78bfa",
   target: "#60a5fa",
   calm: "#4ade80",
   label: "#8a8a8a",

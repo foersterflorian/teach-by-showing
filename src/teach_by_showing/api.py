@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 
 from teach_by_showing.cloning import clone
 from teach_by_showing.funding import FUNDING_LOGOS, FUNDING_TEXT, FUNDING_URL, funding_asset
+from teach_by_showing.gallery import Agent, GalleryStore, make_agent
 from teach_by_showing.live import (
     LiveSession,
     LoopStats,
@@ -50,6 +51,12 @@ STALL_SECONDS: Final[float] = 1.0
 # maintainer's quick drive of 2026-10-09, a copy of the one in tests/data/
 # (DECISIONS.md §18).
 SHOWCASE_RUN: Final[str] = "zuegig.json"
+# The gallery's models until colleagues have recorded more: the maintainer's
+# two teaching drives, each cloned with a fixed seed (DECISIONS.md §23).
+MODELS: Final[tuple[tuple[str, str], ...]] = (
+    ("vorsichtig.json", "Vorbild vorsichtig"),
+    ("zuegig.json", "Vorbild zügig"),
+)
 
 
 class Outbox:
@@ -229,6 +236,9 @@ def handle_input(session: Session, text: str) -> None:
     session.set_input(command)
     # Anything but true is a button not held; older pages send none.
     session.set_buttons(message.get("a") is True, message.get("b") is True)
+    # The staff's key exists only on the stand (§23).
+    if isinstance(session, StandSession):
+        session.set_staff(message.get("reset") is True)
 
 
 def main() -> None:
@@ -278,7 +288,8 @@ def main() -> None:
         type=Path,
         # The container sets DATA_DIR to its volume (§10).
         default=Path(os.environ.get("DATA_DIR", "data")),
-        help="where runs are saved, under runs/; default: $DATA_DIR or ./data",
+        help="where runs and the gallery are saved, under runs/ and agents/;"
+        " default: $DATA_DIR or ./data",
     )
     args: argparse.Namespace = parser.parse_args()
 
@@ -334,6 +345,21 @@ def main() -> None:
         run: Run = load_run(args.showcase or shipped)
         rng: np.random.Generator = np.random.default_rng(seed)
         policy, _ = clone([run], rng)
+        models: list[Agent] = []
+        for name, title in MODELS:
+            model: Run = load_run(Path(package) / "showcase" / name)
+            model_policy, _ = clone([model], np.random.default_rng(0))
+            models.append(
+                make_agent(
+                    None,
+                    title,
+                    model.created,
+                    None,
+                    model_policy,
+                    settings.crane,
+                    settings.task,
+                )
+            )
         return StandSession.start(
             rng,
             settings,
@@ -341,6 +367,7 @@ def main() -> None:
             lambda: time.strftime("%Y%m%d-%H%M%S"),
             saved,
             seed,
+            gallery=GalleryStore(args.data_dir, tuple(models)),
         )
 
     if args.ghost and args.record:

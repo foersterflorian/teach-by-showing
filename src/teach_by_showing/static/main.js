@@ -166,10 +166,12 @@ function showProfile(profile) {
     th.textContent = name;
     head.appendChild(th);
   }
-  for (const cells of profile.rows) {
+  profile.rows.forEach((cells, k) => {
     const row = table.insertRow();
+    // The visitor's own agent among the gallery's (§23).
+    if (k === profile.highlight) row.className = "own";
     for (const cell of cells) row.insertCell().textContent = cell;
-  }
+  });
 }
 
 // A command of −1..1 as a bar from the centre: left negative, right positive.
@@ -214,7 +216,9 @@ function tick(now) {
   const command = readCommand(dt);
   const buttons = readButtons();
   if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({ type: "input", u: command, a: buttons.a, b: buttons.b }));
+    socket.send(
+      JSON.stringify({ type: "input", u: command, a: buttons.a, b: buttons.b, reset: buttons.reset }),
+    );
   }
   if (config && states.length > 0) {
     const view = viewAt(now);

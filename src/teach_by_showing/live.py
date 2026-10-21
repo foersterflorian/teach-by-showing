@@ -88,7 +88,7 @@ class InputParams:
 
 @dataclass(frozen=True, slots=True)
 class StandParams:
-    """How long the stand's steps last (stand.py, DECISIONS.md §18, §21).
+    """How long the stand's steps last (stand.py, DECISIONS.md §18, §21, §23).
     Here beside the other parameters, so that one settings file tunes the
     stand without editing code; in seconds, as they are judged by eye."""
 
@@ -99,6 +99,11 @@ class StandParams:
     learn_replay: float = 5.0
     # After the slow motion the model stays until A, or this long.
     learn_wait: float = 20.0
+    # The gallery (§23): transports against the opponent, then how long the
+    # result stays before the stand returns to waiting. Concept §6.1 asks
+    # for 15–30 s in all.
+    gallery_transports: int = 1
+    gallery_hold: float = 8.0
 
     def frames(self, seconds: float) -> int:
         return round(seconds * SIM_HZ)

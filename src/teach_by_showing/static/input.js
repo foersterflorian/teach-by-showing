@@ -20,9 +20,13 @@ const keysDown = new Set();
 // Keys pressed since the last read: a tap shorter than one frame would
 // otherwise be released before it is ever seen as held.
 const keysTapped = new Set();
+// The staff's key, Ctrl+Alt+G: the gallery from now on (DECISIONS.md §23).
+// Not Ctrl+R, which reloads the page.
+let staffTapped = false;
 window.addEventListener("keydown", (e) => {
   keysDown.add(e.key);
   keysTapped.add(e.key);
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "g") staffTapped = true;
 });
 window.addEventListener("keyup", (e) => keysDown.delete(e.key));
 // Releasing a key while the window has no focus never sends keyup.
@@ -75,7 +79,9 @@ function readButtons() {
   const buttons = {
     a: held(BUTTON_A) || key("Enter"),
     b: held(BUTTON_B) || key("Backspace"),
+    reset: staffTapped,
   };
   keysTapped.clear();
+  staffTapped = false;
   return buttons;
 }

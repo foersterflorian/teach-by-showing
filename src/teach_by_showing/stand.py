@@ -1,6 +1,7 @@
 """The stand's steps for one visitor after another (concept §6.1,
 DECISIONS.md §18): an earlier agent drives while the stand waits, the
-visitor demonstrates, the agent learns, the visitor's agent drives.
+visitor demonstrates, the agent learns, the visitor's agent drives, then
+joins the gallery and drives against another agent there (§23).
 
 Each step hands its frames to a session that already exists: the live crane
 for the demonstration, a ghost replay for the agents. This module only
@@ -11,8 +12,9 @@ nothing about HTTP and counts in frames.
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Final
 
@@ -21,10 +23,27 @@ import numpy as np
 from teach_by_showing.cloning import LinearPolicy, Policy
 from teach_by_showing.crane import SIM_HZ
 from teach_by_showing.features import features
+from teach_by_showing.gallery import (
+    REFERENCE_TARGETS,
+    VISITOR_NAME,
+    Agent,
+    GalleryStore,
+    make_agent,
+    opponent,
+    table_agents,
+)
 from teach_by_showing.live import LiveSession, RecordingRequest, Settings, StandParams
 from teach_by_showing.model_view import LearningTrace, learn, model_message
-from teach_by_showing.recording import Run
-from teach_by_showing.replay import HEADLINE, HEADLINE_NEW, ReplaySession
+from teach_by_showing.recording import Run, run_filename
+from teach_by_showing.replay import (
+    AGENT_SELF,
+    HEADLINE,
+    HEADLINE_NEW,
+    PROFILE_FIGURES,
+    PROFILE_NOTE,
+    ReplaySession,
+    profile_cells,
+)
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
@@ -40,6 +59,9 @@ AGENT_NEW_TARGETS: Final[int] = 2
 RUN_LABEL: Final[str] = "besuch"
 # Whose drive the ghost plays while the stand waits.
 TEACHER_EARLIER: Final[str] = "Vorbild"
+# How long the staff's key confirms that the gallery starts afresh.
+NOTICE_SECONDS: Final[float] = 3.0
+GALLERY_NOTICE: Final[str] = "Galerie neu ab jetzt"
 
 
 class Phase(StrEnum):
@@ -47,6 +69,7 @@ class Phase(StrEnum):
     TEACH = "teach"
     LEARN = "learn"
     AGENT = "agent"
+    GALLERY = "gallery"
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +114,18 @@ class StandSession:
     # The visitor's learning as recorded for the slow motion (§21); None
     # until a visitor has taught an agent, or for a network.
     trace: LearningTrace | None = None
+    # Where agents join (§23); without one the visitor's agent drives on
+    # until a button decides, as before the gallery.
+    gallery: GalleryStore | None = None
+    own: Agent | None = None
+    rival: Agent | None = None
+    table: list[Agent] = field(default_factory=list)
+    # The frame from which the gallery's result is held, once driven.
+    hold_from: int | None = None
+    # The staff's key, as A and B: held as reported, a press decided here.
+    held_reset: bool = False
+    pressed_reset: bool = False
+    notice_until: int = -1
 
     @classmethod
     def start(
@@ -101,13 +136,16 @@ class StandSession:
         clock: Callable[[], str],
         on_recorded: Callable[[Run], None],
         seed: int | None = None,
+        gallery: GalleryStore | None = None,
     ) -> StandSession:
         # The frontend draws every step to the one scale the config message
         # gives it; a showcase recorded under other physics would be drawn
         # wrongly and drive differently from the visitor's crane.
         if showcase.run.crane != settings.crane or showcase.run.task != settings.task:
             raise ValueError("the showcase was recorded with other crane or task parameters")
-        session: StandSession = cls(rng, settings, showcase, clock, on_recorded, seed)
+        session: StandSession = cls(
+            rng, settings, showcase, clock, on_recorded, seed, gallery=gallery
+        )
         session._idle()
         return session
 
@@ -127,10 +165,23 @@ class StandSession:
             self.last_activity = self.frame
         self.held_a, self.held_b = a, b
 
+    def set_staff(self, reset: bool) -> None:
+        """The staff's key: from now on the gallery shows only the agents
+        taught from here (§23). Hidden, not deleted."""
+        if reset and not self.held_reset:
+            self.pressed_reset = True
+        self.held_reset = reset
+
     def tick(self) -> None:
         self.frame += 1
         a, b = self.pressed_a, self.pressed_b
         self.pressed_a = self.pressed_b = False
+        if self.pressed_reset:
+            self.pressed_reset = False
+            if self.gallery is not None:
+                self.gallery.set_since(self.clock())
+                self.notice_until = self.frame + self._params.frames(NOTICE_SECONDS)
+                log.info("gallery shown from now on")
         match self.phase:
             case Phase.IDLE:
                 if a:
@@ -159,7 +210,27 @@ class StandSession:
                 elif b:
                     self._idle()
                 else:
+                    r: ReplaySession = self._replay()
+                    r.tick()
+                    # After the first round, once its last pause is over.
+                    first_round: int = TEACH_TRANSPORTS + AGENT_NEW_TARGETS
+                    if self.own is not None and r.transports_done >= first_round:
+                        if r.pause_left == 0:
+                            self._gallery()
+            case Phase.GALLERY:
+                if a:
+                    self._teach()
+                elif b:
+                    self._idle()
+                elif self.hold_from is None:
                     self._replay().tick()
+                    if self._replay().transports_done >= self._params.gallery_transports:
+                        # The picture stops on the result, banner and all.
+                        self.hold_from = self.frame
+                elif self.frame - self.hold_from >= self._params.frames(
+                    self._params.gallery_hold
+                ):
+                    self._idle()
 
     @property
     def _params(self) -> StandParams:
@@ -214,6 +285,26 @@ class StandSession:
                 trace.losses[-1],
             )
         self.showcase = Showcase(run, policy)
+        if self.gallery is not None:
+            # In the same frame as the training, while the crane stands still.
+            start: float = time.perf_counter()
+            number: int = self.gallery.next_number()
+            s: Settings = self.settings
+            self.own = make_agent(
+                number,
+                VISITOR_NAME.format(number),
+                run.created,
+                run_filename(run.created, run.label),
+                policy,
+                s.crane,
+                s.task,
+            )
+            self.gallery.add(self.own)
+            log.info(
+                "agent #%d joined the gallery, reference driven in %.3f s",
+                number,
+                time.perf_counter() - start,
+            )
         self._enter(Phase.LEARN)
 
     def _agent(self) -> None:
@@ -227,6 +318,47 @@ class StandSession:
             show_profile=True,
         )
         self._enter(Phase.AGENT)
+
+    def _gallery(self) -> None:
+        """Against the gallery agent whose reference time differs most
+        (§23); with nobody to drive against, back to waiting."""
+        assert self.gallery is not None and self.own is not None
+        s: Settings = self.settings
+        shown: list[Agent] = self.gallery.visible(s.crane, s.task)
+        rival: Agent | None = opponent(self.own, shown)
+        if rival is None:
+            self._idle()
+            return
+        self.rival = rival
+        self.table = table_agents(self.own, rival, shown)
+        self.hold_from = None
+        self.replay = ReplaySession.start(
+            self.showcase.run,
+            self.own.policy,
+            new_targets=max(1, self._params.gallery_transports),
+            rng=self.rng,
+            show_curves=True,
+            teacher_transports=False,
+            rival=rival.policy,
+            rival_name=rival.name,
+        )
+        self._enter(Phase.GALLERY)
+
+    def _gallery_table(self) -> dict[str, Any]:
+        """The gallery laid across as the style profile (§22): one row per
+        agent, its figures on the reference targets, the own row marked."""
+        assert self.own is not None
+
+        def label(agent: Agent) -> str:
+            return f"{AGENT_SELF} (#{agent.number})" if agent is self.own else agent.name
+
+        return {
+            "title": f"Galerie – Mittel aus {REFERENCE_TARGETS} Testzielen",
+            "columns": ["", *PROFILE_FIGURES],
+            "rows": [[label(a), *profile_cells(a.reference)] for a in self.table],
+            "highlight": self.table.index(self.own),
+            "note": PROFILE_NOTE,
+        }
 
     def _replay(self) -> ReplaySession:
         assert self.replay is not None
@@ -249,7 +381,7 @@ class StandSession:
         if self.phase is Phase.LEARN:
             k: int = self._snapshot()
             return model_message(self.trace.policies[k], trace=self.trace, shown=k)
-        if self.phase is Phase.AGENT:
+        if self.phase in (Phase.AGENT, Phase.GALLERY):
             r: ReplaySession = self._replay()
             assert r.state is not None and r.transport is not None
             inputs = features(r.state, r.transport.target, r.run.crane)[0]
@@ -317,6 +449,15 @@ class StandSession:
                     "prompt": None,
                     **self._replay().texts(),
                 }
+            case Phase.GALLERY:
+                assert self.rival is not None
+                return {
+                    "headline": f"Ihr Agent in der Galerie – gegen {self.rival.name}",
+                    "hint": f"Alle fahren dieselben {REFERENCE_TARGETS} Testziele"
+                    " · A: noch einmal vormachen · B: beenden",
+                    "prompt": None,
+                    **self._replay().texts(),
+                }
 
     def config_message(self) -> dict[str, Any]:
         """The scale and the parameters, the same in every step (checked in
@@ -348,4 +489,8 @@ class StandSession:
         if self.phase is Phase.LEARN:
             # The last transport's "Ziel erreicht" would cover the prompt.
             message["banner"] = None
+        if self.phase is Phase.GALLERY:
+            message["profile"] = self._gallery_table()
+        if self.frame < self.notice_until:
+            message["banner"] = GALLERY_NOTICE
         return message

@@ -15,6 +15,7 @@ license-files = ["LICENSE"]
 
 [project.scripts]
 teach-by-showing = "teach_by_showing.api:main"
+teach-by-showing-gallery = "teach_by_showing.gallery:main"
 
 [build-system]
 requires = ["pdm-backend"]
