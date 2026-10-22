@@ -2469,6 +2469,9 @@ the maintainer, visits on the gamepad in both themes): the meanings,
 banner over the metre scale (hence its box, then "deutlich besser
 lesbar"); the dashed weights better than grey and pink; the scene lower
 in the idle and teaching steps than later (hence the band's kept place).
+After these, the scene the same in every step and both themes, "passt".
+The server ran 176 792 ticks over the five visits with 4 overruns, as
+before (§23), and trained each visitor's agent in 0.061–0.072 s.
 
 `tests/test_theme.py` guards this section: the same tokens in both sets,
 the contrast rule, no colour in the scripts, green and red only for the
