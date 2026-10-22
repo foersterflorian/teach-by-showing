@@ -59,6 +59,15 @@ the host draws the crane and reads the gamepad:
 docker compose up -d                # then open http://localhost:8081
 ```
 
+Each version's image is kept as an archive beside the repository, so that
+the stand can be set up again without PyPI or Docker Hub (`DECISIONS.md`
+§10):
+
+```bash
+docker save teach-by-showing:0.2.0 | zstd -T0 -o ../teach-by-showing-0.2.0.tar.zst
+zstd -dc ../teach-by-showing-0.2.0.tar.zst | docker load
+```
+
 `tools/kiosk.py` opens the page full screen in Firefox on a chosen monitor,
 picked by its EDID serial; it runs with the system Python on the host and
 needs Firefox (`DECISIONS.md` §11):

@@ -17,6 +17,15 @@ def test_image_tag_follows_the_package_version() -> None:
     assert f"image: teach-by-showing:{version}" in COMPOSE
 
 
+def test_the_archive_commands_name_the_current_version() -> None:
+    """§10: the README's archive commands are bumped with the version."""
+    version: str = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    readme: str = (ROOT / "README.md").read_text(encoding="utf-8")
+    saved: list[str] = re.findall(r"docker save teach-by-showing:(\S+) ", readme)
+    archives: list[str] = re.findall(r"teach-by-showing-(\S+)\.tar\.zst", readme)
+    assert saved == [version] and archives and set(archives) == {version}
+
+
 def test_port_is_published_to_localhost_only() -> None:
     ports: list[str] = re.findall(r'^\s*- "([^"]*:8081)"', COMPOSE, flags=re.M)
     assert ports and all(p.startswith("127.0.0.1:") for p in ports)

@@ -1,6 +1,6 @@
 [project]
 name = "teach-by-showing"
-version = "0.1.0"
+version = "0.2.0"
 description = "A small learned model drives an overhead crane after a short human demonstration - a hands-on demonstrator for an exhibition stand"
 authors = [
     {name = "Florian Förster",email = "florian.foerster@mb.tu-chemnitz.de"},
@@ -90,7 +90,7 @@ directory = "reports/coverage"
 
 
 [tool.bumpversion]
-current_version = "0.1.0"
+current_version = "0.2.0"
 parse = """(?x)
     (?P<major>0|[1-9]\\d*)\\.
     (?P<minor>0|[1-9]\\d*)\\.
@@ -135,6 +135,16 @@ replace = "version = \"{new_version}\""
 filename = "compose.yaml"
 search = "image: teach-by-showing:{current_version}"
 replace = "image: teach-by-showing:{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "README.md"
+search = "teach-by-showing-{current_version}.tar.zst"
+replace = "teach-by-showing-{new_version}.tar.zst"
+
+[[tool.bumpversion.files]]
+filename = "README.md"
+search = "docker save teach-by-showing:{current_version}"
+replace = "docker save teach-by-showing:{new_version}"
 
 
 [tool.pdm]

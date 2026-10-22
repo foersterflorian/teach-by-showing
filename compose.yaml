@@ -9,7 +9,7 @@ name: teach-by-showing
 services:
   teach-by-showing:
     build: .
-    image: teach-by-showing:0.1.0
+    image: teach-by-showing:0.2.0
     ports:
       # Host side bound to localhost: the kiosk runs on this machine, the
       # Gamepad API wants http://localhost (§3), and nobody else on the
