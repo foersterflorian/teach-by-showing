@@ -2610,10 +2610,19 @@ does, both kiosks closed within a second; their fresh profiles first stayed
 in /tmp (56 and 63 MB), hence `kiosk.py` now leaves through its cleanup on
 SIGTERM, after which none was left.
 
-**Not yet verified:** the stand account's session as such: that COSMIC runs
-its autostart entry (it runs the maintainer's), that its Firefox sees the
-gamepad (the seat's devices go to the session's user), and the placement of
-both kiosks in a fresh session.
+**Checked in the stand account** (deployment machine, 2026-10-22, the
+maintainer, account `kmi-demonstratoren`): it belongs to no group but its
+own and `users`, and both homes are mode 750 (`HOME_MODE` in
+`/etc/login.defs`), so it cannot list the maintainer's. After the installer
+and one login, COSMIC ran the autostart entry: both kiosks opened on the
+right monitors with the right pages; the gamepad drove the crane and
+Ctrl+Alt+G, L and H worked. In its session COSMIC's own shortcuts remain:
+Super+T opens a terminal, Super+Esc locks the screen (the keyboard is for
+the staff, concept §6.3), Super+Shift+Esc offers to log out.
+
+**Not yet verified:** that `docker ps` is refused in that account, and
+that Super+Shift+Esc reaches COSMIC over the full-screen kiosks; the
+maintainer logs out with a script of his own for now.
 
 `tests/test_stand_script.py` guards this section: waiting for both servers
 and naming the one missing, reopening a kiosk that exits and leaving one
