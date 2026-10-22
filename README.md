@@ -85,7 +85,7 @@ demonstrators and keeps a kiosk on each monitor. It is installed once, and
 again after a change, with:
 
 ```bash
-sudo sh tools/stand-setup/install.sh stand
+sudo sh tools/stand-setup/install.sh kmi-demonstratoren
 ```
 
 `tools/udev/70-teach-by-showing-gamepad.rules` switches off the GameSir

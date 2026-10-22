@@ -2561,7 +2561,7 @@ stand start script lives.
 - *Two roles.* The maintainer's account runs and manages the containers:
   `docker compose up -d` once, after which `restart: unless-stopped` brings
   them back at every boot (§10), backups, the gallery's command (§23). A
-  stand account (`stand`) has neither Docker nor sudo; it only shows the two
+  stand account (`kmi-demonstratoren`) has neither Docker nor sudo; it only shows the two
   kiosks, which need nothing but `http://localhost:8081` and `:8080`. The
   staff's keys G, L and H work through the browser (§23–§25).
 - *The data stay in the named volume* (§10): outside every home, reached

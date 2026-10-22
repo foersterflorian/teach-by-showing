@@ -2,7 +2,7 @@
 # Install the stand's start script for the stand account (DECISIONS.md §26).
 # Run once, and again after the scripts change, from the repository root:
 #
-#   sudo sh tools/stand-setup/install.sh stand
+#   sudo sh tools/stand-setup/install.sh kmi-demonstratoren
 #
 # It copies the two scripts to /opt/kmi-stand/ (root-owned, readable by
 # everyone) and the autostart entry into the account's ~/.config/autostart/.
