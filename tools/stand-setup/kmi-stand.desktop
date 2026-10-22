@@ -1,0 +1,9 @@
+[Desktop Entry]
+# Autostart of the stand account (DECISIONS.md §26): once it logs in, both
+# kiosks open. Installed by install.sh into ~stand/.config/autostart/.
+Type=Application
+Name=KMI stand
+Comment=Opens the crane and feature-viz full screen, one monitor each
+Exec=/usr/bin/python3 /opt/kmi-stand/stand.py
+Terminal=false
+X-GNOME-Autostart-enabled=true
