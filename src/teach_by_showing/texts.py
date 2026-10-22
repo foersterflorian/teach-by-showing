@@ -229,7 +229,9 @@ ENGLISH: Final[Texts] = Texts(
     profile_figures=(
         "Time",
         "Largest swing",
-        "Calm at the target (residual swing)",
+        # As short as the German, so that the headers wrap into the same two
+        # lines and the scene keeps its size in both languages.
+        "Calm (residual swing)",
         "Gentleness (stick travel)",
     ),
     not_reached="not reached",

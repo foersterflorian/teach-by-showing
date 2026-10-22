@@ -189,7 +189,10 @@ main {
   line-height: 1.15;
   color: var(--muted);
 }
-#profile-title { color: var(--fg); }
+/* Three lines held for the title from the start: it grows from "Stil-
+   Steckbrief" to "… – Mittel aus 1 von 3 Transporten" with the first
+   transport, and the row would grow with it (§24). */
+#profile-title { color: var(--fg); min-height: calc(3 * 1.15em); }
 
 #profile {
   border-collapse: collapse;
@@ -200,8 +203,15 @@ main {
   padding: 0.1vh 0.5vw;
   text-align: right;
 }
+/* The figures' columns have one width, whatever their cells say: without
+   it the headers wrapped anew as the cells filled, the row grew, and the
+   scene above it shrank in the middle of a step (§24). */
+#profile th:not(:first-child), #profile td:not(:first-child) {
+  width: 8vw;
+  white-space: nowrap;
+}
+#profile th:not(:first-child) { white-space: normal; }
 #profile th {
-  max-width: 8em;
   vertical-align: bottom;
   font-size: var(--text-small);
   font-weight: normal;

@@ -42,10 +42,13 @@ function drawModel(ctx, width, height, model) {
     ctx.moveTo(xIn, rows[k]);
     ctx.lineTo(xSum, ySum);
     ctx.stroke();
-    // The weight beside its input, where the connections are still apart.
+    // The weight beside its input, where the connections are still apart;
+    // never above the canvas, where the top one was cut off when the band
+    // was low (§24).
     ctx.fillStyle = ctx.strokeStyle;
     ctx.textAlign = "left";
-    ctx.fillText(model.w_text[k], xIn + r * 2, rows[k] + (ySum - rows[k]) * 0.1 - font * 0.55);
+    const y = rows[k] + (ySum - rows[k]) * 0.1 - font * 0.55;
+    ctx.fillText(model.w_text[k], xIn + r * 2, Math.max(font * 0.6, y));
   });
   ctx.strokeStyle = COLORS.agent;
   ctx.lineWidth = 3;

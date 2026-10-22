@@ -319,9 +319,8 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   the funder's material. Still open: feature-viz's English notice, which
   still reads "K-M-I" and American spelling.
 - **The screen in English** (§24) — *built on 2026-10-22*. Not yet judged
-  on the stand: whether the English texts fit the banner and the readout
-  row, which are tight in German already (§20, §22), and whether the page's
-  reload on a switch disturbs.
+  on the stand after the layout fixes of 2026-10-22: whether the English
+  texts read well, and whether the page's reload on a switch disturbs.
 - **Several browsers driving at once.** Every connected client may send
   input, and the latest message wins. The stand has one kiosk, so this only
   matters when a second tab is open for debugging: the two then fight over
@@ -2225,6 +2224,11 @@ Decided with the maintainer on 2026-10-22, before the feature freeze.
   speak the stored language from the start; switching exists only on the
   stand, as Ctrl+Alt+G does.
 - *Every keyboard shortcut is listed in the README* (decided 2026-10-22).
+- *The layout does not depend on the language.* The English headers of
+  the style profile are as short as the German, so that both wrap into two
+  lines; the profile's columns have one width (8vw), whatever their cells
+  say; its title holds three lines from the start; and the model's top
+  weight is never drawn above its canvas.
 
 **Why.**
 
@@ -2245,6 +2249,39 @@ Decided with the maintainer on 2026-10-22, before the feature freeze.
   once in a while; the staff switch between visitors, and the reload
   takes a moment.
 
+**Measured** (deployment machine, RTX 4090 / AMD 16-core, 2026-10-22, the
+desktop app's browser at 2816 × 1584 CSS pixels, the 4K monitor's size,
+scripted visitors over the WebSocket). Heights of the readout row, the
+band and the model's canvas, in px:
+
+| | readout row | band | model |
+|---|---|---|---|
+| step 3, German, before | 200 | 285 | 154 |
+| step 3, English, before | 248 | 272 | 141 |
+| step 3, both, after | 200 | 285 | 155 |
+| gallery, four rows, both, after | 270 | 267 | 137 |
+
+- *Before,* the English headers wrapped into four lines (125 px) against
+  two (64 px), and the row changed height within a step as the cells
+  filled. At 7vw the English still took three lines ("Calm" /
+  "(residual" / "swing)"); at 8vw both take two.
+- *The model's top weight* stood 2 px above its canvas in German and 5 px
+  in English, both cut off: its place follows the canvas's height, and
+  the canvas is 137–155 px high since the profile row (§22). Seen by the
+  maintainer on the stand on 2026-10-22.
+- *The profile's title* grew from one line to three with the first
+  transport, and the row from 187 to 200 px, in German as before this
+  section; with three lines held, the caption stays at 158 px for every
+  title in both languages.
+- *Within a step* every sample of the agent's step and of the gallery
+  (every 250 ms, a whole round) gave one height, after the change.
+
+**Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-22,
+the maintainer, one visit on the gamepad): Ctrl+Alt+L works under COSMIC
+and the page reloads in the other language; before the fixes above, the
+profile wrapped and moved the screen in step 3, and the top weight was
+cut off.
+
 **Rejected alternatives.**
 
 - *gettext and `.po` files:* a toolchain and a second format for about 70
@@ -2261,4 +2298,5 @@ placeholders, numbers follow the language, the stored choice and its
 fallback, no German text outside the catalogue (a scan of `src/` and the
 frontend, the staff's gamepad page excepted), the page in each language,
 the reload, the staff's key once per press, a switch reaching the replay,
-and that every shortcut is in the README.
+that every shortcut is in the README, and the layout rules that keep the
+scene's size the same in both languages.

@@ -221,3 +221,20 @@ def test_the_staffs_key_arrives_with_the_input_and_only_true_counts() -> None:
     api.handle_input(s, json.dumps({"type": "input", "u": 0.0, "language": True}))
     s.tick()
     assert s.language is Language.DE
+
+
+def test_the_layout_does_not_depend_on_the_language() -> None:
+    """Measured on 2026-10-22: English headers wrapped into four lines and
+    the profile's row changed height as its cells filled, shrinking the
+    scene; the model's top weight was cut off."""
+    style: str = (STATIC / "style.css").read_text(encoding="utf-8")
+    model: str = (STATIC / "model.js").read_text(encoding="utf-8")
+    assert (
+        "#profile th:not(:first-child), #profile td:not(:first-child) {\n  width: 8vw;"
+        in style
+    )
+    assert "#profile-title { color: var(--fg); min-height: calc(3 * 1.15em); }" in style
+    assert "Math.max(font * 0.6, y)" in model
+    # The English headers no longer than the German ones, by characters.
+    for german, english in zip(GERMAN.profile_figures, ENGLISH.profile_figures, strict=True):
+        assert len(english) <= len(german) + 6, english
