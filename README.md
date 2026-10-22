@@ -77,6 +77,17 @@ python3 tools/kiosk.py list
 python3 tools/kiosk.py open --serial <n>
 ```
 
+On the stand two accounts share the machine (`DECISIONS.md` §26). The
+maintainer's account runs the containers, which come back at every boot by
+themselves; a separate stand account, without Docker, only shows the
+kiosks. Logged in, it runs `tools/stand.py`, which waits for both
+demonstrators and keeps a kiosk on each monitor. It is installed once, and
+again after a change, with:
+
+```bash
+sudo sh tools/stand-setup/install.sh stand
+```
+
 `tools/udev/70-teach-by-showing-gamepad.rules` switches off the GameSir
 gamepad's keyboard and mouse interface, through which its Share button
 would open the desktop's screenshot dialog over the kiosk. It is installed

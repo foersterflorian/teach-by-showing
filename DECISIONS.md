@@ -207,9 +207,8 @@ dependency groups. `DECISIONS.md` and `CLAUDE.md` play the same roles.
   venv (`api.main`); the container runs the same module.
 
 **Container:** `Dockerfile` and `compose.yaml` as in feature-viz §9, see
-§10. Still planned: a start script for the stand that checks preconditions
-and opens the kiosk (concept §15 item 16), and an image archive via
-`docker save` once there is a version worth archiving.
+§10. The stand's start script is `tools/stand.py` (§26); each image version
+is archived with `docker save` (§10, since 0.2.0).
 
 ---
 
@@ -876,8 +875,8 @@ server counted 1 overrun in 23 129 ticks and trained the visitor's agent
 in 0.082 s.
 
 **Not yet done.** The dress rehearsal on the venue's cabling, both
-monitors on DisplayPort without the docking station (concept §13, week 4);
-the stand start script (concept §15 item 16). The volume
+monitors on DisplayPort without the docking station (concept §13, week 4).
+The stand start script (concept §15 item 16) is §26. The volume
 `teach-by-showing_data` on the deployment machine holds two runs of the
 container check of 2026-10-09 and, since 2026-10-22, a scripted visit
 (agent #1) and the maintainer's visit (agent #2); whether to empty it or
@@ -1085,8 +1084,8 @@ risk concept §14 names for mouse and keyboard.
 of 3537:1082, so the kernel creates no keyboard or mouse for it, and leaves
 the gamepad on 00 untouched. It runs on the host, where the browser reads
 the gamepad; the container has no devices (§10) and is not involved. It is
-installed once by hand (the file says how) and later by the stand's start
-script (concept §15 item 16). The F310, through `xpad`, has no such
+installed once by hand (the file says how); it applies to every account,
+the stand account's too (§26), so the stand's installer leaves it alone. The F310, through `xpad`, has no such
 interface.
 
 Verified with the rule installed (deployment machine, 2026-10-06):
@@ -2543,3 +2542,71 @@ the contrast rule, no colour in the scripts, green and red only for the
 drivers, the switch without a reload, the stored theme and its fallback,
 the staff's key once per press, the banner's box, the band's kept place
 and the dashed weights.
+
+---
+
+## 26. The stand account and its start script
+
+**Context.** The stand machine is also the maintainer's workstation, and
+his account holds private files and applications. The stand shall run in an
+account of its own (decided with the maintainer on 2026-10-22). Docker
+belongs to the system: the daemon runs as root, and images, containers and
+volumes live under `/var/lib/docker`, not in any home. Membership of the
+`docker` group is root-equivalent: whoever may run a container may mount
+any directory of the host into it. Concept §15 item 16 left open where the
+stand start script lives.
+
+**Decision.**
+
+- *Two roles.* The maintainer's account runs and manages the containers:
+  `docker compose up -d` once, after which `restart: unless-stopped` brings
+  them back at every boot (§10), backups, the gallery's command (§23). A
+  stand account (`stand`) has neither Docker nor sudo; it only shows the two
+  kiosks, which need nothing but `http://localhost:8081` and `:8080`. The
+  staff's keys G, L and H work through the browser (§23–§25).
+- *The data stay in the named volume* (§10): outside every home, reached
+  only through Docker, so the stand account cannot read the recordings.
+- *Logged in by hand* each morning by the maintainer; no autologin.
+- *`tools/stand.py`*, started by the stand account's XDG autostart entry
+  (`tools/stand-setup/kmi-stand.desktop`): it waits until both
+  demonstrators answer `/healthz` (at most 120 s; after that it opens the
+  kiosks anyway, since the crane's page reconnects by itself, §9), then
+  opens a kiosk on each monitor through `kiosk.py open` (§11) and opens one
+  again when it exits, at most three times a minute. Each kiosk runs in a
+  process group of its own, so that closing it ends Firefox as well.
+  Monitors and pages come from arguments, the office's serials by default
+  (crane 114210, feature-viz 114203).
+- *Installed outside every home,* by `tools/stand-setup/install.sh`, run by
+  the maintainer with sudo: the two scripts to `/opt/kmi-stand/`, the
+  autostart entry to the stand account's `~/.config/autostart/`. The
+  installer creates no account and changes no group, so that no script ever
+  grants Docker. This answers concept §15 item 16: in this repository,
+  `tools/`, not a repository of its own.
+
+**Why.**
+
+- *No Docker for the stand account:* with it, the separation would be
+  void.
+- *A supervising script rather than two autostart entries:* the kiosks must
+  wait for the containers after a cold boot, and one closed by a visitor's
+  accident must come back without staff.
+- *The volume rather than a host folder:* decided with the maintainer; it
+  is tested (§10), and a folder would have to belong to the container's
+  user 10001 and still need sudo to change.
+
+**Rejected alternatives.**
+
+- *The stand account in the `docker` group:* root-equivalent, see Context.
+- *Rootless Docker for the stand account:* a second daemon with its own
+  images, each loaded twice, and the GPU for feature-viz to be set up again.
+- *A host folder for the data* and *autologin:* see Decision.
+
+**Not yet verified:** the stand account's session as such: that COSMIC runs
+its autostart entry (it runs the maintainer's), that its Firefox sees the
+gamepad (the seat's devices go to the session's user), and the placement of
+both kiosks in a fresh session.
+
+`tests/test_stand_script.py` guards this section: waiting for both servers
+and naming the one missing, reopening a kiosk that exits and leaving one
+that keeps exiting, the defaults, the standard library only, and an
+installer that copies and grants nothing else.
