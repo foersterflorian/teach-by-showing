@@ -319,8 +319,8 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   the funder's material. Still open: feature-viz's English notice, which
   still reads "K-M-I" and American spelling.
 - **The screen in English** (§24) — *built on 2026-10-22*. Not yet judged
-  on the stand after the layout fixes of 2026-10-22: whether the English
-  texts read well, and whether the page's reload on a switch disturbs.
+  on the stand on 2026-10-22, layout "passt" in both languages. Still
+  open: whether visitors who speak English read the texts as meant.
 - **Several browsers driving at once.** Every connected client may send
   input, and the latest message wins. The stand has one kiosk, so this only
   matters when a second tab is open for debugging: the two then fight over
@@ -2282,10 +2282,11 @@ band and the model's canvas, in px:
   (every 250 ms, a whole round) gave one height, after the change.
 
 **Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-22,
-the maintainer, one visit on the gamepad): Ctrl+Alt+L works under COSMIC
-and the page reloads in the other language; before the fixes above, the
-profile wrapped and moved the screen in step 3, and the top weight was
-cut off.
+the maintainer, visits on the gamepad in both languages): Ctrl+Alt+L works
+under COSMIC and the page reloads in the other language. Before the fixes
+above, the profile wrapped and moved the screen in step 3, and the top
+weight was cut off; after them, "optisch passt alles", in every step and
+in both languages.
 
 **Rejected alternatives.**
 
