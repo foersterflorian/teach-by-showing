@@ -226,7 +226,9 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   2026-10-09, see §16*: from the maintainer's cautious and quick drives
   (three transports each), the linear policy reached every target in all
   50 episodes of ten and kept the style (3.2 times as long, 0.37 times the
-  swing). Still open: drives by people who have not driven before, which
+  swing). *Measured again on 2026-10-22 over all 18 recorded drives*
+  (§16): unmirrored, two cautious drives never arrived; mirrored, as the
+  stand learns since, every drive does. Still open: drives by people who have not driven before, which
   will be less clean; this is the project's central risk (concept §5.2).
 - **Kiosk placement under COSMIC/Wayland** — *settled on 2026-10-02, see
   §11*: Firefox with `--kiosk-monitor`, the monitor chosen by its EDID
@@ -1302,12 +1304,24 @@ the teacher gave, and then drives on its own.
   frames of a running transport are used (§13). The loss curve is returned,
   and `on_epoch` lets the model display keep snapshots (§21).
 - *Mirroring* (`dataset(..., mirror=True)`): every example once more
-  reflected left to right, all features and the command negated. Offered,
-  not the default.
-- *The stand uses the linear policy without mirroring* (`DEFAULT_KIND`,
-  `DEFAULT_MIRROR`, `clone()`; decided 2026-10-09 on the figures of §16):
-  it reached every target from both teaching drives and kept their style
-  for every seed, while the network depended on its seed. The network stays
+  reflected left to right, all features and the command negated. The
+  default on the stand since 2026-10-22; until then offered, not the
+  default.
+- *The stand uses the linear policy, mirrored* (`DEFAULT_KIND`,
+  `DEFAULT_MIRROR`, `clone()`). The linear policy was decided on
+  2026-10-09 on the figures of §16: it reached every target from both
+  teaching drives and kept their style for every seed, while the network
+  depended on its seed. It was trained unmirrored then, since mirroring
+  changed nothing on those two drives. *Mirrored since 2026-10-22*
+  (decided with the maintainer): a cautious drive of that day taught,
+  unmirrored, a distance weight of 0.56 and an offset of −0.075, and the
+  agent came to rest where the two cancel, at 2 m · atanh(0.075/0.56) =
+  0.27 m beside every target (2 m is the distance feature's scale), outside the 0.15 m tolerance; it never
+  arrived (§16). The task is symmetric, so every left-right lean of a
+  short drive is an accident of that drive; mirrored, the offset learns
+  itself to zero (at most 2.4e-4 over all recorded drives) and the weights,
+  the style, stay as they were. The offset stays in the model and on the
+  screen (§21). The network stays
   in the code, not as the default; making it stable was deferred by the
   maintainer on 2026-10-09 ("first something that works"). The model
   display (§21) shows the linear policy's three weights. The style lies
@@ -1446,6 +1460,45 @@ network only on the quick drive.
 **Open.** One teacher, two drives. Whether this holds for people who have
 not driven before, whose drives are less clean, is the next question
 (concept §15 items 6, 7).
+
+**Every recorded drive, 2026-10-22.** On that day an agent taught on the
+stand by a cautious drive of the maintainer came near its targets but
+never reached them. `tools/evaluate.py` over all 18 drives in `data/runs/`
+(deployment machine; the two teaching drives, the tuning drives of
+2026-10-09, the visitors' drives of 2026-10-09 and 2026-10-16 and four
+drives of the maintainer on 2026-10-22), ten seeds, 50 new transports
+each, linear policy:
+
+| | unmirrored | mirrored |
+|---|---|---|
+| drives reaching all 500 new transports and all 30 own | 16 of 18 | 18 of 18 |
+| 20261022-115542 (cautious, now `tests/data/…-vorsichtig.json`) | 0/500, own 0/30 | 500/500, 16.4 s |
+| 20261009-084003-messung (cautious tuning drive) | 240/500, own 0/30 | 500/500, 25.4 s |
+| median time of the other 16 drives, per drive | 8.4–27.8 s | the same within 0.2 s |
+| training, median per drive | 0.044–0.067 s | 0.057–0.103 s |
+
+The first training of the run took 0.13 s and 0.23 s (the measurement
+drive, first in the list); the others stayed within the 0.1 s the stand
+allows in its loop (§18).
+
+- *Why the two fail:* unmirrored, they learnt an offset (−0.075 and
+  −0.041) against a small distance weight (0.56 and 0.35); at rest and
+  without swing the agent commands zero at 2 m · atanh(−b/w), 0.27 m and
+  0.23 m from the target, outside the 0.15 m tolerance. A cautious drive's
+  small distance weight is what amplifies the offset; the other drives'
+  offsets put their rest at most 0.09 m off.
+- *Mirrored,* the offset ends between 1e-17 and 2.4e-4, the weights as
+  they were: the cautious teaching drive 0.29 against 0.30, the quick one
+  1.80 either way, so the style is kept (27.6 s against 8.7 s).
+- *A linear policy without an offset* (b held at zero, measured with a
+  scratch script on the same targets, three seeds) gave the same as
+  mirrored on every drive. Not chosen: it changes the model, its JSON and
+  the display, and the offset learnt to zero is itself worth showing
+  (§21).
+
+Hence the stand learns mirrored since 2026-10-22 (§15).
+`tests/test_cloning.py` keeps the cautious drive of that day: mirrored all
+50 targets, unmirrored none.
 
 `tests/test_evaluate.py` guards the tool's bookkeeping.
 
@@ -1879,12 +1932,13 @@ and an offset. Training takes 0.05 s (§18), far too short to see.
 Worked out with the maintainer on 2026-10-16.
 
 **What the weights show.** Cloned from the maintainer's two teaching
-drives (deployment machine, seeds 0 and 1 alike):
+drives (deployment machine, seeds 0 and 1 alike), as on the stand since
+2026-10-22, mirrored (§15); unmirrored, as first measured, in brackets:
 
 | Drive | Distance | Angle | Angular speed | Offset | Far from the target |
 |---|---|---|---|---|---|
-| cautious | 0.30 | 0.00 | −0.02 | +0.01 | tanh(0.3), 29 % of top speed |
-| quick | 1.80 | 0.10 | −0.13 | −0.01 | tanh(1.8), 95 % of top speed |
+| cautious | 0.29 (0.30) | 0.00 (0.00) | −0.02 (−0.02) | 0.00 (+0.01) | tanh(0.29), 29 % of top speed |
+| quick | 1.80 (1.80) | 0.10 (0.10) | −0.13 (−0.13) | 0.00 (−0.01) | tanh(1.8), 95 % of top speed |
 
 The style lies almost wholly in the distance weight; the swing weights
 are small for both drives. The cautious drive's weights settle within
@@ -1897,10 +1951,15 @@ about 50 of the 2000 epochs; the quick drive's distance weight grows from
   their names, one neuron, the command as output. A connection's
   thickness is the weight's size, its colour the sign, its number beside
   the input. Under it the formula with the language's decimals (§24) and
-  a fixed line of explanation: "Je größer das Gewicht beim Abstand, desto zügiger fährt
-  der Agent aufs Ziel zu." Only the quantities are named, no reading of a
-  style into them (decided with the maintainer); the offset is in the
-  formula, not in the diagram.
+  a fixed line of explanation: "Je größer das Gewicht beim Abstand, desto
+  zügiger fährt der Agent aufs Ziel zu." Only the quantities are named, no
+  reading of a style into them (decided with the maintainer); the offset
+  is in the formula, not in the diagram.
+- *The offset is shown even at zero* (decided with the maintainer on
+  2026-10-22): mirrored, it learns itself to zero (§15), and "+ 0,00" at
+  the end of the formula says so, a finding of the learning, not a gap. A
+  value that rounds to zero is always shown with "+", never as "− 0,00";
+  so is a weight.
 - *In the learning step and while the visitor's agent drives,* at the same
   place: the right part of the band under the scene (curves 58 %, model
   42 %). While the agent drives, the inputs light up with their present
