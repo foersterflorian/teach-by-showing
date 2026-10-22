@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24), mirrored learning (§15, §16), colours in a dark and a light set (§25)
+**Status:** stand image 0.2.0 built, checked and archived (§10); spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24), mirrored learning (§15, §16), colours in a dark and a light set (§25)
 **Last updated:** 2026-10-22
 
 This file records *why* the code looks the way it does. The code says what it
@@ -803,7 +803,11 @@ stand's backend, and the host's browser opens `http://localhost:8081`.
   that layer was already present.
 - *Unprivileged user* (UID 10001), *build context as an allow-list*,
   *health check on `/healthz`* (§8), *image tag follows the package version*
-  (`bump-my-version` updates `compose.yaml`).
+  (`bump-my-version` updates `compose.yaml` and the README's archive
+  commands).
+- *Every version kept as an archive* (`docker save`, `zstd`) beside the
+  repository, with its digests, so that the stand can be set up again
+  without PyPI or Docker Hub.
 
 **Different from feature-viz.**
 
@@ -838,14 +842,47 @@ stand's backend, and the host's browser opens `http://localhost:8081`.
 | `docker stop` | 0.4 s, exit code 0 |
 | `--network none` | healthy after about 7 s, page and logos served |
 
-**Not yet done.** The `org.opencontainers.image.source` label names the
-GitHub location; the repository exists there since 2026-10-16 (public,
-`main` and `dev`; concept §15 item 15). No archive with `docker save` yet;
-that follows once a version is worth keeping, as in feature-viz. The
-package is still at 0.1.0, so the tag no longer tells images apart: the
-image of 2026-10-09 (P0, with the stand's steps) carries the same tag as
-the first one of 2026-10-02. The version is raised before the stand's
-image is built (concept §13, week 2).
+**The stand's image, 0.2.0** (deployment machine, RTX 4090 / AMD 16-core,
+Docker 29.9.2, 2026-10-22, commit a160193). The package went from 0.1.0 to
+0.2.0 (`bump-my-version`, which now also updates the README's archive
+commands); the 0.1.0 tag had covered both the image of 2026-10-02 and the
+one of 2026-10-09.
+
+| Check | Result |
+|---|---|
+| Build, base layer cached | 13 s; image 316 MB on disk |
+| Start to healthy | about 5 s; language and theme as stored (§24, §25) |
+| Container setup | no devices, not privileged, user `teach-by-showing`, port bound to `127.0.0.1:8081` only, `restart: unless-stopped` |
+| Timing at a client on the host, 30 s (`tools/measure_ws.py timing`) | 60.02 Hz, none skipped; interval median 16.62 ms, 1st–99th percentile 15.44–18.23 ms |
+| The same beside feature-viz 0.2.1 (sample video on the GPU, its stream pulled, GPU 17 %) | 60.01 Hz, none skipped; median 16.77 ms, 15.54–17.93 ms; no overrun |
+| Scripted visit over the WebSocket | run in `/data/runs`, agent in `/data/agents`, `language.json` and `theme.json` in `/data` after the staff's keys |
+| Self-shutdown (SIGTERM to PID 1, the loop-crash path; sent with Python, the slim image has no `kill`) | restarted by Docker (restart count 0 → 1), healthy again after 5.8 s, language and theme kept |
+| `docker compose down`, then `up -d` | the gallery's agent, the language and the theme still there |
+| `docker stop` | 0.37 s, exit code 0 |
+| `--network none` | healthy after 5.3 s, page with the funding notice served in the stored language and theme |
+| Archive (`docker save` + `zstd`) | 71 MB, written in 1 s; integrity checked |
+
+The archive and its digests lie beside the repository, outside git, as
+feature-viz keeps its own: `../teach-by-showing-0.2.0.tar.zst` and
+`../Container-ID-Hash-teach-by-showing-0.2.0.txt` (config digest
+`sha256:19669934…`, manifest digest `sha256:604d1267…`).
+
+**Walked on the stand** (2026-10-22, the maintainer, gamepad): the crane
+from the container on the left monitor, feature-viz from its container on
+the right, both in Firefox kiosks; a visit through the gallery in both
+languages and both themes, the staff's keys: "läuft wie zuvor"; the pair
+side by side, focus, gamepad and frame rate undisturbed: "passt". The
+server counted 1 overrun in 23 129 ticks and trained the visitor's agent
+in 0.082 s.
+
+**Not yet done.** The dress rehearsal on the venue's cabling, both
+monitors on DisplayPort without the docking station (concept §13, week 4);
+the stand start script (concept §15 item 16). The volume
+`teach-by-showing_data` on the deployment machine holds two runs of the
+container check of 2026-10-09 and, since 2026-10-22, a scripted visit
+(agent #1) and the maintainer's visit (agent #2); whether to empty it or
+set the gallery's filter before the event is the maintainer's call
+(`teach-by-showing-gallery since now` hides without deleting, §23).
 
 **Rejected alternatives.**
 
