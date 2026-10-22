@@ -363,6 +363,15 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **Two girders for learnt against naive** (§19). Kept as an option on
   2026-10-16, should the agent at the target still hide the naive driver
   too much with two cranes on one girder.
+- **Preference learning** (concept §5.5, §15 item 13). Deferred past the
+  event on 2026-10-22, before the feature freeze: the visitor would answer
+  three to five pairwise comparisons ("Welche Fahrt gefällt Ihnen
+  besser?"), and a Bradley–Terry model over speed, calm and gentleness
+  would estimate the weights the evolution starts from, instead of
+  sliders. It is only another input to the evolution's fitness, and
+  neither the evolution nor its fitness exists yet; the comparison drives
+  would also lengthen each visitor's turn, by an amount not measured. To
+  be weighed once the evolution with sliders has been judged on the stand.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7) — *tuned on the gamepad on
