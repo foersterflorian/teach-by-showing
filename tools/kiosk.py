@@ -23,6 +23,7 @@ import argparse
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -185,6 +186,10 @@ def cmd_open(args: argparse.Namespace) -> int:
     # Native Wayland: --kiosk-monitor names the output in the fullscreen
     # request, and only a Wayland client can name it there.
     env: dict[str, str] = {**os.environ, "MOZ_ENABLE_WAYLAND": "1"}
+    # Ended by the stand's start script or a logout with SIGTERM: leave
+    # through `finally`, so that the fresh profile does not stay in /tmp
+    # (about 60 MB each, §26).
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
     try:
         command: list[str] = firefox_command(firefox, profile, index, args.url)
         return subprocess.run(command, env=env).returncode

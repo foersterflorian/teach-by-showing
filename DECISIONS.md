@@ -2601,6 +2601,15 @@ stand start script lives.
   images, each loaded twice, and the GPU for feature-viz to be set up again.
 - *A host folder for the data* and *autologin:* see Decision.
 
+**Checked in the maintainer's account** (deployment machine, 2026-10-22,
+`tools/stand.py` from the repository): started with both containers
+stopped, it waited and named both; once they were up, both kiosks opened
+3.7 s later on the right monitors. The crane's Firefox, ended from outside,
+was open again on its monitor after 3.1 s. Ended with SIGTERM, as a logout
+does, both kiosks closed within a second; their fresh profiles first stayed
+in /tmp (56 and 63 MB), hence `kiosk.py` now leaves through its cleanup on
+SIGTERM, after which none was left.
+
 **Not yet verified:** the stand account's session as such: that COSMIC runs
 its autostart entry (it runs the maintainer's), that its Firefox sees the
 gamepad (the seat's devices go to the session's user), and the placement of

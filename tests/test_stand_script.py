@@ -187,3 +187,13 @@ def test_the_autostart_entry_starts_the_installed_script() -> None:
     entry: str = (SETUP / "kmi-stand.desktop").read_text(encoding="utf-8")
     assert "Exec=/usr/bin/python3 /opt/kmi-stand/stand.py" in entry
     assert "Type=Application" in entry
+
+
+def test_a_kiosk_ended_by_sigterm_still_removes_its_profile() -> None:
+    """Checked 2026-10-22: without it, ending the start script left both
+    fresh Firefox profiles in /tmp, about 60 MB each."""
+    kiosk: str = (ROOT / "tools" / "kiosk.py").read_text(encoding="utf-8")
+    opening: str = kiosk[kiosk.index("def cmd_open") : kiosk.index("def main")]
+    assert "signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))" in opening
+    assert opening.index("signal.SIGTERM") < opening.index("try:")
+    assert "shutil.rmtree(profile" in opening.split("finally:", 1)[1]
