@@ -2620,9 +2620,9 @@ Ctrl+Alt+G, L and H worked. In its session COSMIC's own shortcuts remain:
 Super+T opens a terminal, Super+Esc locks the screen (the keyboard is for
 the staff, concept §6.3), Super+Shift+Esc offers to log out.
 
-**Not yet verified:** that `docker ps` is refused in that account, and
-that Super+Shift+Esc reaches COSMIC over the full-screen kiosks; the
-maintainer logs out with a script of his own for now.
+In that account `docker ps` and `ls /home/flfo` were refused, and
+Super+Shift+Esc brought up COSMIC's log-out dialog over the full-screen
+kiosks.
 
 `tests/test_stand_script.py` guards this section: waiting for both servers
 and naming the one missing, reopening a kiosk that exits and leaving one
