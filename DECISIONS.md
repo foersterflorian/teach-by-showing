@@ -2226,7 +2226,7 @@ Decided with the maintainer on 2026-10-22, before the feature freeze.
 - *Every keyboard shortcut is listed in the README* (decided 2026-10-22).
 - *The layout does not depend on the language.* The English headers of
   the style profile are as short as the German, so that both wrap into two
-  lines; the profile's columns have one width (8vw), whatever their cells
+  lines ("Calm (final swing)" for "Ruhe am Ziel (Restpendeln)"); the profile's columns have one width (8vw), whatever their cells
   say; its title holds three lines from the start; and the model's top
   weight is never drawn above its canvas.
 
@@ -2259,12 +2259,17 @@ band and the model's canvas, in px:
 | step 3, German, before | 200 | 285 | 154 |
 | step 3, English, before | 248 | 272 | 141 |
 | step 3, both, after | 200 | 285 | 155 |
+| step 3 beside the own drive, both, after | 200 | 285 | 155 |
 | gallery, four rows, both, after | 270 | 267 | 137 |
 
 - *Before,* the English headers wrapped into four lines (125 px) against
   two (64 px), and the row changed height within a step as the cells
   filled. At 7vw the English still took three lines ("Calm" /
-  "(residual" / "swing)"); at 8vw both take two.
+  "(residual" / "swing)"). Beside the readouts of the agent's step the
+  table is narrower than its 8vw columns, about 150 px of text each, and
+  "Calm (residual swing)" took three lines there even at 8vw (seen by the
+  maintainer on the stand); "Calm (final swing)" takes two, as the German
+  does.
 - *The model's top weight* stood 2 px above its canvas in German and 5 px
   in English, both cut off: its place follows the canvas's height, and
   the canvas is 137–155 px high since the profile row (§22). Seen by the
