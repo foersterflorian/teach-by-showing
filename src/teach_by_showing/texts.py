@@ -230,8 +230,10 @@ ENGLISH: Final[Texts] = Texts(
         "Time",
         "Largest swing",
         # As short as the German, so that the headers wrap into the same two
-        # lines and the scene keeps its size in both languages.
-        "Calm (residual swing)",
+        # lines and the scene keeps its size in both languages: beside the
+        # readouts a column has about 150 px, and "Calm (residual swing)"
+        # took three (measured 2026-10-22, §24).
+        "Calm (final swing)",
         "Gentleness (stick travel)",
     ),
     not_reached="not reached",
