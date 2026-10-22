@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24)
+**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24), mirrored learning (§15, §16), colours in a dark and a light set (§25)
 **Last updated:** 2026-10-22
 
 This file records *why* the code looks the way it does. The code says what it
@@ -99,7 +99,8 @@ in line is a task in that repository.
   matches the README character for character, typographic quotes and dash
   included; the German one keeps the funder's „…“ quotes.
 - *White ground.* The BMFTR logo must sit on white or a very light colour;
-  the screen is otherwise dark.
+  the screen is otherwise dark. In the light theme (§25) the strip stays
+  white and a thin line sets it off the off-white ground.
 - *Files unmodified, only scaled.* The protected margin is part of the mark.
 - *Allow-list.* `funding_asset()` serves only the names in `FUNDING_LOGOS`,
   so a name taken from an HTTP request can never reach another file.
@@ -341,6 +342,9 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   driver red, and no longer turns green on success. The target zone still
   fills green while the load hangs calm. The maintainer accepted this set
   for now and wants to tune the colours again later, on the stand.
+  *Resolved on 2026-10-22 (§25):* the zone fills in the target's blue,
+  the banner keeps the text's colour, and green and red mean only the
+  drivers.
 - **The naive driver in the visitor's agent step.** Decided 2026-10-16 to
   show it only while the stand waits (§19). Kept as an option for later:
   beside the visitor's own agent too, so that the visitor compares the
@@ -1736,7 +1740,8 @@ Decided with the maintainer on 2026-10-16:
 
 - *Only while the stand waits.* In the visitor's agent step later perhaps
   (§5).
-- *These colours for now;* to be tuned again on the stand (§5).
+- *These colours for now;* to be tuned again on the stand (§5). Tuned on
+  2026-10-22, with a light set beside the dark one (§25).
 - *Learnt against naive, without the ghost* (2026-10-16, after judging the
   first version on the stand). With the agent, the earlier teacher's ghost
   and the naive driver on one girder, the maintainer found the picture
@@ -2373,3 +2378,81 @@ frontend, the staff's gamepad page excepted), the page in each language,
 the reload, the staff's key once per press, a switch reaching the replay,
 that every shortcut is in the README, and the layout rules that keep the
 scene's size the same in both languages.
+
+---
+
+## 25. Colours: one meaning each, in a dark and a light set
+
+**Context.** Concept §8 gives colours a meaning on the stand: a person
+orange, a learned agent green, the naive driver red; the gallery added a
+violet opponent (§23), and the target is blue. Concept §15 item 27 left
+the colours to be tuned on the stand, and four places broke the meanings
+(found 2026-10-22): the target zone filled green while the load hung
+calm; the banner was green on success and red on timeout; the command bar
+was the person's orange also when an agent drove; the model's weights were
+blue (the target's) and violet (near the opponent's). The maintainer also
+asked for a light mode beside the dark one. Decided with the maintainer
+on 2026-10-22.
+
+**Decision.**
+
+- *Each colour one meaning,* nothing else green or red. The target zone
+  fills in the target's blue; the banner keeps the text's colour and its
+  words say what happened; the command bar takes the colour of whoever
+  drives (`data-driver` on the readout row, from the state's `driver`),
+  the teacher's bar beside it stays the person's, translucent; the model's
+  weights are light grey when positive and pink when negative, colours
+  that mean nothing else. The call to action stays orange: it addresses
+  the person.
+- *Every colour a token in `style.css`,* the page's and the canvases'
+  alike. `scene.js` reads them into `COLORS` with `getComputedStyle`, and
+  `curves.js` and `model.js` draw with that object; no script holds a
+  colour of its own.
+- *Two sets of the same tokens:* dark on `:root`, as before, and light on
+  `:root[data-theme="light"]`: an off-white ground (#f4f4f2) so that the
+  white funding strip stands apart, with a thin line above it (§2), and
+  darker tones of the same meanings (person #c2410c, agent #15803d, naive
+  #dc2626, opponent #7c3aed, target #2563eb).
+- *Readable by rule:* every graphical token at least 3:1 against its
+  ground, text at least 4.5:1, computed from the tokens (WCAG), in both
+  sets. The dark girder grey rose from #5a5a5a (2.7:1) to #666 (3.3:1).
+- *Dark by default,* switched by the staff with Ctrl+Alt+H, confirmed by
+  the banner for 3 s ("Hell"/"Dunkel", "Light"/"Dark"), kept in
+  `$DATA_DIR/theme.json` like the language (`choices.py`, shared with
+  §24). The server puts the theme on the page (`data-theme`) and into
+  every state; on a change the page sets the attribute and the canvases
+  read their colours again, without a reload.
+- *feature-viz follows,* so that the pair matches in either theme (its
+  `DECISIONS.md` §21).
+
+**Why.**
+
+- *Tokens rather than two palettes in the scripts:* one place for every
+  colour, which the maintainer can tune on the stand in the stylesheet
+  without touching JavaScript.
+- *No reload,* unlike the language: only colours change, and a reload
+  would drop the curves of the transport under way.
+- *Kept by the server, not by the browser:* the kiosk starts with a fresh
+  profile every time (§11), so browser storage would forget it.
+- *Ctrl+Alt+H:* free in COSMIC's defaults and in Firefox on Linux; "H"
+  for hell, light.
+
+**Measured** (deployment machine, the desktop app's browser at 2816 ×
+1584, 2026-10-22, a scripted visit in the agent's step): the same heights
+in both themes (scene 794, band 285, model 155, readout row 200 px); the
+canvases took the light set's colours after Ctrl+Alt+H, the command bar
+green for the agent in both.
+
+**Rejected alternatives.**
+
+- *Following the desktop's theme* (`prefers-color-scheme`): the kiosk's
+  fresh profile follows no one's choice, and the staff decide.
+- *Browser storage:* see Why.
+- *A reload on a switch:* see Why.
+- *Blue and violet for the weights:* blue is the target, violet the
+  opponent.
+
+`tests/test_theme.py` guards this section: the same tokens in both sets,
+the contrast rule, no colour in the scripts, green and red only for the
+drivers, the switch without a reload, the stored theme and its fallback,
+and the staff's key once per press.
