@@ -38,6 +38,7 @@ from teach_by_showing.model_view import LearningTrace, learn, model_message
 from teach_by_showing.recording import Run, run_filename
 from teach_by_showing.replay import ReplaySession, profile_cells
 from teach_by_showing.texts import DEFAULT_LANGUAGE, TEXTS, Language, Texts, number, other
+from teach_by_showing.theme import DEFAULT_THEME, Theme, other_theme
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
@@ -127,6 +128,11 @@ class StandSession:
     on_language: Callable[[Language], None] | None = None
     held_language: bool = False
     pressed_language: bool = False
+    # The screen's theme (§25), kept by the caller as the language is.
+    theme: Theme = DEFAULT_THEME
+    on_theme: Callable[[Theme], None] | None = None
+    held_theme: bool = False
+    pressed_theme: bool = False
     # Which confirmation the banner shows until notice_until, as a getter,
     # so that it is worded in the language of the frame it is shown in.
     notice: Callable[[Texts], str] | None = None
@@ -144,6 +150,8 @@ class StandSession:
         gallery: GalleryStore | None = None,
         language: Language = DEFAULT_LANGUAGE,
         on_language: Callable[[Language], None] | None = None,
+        theme: Theme = DEFAULT_THEME,
+        on_theme: Callable[[Theme], None] | None = None,
     ) -> StandSession:
         # The frontend draws every step to the one scale the config message
         # gives it; a showcase recorded under other physics would be drawn
@@ -160,6 +168,8 @@ class StandSession:
             gallery=gallery,
             language=language,
             on_language=on_language,
+            theme=theme,
+            on_theme=on_theme,
         )
         session._idle()
         return session
@@ -194,6 +204,13 @@ class StandSession:
             self.pressed_language = True
         self.held_language = held
 
+    def set_theme_key(self, held: bool) -> None:
+        """The staff's third key: the screen switches between dark and light
+        (§25), and stays so until the next switch."""
+        if held and not self.held_theme:
+            self.pressed_theme = True
+        self.held_theme = held
+
     @property
     def words(self) -> Texts:
         return TEXTS[self.language]
@@ -208,6 +225,14 @@ class StandSession:
             self.on_language(self.language)
         self._notify(lambda w: w.language_notice)
         log.info("screen language %s", self.language)
+
+    def _switch_theme(self) -> None:
+        self.theme = other_theme(self.theme)
+        if self.on_theme is not None:
+            self.on_theme(self.theme)
+        light: bool = self.theme is Theme.LIGHT
+        self._notify(lambda w: w.light_notice if light else w.dark_notice)
+        log.info("screen theme %s", self.theme)
 
     def _notify(self, notice: Callable[[Texts], str]) -> None:
         self.notice = notice
@@ -228,6 +253,9 @@ class StandSession:
         if self.pressed_language:
             self.pressed_language = False
             self._switch_language()
+        if self.pressed_theme:
+            self.pressed_theme = False
+            self._switch_theme()
         match self.phase:
             case Phase.IDLE:
                 if a:
@@ -545,6 +573,8 @@ class StandSession:
         # The page compares it with its own and reloads on a change, so that
         # its fixed words and the funding notice follow (§24).
         message["language"] = str(self.language)
+        # Applied by the page without a reload: only the colours change (§25).
+        message["theme"] = str(self.theme)
         message["texts"] = self._texts()
         model: dict[str, Any] | None = self._model()
         if model is not None:

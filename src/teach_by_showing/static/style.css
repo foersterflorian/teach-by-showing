@@ -1,13 +1,35 @@
 /* Layout for a 4K monitor in landscape, read from standing distance
    (concept §8): sizes scale with the viewport, nothing scrolls. */
 
+/* Every colour of the page and of its canvases, in two sets of the same
+   names (DECISIONS.md §25). Each colour has one meaning: a person orange,
+   a learned agent green, the naive driver red, the gallery's opponent
+   violet, the target blue; nothing else is green or red. The scripts read
+   these tokens; they hold no colour of their own. */
 :root {
   --bg: #111;
   --fg: #e6e6e6;
   --muted: #8a8a8a;
-  --ok: #4ade80;
-  --bad: #f87171;
-  --accent: #fb923c;
+  --human: #fb923c;
+  --agent: #4ade80;
+  --naive: #f87171;
+  --rival: #a78bfa;
+  --target: #60a5fa;
+  /* #5a5a5a until 2026-10-22: 2.7:1 on the ground, below 3:1. */
+  --girder: #666;
+  --trolley: #b0b0b0;
+  --rope: #d0d0d0;
+  --label: #8a8a8a;
+  /* The model's weights by sign, in colours that mean nothing else. */
+  --weight-pos: #d4d4d4;
+  --weight-neg: #f472b6;
+  /* 1: a negative weight drawn dashed, the alternative judged on the stand
+     (§25). */
+  --weight-dash: 0;
+  --node: #e6e6e6;
+  --node-fill: #2a2a2a;
+  --bar: #2a2a2a;
+  --funding-edge: transparent;
 
   /* Text sizes, all here so that they can be tuned on the stand. What a
      visitor is meant to read is at least 2vh, about 43 physical pixels on
@@ -22,6 +44,30 @@
   /* The curves' labels, drawn on a canvas, which reads this number as vh;
      unitless for that reason. */
   --text-curve-vh: 2;
+}
+
+/* Light (§25): an off-white ground, so that the funding strip, which stays
+   white for the logo (§2), still stands apart; darker tones of the same
+   meanings, for contrast on it. */
+:root[data-theme="light"] {
+  --bg: #f4f4f2;
+  --fg: #1a1a1a;
+  --muted: #555;
+  --human: #c2410c;
+  --agent: #15803d;
+  --naive: #dc2626;
+  --rival: #7c3aed;
+  --target: #2563eb;
+  --girder: #6b6b6b;
+  --trolley: #8a8a8a;
+  --rope: #404040;
+  --label: #555;
+  --weight-pos: #6b6b6b;
+  --weight-neg: #db2777;
+  --node: #1a1a1a;
+  --node-fill: #e2e2e0;
+  --bar: #dcdcda;
+  --funding-edge: #c8c8c4;
 }
 
 * { box-sizing: border-box; }
@@ -127,8 +173,8 @@ main {
   font-weight: 600;
 }
 
-#banner.success { color: var(--ok); }
-#banner.timeout { color: var(--bad); }
+/* The banner keeps the text's colour whatever happened: green would read
+   as the agent and red as the naive driver (§25). */
 #offline { color: var(--muted); }
 
 /* The stand's call to action, at the foot of the scene, clear of the
@@ -142,7 +188,8 @@ main {
   text-align: center;
   font-size: 5vh;
   font-weight: 600;
-  color: var(--accent);
+  /* Addressed to the person. */
+  color: var(--human);
 }
 #prompt[hidden] { display: none; }
 /* Above the band when it is shown, so that it never covers the curves. */
@@ -226,7 +273,7 @@ main {
   color: var(--muted);
 }
 /* The visitor's own agent among the gallery's (§23), in the agent's green. */
-#profile tr.own td, #profile tr.own td:first-child { color: var(--ok); }
+#profile tr.own td, #profile tr.own td:first-child { color: var(--agent); }
 
 /* Command as a bar from the centre: left half negative, right positive. */
 #command-bar, #ghost-command-bar {
@@ -235,7 +282,7 @@ main {
   width: 12vw;
   height: 1.2vh;
   margin-top: 0.8vh;
-  background: #2a2a2a;
+  background: var(--bar);
 }
 
 #command-fill, #ghost-command-fill {
@@ -244,8 +291,11 @@ main {
   bottom: 0;
   left: 50%;
   width: 0;
-  background: var(--accent);
+  background: var(--human);
 }
+/* The bar in the colour of whoever drives (§25): the agent's command is
+   not the person's. The teacher's bar beside it stays the person's. */
+#readout[data-driver="agent"] #command-fill { background: var(--agent); }
 
 /* The teacher's command in a replay, as translucent as the ghost (§17). */
 #ghost-command-fill { opacity: 0.35; }
@@ -258,6 +308,7 @@ main {
   gap: 2vw;
   padding: 0.8vh 2.5vw;
   background: #fff;
+  border-top: 1px solid var(--funding-edge);
   color: #333;
   font-size: 1.15vh;
   line-height: 1.35;

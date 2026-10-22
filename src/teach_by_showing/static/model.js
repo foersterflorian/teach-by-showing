@@ -7,11 +7,6 @@
 // curves it replaces while the agent learns.
 const LOSS_LEFT = 0.12;
 
-const MODEL_COLORS = {
-  positive: "#60a5fa",
-  negative: "#c084fc",
-  node: "#e6e6e6",
-};
 
 // The same text size as the curves' labels, from the stylesheet (§20).
 function textPixels() {
@@ -36,12 +31,16 @@ function drawModel(ctx, width, height, model) {
   // weight's size, colour its sign.
   model.w.forEach((w, k) => {
     const share = Math.min(1, Math.abs(w) / model.weight_scale);
-    ctx.strokeStyle = w < 0 ? MODEL_COLORS.negative : MODEL_COLORS.positive;
+    // The sign in colours that mean nothing else on the stand, or, with
+    // --weight-dash, a dashed line for a negative weight (§25).
+    ctx.strokeStyle = w < 0 ? COLORS.weightNeg : COLORS.weightPos;
     ctx.lineWidth = 1 + share * r * 1.25;
+    ctx.setLineDash(w < 0 && COLORS.weightDash === "1" ? [r * 0.8, r * 0.6] : []);
     ctx.beginPath();
     ctx.moveTo(xIn, rows[k]);
     ctx.lineTo(xSum, ySum);
     ctx.stroke();
+    ctx.setLineDash([]);
     // The weight beside its input, where the connections are still apart;
     // never above the canvas, where the top one was cut off when the band
     // was low (§24).
@@ -61,7 +60,7 @@ function drawModel(ctx, width, height, model) {
   // drives; plain while it learns.
   model.labels.forEach((label, k) => {
     const value = model.inputs ? Math.min(1, Math.abs(model.inputs[k])) : 0;
-    ctx.fillStyle = MODEL_COLORS.node;
+    ctx.fillStyle = COLORS.node;
     ctx.globalAlpha = model.inputs ? 0.25 + 0.75 * value : 0.5;
     ctx.beginPath();
     ctx.arc(xIn, rows[k], r, 0, 2 * Math.PI);
@@ -73,14 +72,14 @@ function drawModel(ctx, width, height, model) {
   });
 
   // The neuron, and its output: the command, as in the readout below.
-  ctx.fillStyle = "#2a2a2a";
-  ctx.strokeStyle = MODEL_COLORS.node;
+  ctx.fillStyle = COLORS.nodeFill;
+  ctx.strokeStyle = COLORS.node;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(xSum, ySum, r * 1.6, 0, 2 * Math.PI);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = MODEL_COLORS.node;
+  ctx.fillStyle = COLORS.node;
   ctx.textAlign = "center";
   ctx.fillText("Σ", xSum, ySum);
 

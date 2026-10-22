@@ -135,7 +135,7 @@ def test_the_frontend_holds_no_german(path: Path) -> None:
 def test_the_page_speaks_its_language(language: Language) -> None:
     page: str = api.index_page(language)
     words: Texts = TEXTS[language]
-    assert f'<html lang="{language}">' in page
+    assert f'<html lang="{language}" ' in page
     assert "{{" not in page
     assert f'data-decimal="{words.decimal}"' in page
     assert f">{words.page_headline}<" in page
@@ -156,7 +156,7 @@ def test_every_staff_key_is_documented_in_the_readme() -> None:
     keys: list[str] = re.findall(
         r'e\.ctrlKey && e\.altKey && e\.key\.toLowerCase\(\) === "(\w)"', script
     )
-    assert sorted(keys) == ["g", "l"]
+    assert sorted(keys) == ["g", "h", "l"]
     for key in keys:
         assert f"Ctrl+Alt+{key.upper()}" in readme, key
 

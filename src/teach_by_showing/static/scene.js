@@ -2,23 +2,37 @@
 // server, every dimension from the config message (DECISIONS.md §9).
 "use strict";
 
-const COLORS = {
-  girder: "#5a5a5a",
-  trolley: "#b0b0b0",
-  rope: "#d0d0d0",
-  // The load is coloured by who drives it (DECISIONS.md §19): a person
-  // orange, a learned agent green (concept §8), the naive driver red, the
-  // gallery's opponent violet, since blue is the target's (§23).
-  // Success shows in the target zone and the banner, not in the load, so
-  // that green always means the agent.
-  human: "#fb923c",
-  agent: "#4ade80",
-  naive: "#f87171",
-  rival: "#a78bfa",
-  target: "#60a5fa",
-  calm: "#4ade80",
-  label: "#8a8a8a",
+// The colours, read from the stylesheet's tokens (DECISIONS.md §25), so that
+// the theme is one set of CSS variables and the scripts hold no colour. The
+// load is coloured by who drives it (§19): a person orange, a learned agent
+// green, the naive driver red, the gallery's opponent violet (§23). Success
+// shows in the target zone and the banner's words, not in a colour.
+const COLOR_TOKENS = {
+  girder: "--girder",
+  trolley: "--trolley",
+  rope: "--rope",
+  human: "--human",
+  agent: "--agent",
+  naive: "--naive",
+  rival: "--rival",
+  target: "--target",
+  label: "--label",
+  weightPos: "--weight-pos",
+  weightNeg: "--weight-neg",
+  weightDash: "--weight-dash",
+  node: "--node",
+  nodeFill: "--node-fill",
 };
+const COLORS = {};
+
+// Again whenever the theme changes (main.js).
+function readColors() {
+  const root = getComputedStyle(document.documentElement);
+  for (const [key, token] of Object.entries(COLOR_TOKENS)) {
+    COLORS[key] = root.getPropertyValue(token).trim();
+  }
+}
+readColors();
 
 // Sizes of the drawn parts in metres, so that they scale with the crane.
 const TROLLEY_W = 0.6;
@@ -85,9 +99,8 @@ function drawScene(ctx, width, height, config, view) {
     ctx.globalAlpha = 0.25;
     ctx.fillRect(zx, L.floorY - 0.5 * s, zw, 0.5 * s);
     ctx.globalAlpha = 1;
-    ctx.fillStyle = COLORS.calm;
+    // Filled in the target's own colour, not green: green is the agent (§25).
     ctx.fillRect(zx, L.floorY - 0.5 * s * view.calm, zw, 0.5 * s * view.calm);
-    ctx.fillStyle = COLORS.target;
     // Worded by the server, in the page (DECISIONS.md §24).
     ctx.fillText(document.body.dataset.target, L.px(target), L.floorY + 0.3 * s);
   }

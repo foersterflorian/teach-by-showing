@@ -19,7 +19,7 @@ pdm run pytest
 pdm run teach-by-showing        # http://localhost:8081
 ```
 
-The server runs the stand's steps (`DECISIONS.md` §18–§24): while it waits,
+The server runs the stand's steps (`DECISIONS.md` §18–§25): while it waits,
 an agent that learnt from a person drives against one that learnt nothing;
 A begins a demonstration of three transports; the agent learns from it,
 shown in slow motion; then it drives the visitor's transports beside their
@@ -36,8 +36,9 @@ time stamp) sets the filter on the machine; in the container the same is
 `docker compose exec teach-by-showing python -m teach_by_showing.gallery list`.
 
 The screen speaks English or German (`DECISIONS.md` §24), English until
-the staff switch with Ctrl+Alt+L; the choice is kept in `language.json` in
-the data directory and survives a restart.
+the staff switch with Ctrl+Alt+L, and dark or light (§25), dark until the
+staff switch with Ctrl+Alt+H; both choices are kept in the data directory,
+in `language.json` and `theme.json`, and survive a restart.
 
 The crane is driven with the left stick of a USB gamepad, A and B are its
 buttons; for development the keyboard stands in (see Keyboard shortcuts).
@@ -121,6 +122,7 @@ Every key the stand's page reads, in the browser showing the crane:
 | Enter / Backspace | the gamepad's A / B, for development |
 | Ctrl+Alt+G | staff: the gallery shows only the agents taught from now on (`DECISIONS.md` §23) |
 | Ctrl+Alt+L | staff: the screen switches between English and German, and stays so (`DECISIONS.md` §24) |
+| Ctrl+Alt+H | staff: the screen switches between dark and light, and stays so (`DECISIONS.md` §25) |
 
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.

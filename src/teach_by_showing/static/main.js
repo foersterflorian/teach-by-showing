@@ -45,6 +45,12 @@ function connect() {
         location.reload();
         return;
       }
+      // The staff switched the theme: another set of colour tokens, read
+      // again by the canvases; the picture keeps running (§25).
+      if (message.theme && message.theme !== document.documentElement.dataset.theme) {
+        document.documentElement.dataset.theme = message.theme;
+        readColors();
+      }
       message.arrival = performance.now();
       states.push(message);
       recordCurves(message);
@@ -191,6 +197,8 @@ function showCommand(fill, command) {
 }
 
 function showReadout(view) {
+  // The command bar in the colour of whoever drives (§25), set in CSS.
+  el("readout").dataset.driver = view.driver;
   el("elapsed").textContent = seconds(view.elapsed);
   el("transports").textContent = view.transports;
   showCommand(el("command-fill"), view.command);
@@ -234,6 +242,7 @@ function tick(now) {
         b: buttons.b,
         reset: buttons.reset,
         language: buttons.language,
+        theme: buttons.theme,
       }),
     );
   }

@@ -52,6 +52,7 @@ from teach_by_showing.texts import (
     load_language,
     save_language,
 )
+from teach_by_showing.theme import DEFAULT_THEME, Theme, load_theme, save_theme
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
@@ -70,7 +71,7 @@ MODELS: Final[tuple[tuple[str, str], ...]] = (
     ("zuegig.json", MODEL_QUICK),
 )
 # A name in double braces in index.html: a field of texts.Texts, or the
-# page's language.
+# page's language or theme.
 PAGE_WORD: Final[re.Pattern[str]] = re.compile(r"\{\{(\w+)\}\}")
 
 
@@ -96,12 +97,14 @@ def create_app(
     make_session: Callable[[], Session],
     exit_on_crash: bool = False,
     language: Language = DEFAULT_LANGUAGE,
+    theme: Theme = DEFAULT_THEME,
 ) -> FastAPI:
     """The app, with the session created at startup. Tests pass their own
     factory with a fixed seed.
 
-    The page speaks the stand's language, which the staff may switch; a
-    session without the stand's steps speaks `language` (§24).
+    The page speaks the stand's language and shows its theme, which the
+    staff may switch; a session without the stand's steps uses `language`
+    and `theme` (§24, §25).
 
     With `exit_on_crash`, a crash of the simulation loop shuts the server
     down, so that the container's restart policy brings it back: Docker only
@@ -198,8 +201,9 @@ def create_app(
     @app.get("/")
     async def index() -> HTMLResponse:
         session: Session | None = holder.get("session")
-        spoken: Language = session.language if isinstance(session, StandSession) else language
-        return HTMLResponse(index_page(spoken))
+        if isinstance(session, StandSession):
+            return HTMLResponse(index_page(session.language, session.theme))
+        return HTMLResponse(index_page(language, theme))
 
     @app.get("/funding/{name}")
     async def funding_logo(name: str) -> Response:
@@ -215,7 +219,7 @@ def create_app(
     return app
 
 
-def index_page(language: Language) -> str:
+def index_page(language: Language, theme: Theme = DEFAULT_THEME) -> str:
     """The start page with its words and the funding notice filled in on the
     server, in `language`, so that every wording exists once, in texts.py and
     funding.py, and the frontend's scripts never word anything (§2, §24)."""
@@ -226,7 +230,9 @@ def index_page(language: Language) -> str:
 
     def word(match: re.Match[str]) -> str:
         name: str = match[1]
-        value: object = str(language) if name == "language" else getattr(words, name)
+        if name in ("language", "theme"):
+            return str(language if name == "language" else theme)
+        value: object = getattr(words, name)
         assert isinstance(value, str), name
         return html.escape(value)
 
@@ -274,6 +280,7 @@ def handle_input(session: Session, text: str) -> None:
     if isinstance(session, StandSession):
         session.set_staff(message.get("reset") is True)
         session.set_language_key(message.get("language") is True)
+        session.set_theme_key(message.get("theme") is True)
 
 
 def main() -> None:
@@ -333,7 +340,8 @@ def main() -> None:
     log.info("seed %d", seed)
     runs: Path = args.data_dir / "runs"
     language: Language = load_language(args.data_dir)
-    log.info("screen language %s", language)
+    theme: Theme = load_theme(args.data_dir)
+    log.info("screen language %s, theme %s", language, theme)
     settings: Settings = Settings.from_dict(
         json.loads(args.params.read_text(encoding="utf-8")) if args.params else {}
     )
@@ -407,6 +415,8 @@ def main() -> None:
             gallery=GalleryStore(args.data_dir, tuple(models)),
             language=language,
             on_language=lambda chosen: save_language(args.data_dir, chosen),
+            theme=theme,
+            on_theme=lambda chosen: save_theme(args.data_dir, chosen),
         )
 
     if args.ghost and args.record:
@@ -416,7 +426,7 @@ def main() -> None:
         make = make_replay
     elif args.free or args.record:
         make = make_session
-    app: FastAPI = create_app(make, exit_on_crash=True, language=language)
+    app: FastAPI = create_app(make, exit_on_crash=True, language=language, theme=theme)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 

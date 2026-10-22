@@ -5,19 +5,17 @@ One frozen dataclass holds every text; the two languages are two instances
 of it, so that a text missing in one of them is a type error, not a gap on
 the screen. Templates use str.format placeholders. The module knows nothing
 about HTTP or the frontend; the stand's language is kept in the data
-directory, as the gallery's filter is (§23).
+directory (choices.py).
 """
 
 from __future__ import annotations
 
-import json
-import logging
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Final
 
-log: logging.Logger = logging.getLogger("teach_by_showing")
+from teach_by_showing.choices import load_choice, save_choice
 
 
 class Language(StrEnum):
@@ -70,6 +68,9 @@ class Texts:
     gallery_title: str
     gallery_notice: str
     language_notice: str
+    # The theme the staff switched to (§25).
+    dark_notice: str
+    light_notice: str
     # Who drives.
     teacher_self: str
     teacher_earlier: str
@@ -136,6 +137,8 @@ GERMAN: Final[Texts] = Texts(
     gallery_title="Galerie – Mittel aus {targets} Testzielen",
     gallery_notice="Galerie neu ab jetzt",
     language_notice="Deutsch",
+    dark_notice="Dunkel",
+    light_notice="Hell",
     teacher_self="Ihre Fahrt",
     teacher_earlier="Vorbild",
     agent_self="Ihr Agent",
@@ -205,6 +208,8 @@ ENGLISH: Final[Texts] = Texts(
     gallery_title="Gallery – mean over {targets} test targets",
     gallery_notice="Gallery starts afresh now",
     language_notice="English",
+    dark_notice="Dark",
+    light_notice="Light",
     teacher_self="Your drive",
     teacher_earlier="Role model",
     agent_self="Your agent",
@@ -260,24 +265,9 @@ def other(language: Language) -> Language:
 
 
 def load_language(directory: Path) -> Language:
-    """The stand's language as last chosen; the default when nothing, or
-    nothing readable, is stored, so that a broken file never stops the
-    stand."""
-    path: Path = directory / LANGUAGE_FILE
-    if not path.exists():
-        return DEFAULT_LANGUAGE
-    try:
-        return Language(json.loads(path.read_text(encoding="utf-8"))["language"])
-    except (ValueError, KeyError, TypeError):
-        log.warning("unreadable %s; speaking %s", path, DEFAULT_LANGUAGE)
-        return DEFAULT_LANGUAGE
+    """The stand's language as last chosen, or the default (choices.py)."""
+    return load_choice(directory / LANGUAGE_FILE, "language", Language, DEFAULT_LANGUAGE)
 
 
 def save_language(directory: Path, language: Language) -> None:
-    """Written whole and then renamed, so that a crash never leaves half a
-    file behind (as gallery.py stores agents)."""
-    directory.mkdir(parents=True, exist_ok=True)
-    path: Path = directory / LANGUAGE_FILE
-    partial: Path = path.with_suffix(".partial")
-    partial.write_text(json.dumps({"language": str(language)}), encoding="utf-8")
-    partial.replace(path)
+    save_choice(directory / LANGUAGE_FILE, "language", language)

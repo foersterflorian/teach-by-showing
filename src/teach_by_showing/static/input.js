@@ -22,14 +22,16 @@ const keysDown = new Set();
 const keysTapped = new Set();
 // The staff's keys, all listed in README.md: Ctrl+Alt+G, the gallery from
 // now on (DECISIONS.md §23), not Ctrl+R, which reloads the page; Ctrl+Alt+L,
-// the other language (§24).
+// the other language (§24); Ctrl+Alt+H, light or dark (§25).
 let staffTapped = false;
 let languageTapped = false;
+let themeTapped = false;
 window.addEventListener("keydown", (e) => {
   keysDown.add(e.key);
   keysTapped.add(e.key);
   if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "g") staffTapped = true;
   if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") languageTapped = true;
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "h") themeTapped = true;
 });
 window.addEventListener("keyup", (e) => keysDown.delete(e.key));
 // Releasing a key while the window has no focus never sends keyup.
@@ -84,9 +86,11 @@ function readButtons() {
     b: held(BUTTON_B) || key("Backspace"),
     reset: staffTapped,
     language: languageTapped,
+    theme: themeTapped,
   };
   keysTapped.clear();
   staffTapped = false;
   languageTapped = false;
+  themeTapped = false;
   return buttons;
 }
