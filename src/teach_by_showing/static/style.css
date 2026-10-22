@@ -20,16 +20,14 @@
   --trolley: #b0b0b0;
   --rope: #d0d0d0;
   --label: #8a8a8a;
-  /* The model's weights by sign, in colours that mean nothing else. */
-  --weight-pos: #d4d4d4;
-  --weight-neg: #f472b6;
-  /* 1: a negative weight drawn dashed, the alternative judged on the stand
-     (§25). */
-  --weight-dash: 0;
+  /* The model's weights, in a grey that means nothing else; a negative one
+     is drawn dashed (judged on the stand, §25). */
+  --weight: #d4d4d4;
   --node: #e6e6e6;
   --node-fill: #2a2a2a;
   --bar: #2a2a2a;
   --funding-edge: transparent;
+  --banner-bg: rgba(17, 17, 17, 0.88);
 
   /* Text sizes, all here so that they can be tuned on the stand. What a
      visitor is meant to read is at least 2vh, about 43 physical pixels on
@@ -62,12 +60,12 @@
   --trolley: #8a8a8a;
   --rope: #404040;
   --label: #555;
-  --weight-pos: #6b6b6b;
-  --weight-neg: #db2777;
+  --weight: #6b6b6b;
   --node: #1a1a1a;
   --node-fill: #e2e2e0;
   --bar: #dcdcda;
   --funding-edge: #c8c8c4;
+  --banner-bg: rgba(244, 244, 242, 0.9);
 }
 
 * { box-sizing: border-box; }
@@ -127,7 +125,10 @@ main {
   height: 26%;
   margin: 0 auto 1vh;
 }
-#band[hidden] { display: none; }
+/* Hidden, its place kept: without it the scene grew taller in the steps
+   without curves and the crane sat lower and larger than in the others
+   (judged 2026-10-22, §25). */
+#band[hidden] { visibility: hidden; }
 
 #curves {
   display: block;
@@ -174,7 +175,18 @@ main {
 }
 
 /* The banner keeps the text's colour whatever happened: green would read
-   as the agent and red as the naive driver (§25). */
+   as the agent and red as the naive driver (§25). It sits on a box of the
+   ground's colour: it often lies over the girder and its metre scale, where
+   the light theme's dark text was hard to read (judged 2026-10-22). */
+#banner {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 0.3vh 1.2vw;
+  border-radius: 0.6vh;
+  background: var(--banner-bg);
+}
 #offline { color: var(--muted); }
 
 /* The stand's call to action, at the foot of the scene, clear of the

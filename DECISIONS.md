@@ -2004,7 +2004,10 @@ about 50 of the 2000 epochs; the quick drive's distance weight grows from
   `model.js` only draws; it holds no wording and no physical constant
   (tested). The loss arrives as positions in 0..1.
 - *The prompt moves above the band* when the band is shown, so that it
-  never covers the curves or the model.
+  never covers the curves or the model. Since 2026-10-22 the band keeps its
+  place, empty, in the steps that do not show it, so that the scene has
+  one size in every step (§25); a prompt there stands in that empty
+  place.
 - *Same agent as before:* `learn()` calls `clone()`; the snapshots change
   nothing about the result (tested).
 
@@ -2401,9 +2404,16 @@ on 2026-10-22.
   words say what happened; the command bar takes the colour of whoever
   drives (`data-driver` on the readout row, from the state's `driver`),
   the teacher's bar beside it stays the person's, translucent; the model's
-  weights are light grey when positive and pink when negative, colours
-  that mean nothing else. The call to action stays orange: it addresses
-  the person.
+  weights are drawn in one grey that means nothing else, a negative one
+  dashed (chosen on the stand over grey and pink). The call to action
+  stays orange: it addresses the person.
+- *The banner on a box of the ground's colour,* slightly translucent: it
+  often lies over the girder and its metre scale, where the light theme's
+  dark text was hard to read.
+- *The scene the same in every step:* the band under it keeps its place,
+  empty, in the steps without curves or model (`visibility: hidden`).
+  Before, the idle and teaching steps had a scene of 1141 px instead of
+  794 px, the girder 154 px lower and the crane 7 % larger, since §20.
 - *Every colour a token in `style.css`,* the page's and the canvases'
   alike. `scene.js` reads them into `COLORS` with `getComputedStyle`, and
   `curves.js` and `model.js` draw with that object; no script holds a
@@ -2450,9 +2460,18 @@ green for the agent in both.
 - *Browser storage:* see Why.
 - *A reload on a switch:* see Why.
 - *Blue and violet for the weights:* blue is the target, violet the
-  opponent.
+  opponent. *Grey and pink:* shown on the stand, the dashed line read
+  better.
+
+**Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-22,
+the maintainer, visits on the gamepad in both themes): the meanings,
+"passt"; the light theme "sieht alles schon sehr gut aus", apart from the
+banner over the metre scale (hence its box, then "deutlich besser
+lesbar"); the dashed weights better than grey and pink; the scene lower
+in the idle and teaching steps than later (hence the band's kept place).
 
 `tests/test_theme.py` guards this section: the same tokens in both sets,
 the contrast rule, no colour in the scripts, green and red only for the
 drivers, the switch without a reload, the stored theme and its fallback,
-and the staff's key once per press.
+the staff's key once per press, the banner's box, the band's kept place
+and the dashed weights.

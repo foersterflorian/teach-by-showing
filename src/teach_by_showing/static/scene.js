@@ -17,9 +17,7 @@ const COLOR_TOKENS = {
   rival: "--rival",
   target: "--target",
   label: "--label",
-  weightPos: "--weight-pos",
-  weightNeg: "--weight-neg",
-  weightDash: "--weight-dash",
+  weight: "--weight",
   node: "--node",
   nodeFill: "--node-fill",
 };

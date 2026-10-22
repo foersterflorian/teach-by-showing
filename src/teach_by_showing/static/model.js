@@ -31,11 +31,11 @@ function drawModel(ctx, width, height, model) {
   // weight's size, colour its sign.
   model.w.forEach((w, k) => {
     const share = Math.min(1, Math.abs(w) / model.weight_scale);
-    // The sign in colours that mean nothing else on the stand, or, with
-    // --weight-dash, a dashed line for a negative weight (§25).
-    ctx.strokeStyle = w < 0 ? COLORS.weightNeg : COLORS.weightPos;
+    // The sign as the line's style, a negative weight dashed, in a grey
+    // that means nothing else on the stand (§25).
+    ctx.strokeStyle = COLORS.weight;
     ctx.lineWidth = 1 + share * r * 1.25;
-    ctx.setLineDash(w < 0 && COLORS.weightDash === "1" ? [r * 0.8, r * 0.6] : []);
+    ctx.setLineDash(w < 0 ? [r * 0.8, r * 0.6] : []);
     ctx.beginPath();
     ctx.moveTo(xIn, rows[k]);
     ctx.lineTo(xSum, ySum);

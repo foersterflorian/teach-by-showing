@@ -38,8 +38,7 @@ GRAPHICS: tuple[str, ...] = (
     "--girder",
     "--trolley",
     "--rope",
-    "--weight-pos",
-    "--weight-neg",
+    "--weight",
     "--node",
 )
 TEXT: tuple[str, ...] = ("--fg", "--muted", "--label")
@@ -197,3 +196,19 @@ def test_the_theme_key_arrives_with_the_input_and_only_true_counts() -> None:
     api.handle_input(s, json.dumps({"type": "input", "u": 0.0, "theme": True}))
     s.tick()
     assert s.theme is Theme.LIGHT
+
+
+def test_the_scene_keeps_its_size_in_every_step_and_the_banner_its_box() -> None:
+    """Judged on the stand on 2026-10-22: without the band the scene grew
+    taller and the crane sat 154 px lower and 7 % larger; the banner over
+    the metre scale was hard to read on the light ground."""
+    assert "#band[hidden] { visibility: hidden; }" in STYLE
+    banner: str = STYLE.split("#banner {", 1)[1].split("}", 1)[0]
+    assert "background: var(--banner-bg);" in banner
+    assert "--banner-bg" in DARK and "--banner-bg" in LIGHT
+
+
+def test_a_negative_weight_is_dashed_in_one_grey() -> None:
+    model: str = (STATIC / "model.js").read_text(encoding="utf-8")
+    assert "ctx.strokeStyle = COLORS.weight;" in model
+    assert "ctx.setLineDash(w < 0 ?" in model
