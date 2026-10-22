@@ -30,8 +30,15 @@ WEIGHT_SCALE: Final[float] = 2.0
 SNAPSHOTS: Final[int] = 48
 
 
+def _negative(value: float) -> bool:
+    """Negative as shown: a value that rounds to zero is shown with "+",
+    so that an offset learnt to zero reads "+ 0,00", never "− 0,00"
+    (decided 2026-10-22, §21)."""
+    return value < 0 and f"{abs(value):.2f}" != "0.00"
+
+
 def _signed(value: float, words: Texts) -> str:
-    return ("−" if value < 0 else "+") + number(abs(value), 2, words)
+    return ("−" if _negative(value) else "+") + number(abs(value), 2, words)
 
 
 def formula(policy: LinearPolicy, words: Texts) -> str:
@@ -44,9 +51,9 @@ def formula(policy: LinearPolicy, words: Texts) -> str:
     text: str = ""
     for k, (value, name) in enumerate(terms):
         if k == 0:
-            sign: str = "−" if value < 0 else ""
+            sign: str = "−" if _negative(value) else ""
         else:
-            sign = " − " if value < 0 else " + "
+            sign = " − " if _negative(value) else " + "
         text += f"{sign}{number(abs(value), 2, words)}{name}"
     return f"{words.command_label} = tanh({text})"
 

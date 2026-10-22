@@ -104,6 +104,21 @@ def test_the_formula_in_each_languages_decimals_with_real_minus_signs() -> None:
     assert formula(q, GERMAN).startswith("Stellgröße = tanh(−0,30 · Abstand + 0,00 · Winkel")
 
 
+def test_an_offset_learnt_to_zero_is_shown_as_plus_zero() -> None:
+    """§21, decided 2026-10-22: mirrored, the offset ends a few 1e-4 from
+    zero; it stays in the formula, as "+ 0,00", never "− 0,00", and so does
+    a weight that rounds to zero."""
+    p: LinearPolicy = LinearPolicy(np.array([0.52, -0.001, 0.01]), np.array(-0.0002))
+    assert formula(p, GERMAN) == (
+        "Stellgröße = tanh(0,52 · Abstand + 0,00 · Winkel + 0,01 · Winkelgeschw. + 0,00)"
+    )
+    assert model_message(p, ENGLISH)["w_text"] == ["+0.52", "+0.00", "+0.01"]
+    q: LinearPolicy = LinearPolicy(np.array([-0.004, 0.1, 0.0]), np.array(-0.006))
+    assert formula(q, ENGLISH) == (
+        "Command = tanh(0.00 · Distance + 0.10 · Angle + 0.00 · Ang. speed − 0.01)"
+    )
+
+
 def test_the_loss_curve_grows_with_the_slow_motion_in_unit_coordinates() -> None:
     policy, trace = learnt()
     assert isinstance(policy, LinearPolicy) and trace is not None
@@ -113,9 +128,7 @@ def test_the_loss_curve_grows_with_the_slow_motion_in_unit_coordinates() -> None
     xs: list[float] = [x for x, _ in points]
     assert xs == sorted(xs) and xs[0] == 0.0
     assert all(0.0 <= y <= 1.0 for _, y in points)
-    assert m["w_text"] == [
-        ("−" if w < 0 else "+") + f"{abs(w):.2f}" for w in policy.w
-    ]
+    assert m["w_text"] == [("−" if w < 0 else "+") + f"{abs(w):.2f}" for w in policy.w]
 
 
 def test_the_learning_step_replays_the_weights_then_waits_for_a() -> None:

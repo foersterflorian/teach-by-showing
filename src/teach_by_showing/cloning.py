@@ -26,9 +26,12 @@ SCHEMA: Final[int] = 1
 INPUTS: Final[int] = len(NAMES)
 # The stand's choice, measured in DECISIONS.md §16: the linear policy reached
 # every target from both teaching drives and kept their style for every
-# seed; the network depended on its seed. Mirroring changed nothing for it.
+# seed; the network depended on its seed. Mirrored since 2026-10-22: without
+# it a cautious drive's small distance weight let a learnt offset hold the
+# agent 0.27 m beside its target, so that it never arrived; mirrored, the
+# offset learns itself to zero and every recorded drive arrives (§16).
 DEFAULT_KIND: Final[str] = "linear"
-DEFAULT_MIRROR: Final[bool] = False
+DEFAULT_MIRROR: Final[bool] = True
 HIDDEN: Final[int] = 8  # 41 weights; concept §5.1 estimated 50–80 for five inputs
 
 

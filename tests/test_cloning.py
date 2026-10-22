@@ -23,6 +23,7 @@ from teach_by_showing.cloning import (
 )
 from teach_by_showing.crane import CraneParams, CraneState, FloatArray
 from teach_by_showing.features import features
+from teach_by_showing.profile import profiles
 from teach_by_showing.recording import Run, load_run
 from teach_by_showing.task import TaskParams, sample_transports
 from tests.support import ROOT
@@ -133,14 +134,35 @@ def test_training_on_a_recorded_teacher_runs(path: Path) -> None:
 
 
 def test_the_stand_clones_with_the_measured_default() -> None:
-    """§16: the linear policy, without mirroring."""
+    """§16: the linear policy, mirrored (since 2026-10-22)."""
     run: Run = taught("quick")
     policy, losses = clone([run], np.random.default_rng(0))
     assert isinstance(policy, LinearPolicy)
-    f, u = dataset([run])
+    f, u = dataset([run], mirror=True)
     same, _ = train(LinearPolicy.initial(np.random.default_rng(0)), f, u)
     assert all(
         np.array_equal(a, b) for a, b in zip(policy.params(), same.params(), strict=True)
     )
     with pytest.raises(ValueError, match="kind"):
         clone([run], np.random.default_rng(0), kind="forest")
+
+
+def test_a_cautious_drive_whose_unmirrored_clone_never_arrives_arrives_mirrored() -> None:
+    """§16, 2026-10-22: the maintainer's cautious drive taught, unmirrored, a
+    distance weight of 0.56 and an offset of −0.075, which held the agent
+    0.27 m beside every target, outside the 0.15 m tolerance. Mirrored, the
+    offset learns itself to zero and the agent arrives."""
+    run: Run = load_run(ROOT / "tests" / "data" / "20261022-115542-vorsichtig.json")
+    # The fifty new targets of tools/evaluate.py, on which it was measured.
+    start, target = sample_transports(np.random.default_rng(1000), run.crane, run.task, 50)
+
+    def reached(policy: LinearPolicy) -> int:
+        r: Rollout = rollout(policy, CraneState.at_rest(start), target, run.crane, run.task)
+        return sum(p.reached for p in profiles(r.transport, r.tally))
+
+    stand, _ = clone([run], np.random.default_rng(0))
+    unmirrored, _ = clone([run], np.random.default_rng(0), mirror=False)
+    assert isinstance(stand, LinearPolicy) and isinstance(unmirrored, LinearPolicy)
+    assert abs(float(stand.b)) < 1e-3
+    assert reached(stand) == 50
+    assert reached(unmirrored) == 0
