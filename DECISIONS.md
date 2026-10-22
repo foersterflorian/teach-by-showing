@@ -376,6 +376,34 @@ Reasoned about, never measured. Each item is an open task, not a fact.
 - **Two girders for learnt against naive** (§19). Kept as an option on
   2026-10-16, should the agent at the target still hide the naive driver
   too much with two cranes on one girder.
+- **Correction during the drive** (concept §5.4, §6.1 step 5; the plan's
+  P6). Deferred past the event on 2026-10-22, on these figures (deployment
+  machine, a scratch script, the stand's agents: linear, mirrored, 27
+  agents from the 26 recorded drives, 50 new targets each):
+  - *Gusts give little reason to step in.* A single swing kick of 5°, 10°
+    or 20°, 2 s after the start or when the load first comes within 0.3 m
+    of its target: every agent reached all 50 targets, a few seconds later,
+    except the very cautious ones (distance weight 0.27–0.32) kicked hard
+    at the target: 39/50 at 10° and 0/50, 25/50, 47/50 at 20°. Their swing
+    weights are near zero, so they wait for the slight natural damping
+    until the 60 s run out.
+  - *A short correction barely moves the model.* A scripted brisk visitor
+    driving the first 2, 5 or 10 s of one transport, added to the
+    demonstration and the agent trained again: counted like the
+    demonstration's frames, the distance weight moved by +0.03 to +0.17
+    and the time by a few seconds; only weighted 5 to 20 times did a
+    cautious agent turn nearly quick (0.29 → 1.04, 27.6 → 11.6 s), which
+    overrides the style the visitor has just shown.
+  - *A short correction can break the agent.* Two seconds of nothing but
+    accelerating taught the cautious teaching drive's clone a swing weight
+    of the wrong sign; it rocked the load and reached 0 of 50 targets.
+  - *It would also break step 3's comparison* with the visitor's own drive
+    (curves, profile), and visitors who play with the stick would take
+    over without meaning to.
+  To be weighed again once the agent meets something it visibly fails at,
+  such as the obstacle of level 2; then also how a correction is weighted
+  and kept from destabilising the agent. Should gusts come, the very
+  cautious agents' missing damping needs an answer of its own.
 - **Preference learning** (concept §5.5, §15 item 13). Deferred past the
   event on 2026-10-22, before the feature freeze: the visitor would answer
   three to five pairwise comparisons ("Welche Fahrt gefällt Ihnen
