@@ -20,13 +20,16 @@ const keysDown = new Set();
 // Keys pressed since the last read: a tap shorter than one frame would
 // otherwise be released before it is ever seen as held.
 const keysTapped = new Set();
-// The staff's key, Ctrl+Alt+G: the gallery from now on (DECISIONS.md §23).
-// Not Ctrl+R, which reloads the page.
+// The staff's keys, all listed in README.md: Ctrl+Alt+G, the gallery from
+// now on (DECISIONS.md §23), not Ctrl+R, which reloads the page; Ctrl+Alt+L,
+// the other language (§24).
 let staffTapped = false;
+let languageTapped = false;
 window.addEventListener("keydown", (e) => {
   keysDown.add(e.key);
   keysTapped.add(e.key);
   if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "g") staffTapped = true;
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === "l") languageTapped = true;
 });
 window.addEventListener("keyup", (e) => keysDown.delete(e.key));
 // Releasing a key while the window has no focus never sends keyup.
@@ -80,8 +83,10 @@ function readButtons() {
     a: held(BUTTON_A) || key("Enter"),
     b: held(BUTTON_B) || key("Backspace"),
     reset: staffTapped,
+    language: languageTapped,
   };
   keysTapped.clear();
   staffTapped = false;
+  languageTapped = false;
   return buttons;
 }

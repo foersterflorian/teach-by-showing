@@ -1,15 +1,18 @@
 <!doctype html>
-<html lang="de">
+<html lang="{{language}}">
 <head>
+<!-- Every name in double braces is filled in by the server from texts.py,
+     in the screen's language (DECISIONS.md §24). -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kran-Demonstrator · teach-by-showing</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<!-- The words the scripts draw, so that they hold none (§24). -->
+<body data-decimal="{{decimal}}" data-target="{{target_label}}" data-reached="{{reached}}" data-timed-out="{{timed_out}}">
 <header>
-  <h1 id="headline">Bringen Sie die Last ins Ziel – ohne dass sie pendelt</h1>
-  <p id="hint">Linker Stick: Katze fahren</p>
+  <h1 id="headline">{{page_headline}}</h1>
+  <p id="hint">{{page_hint}}</p>
 </header>
 
 <main>
@@ -26,15 +29,15 @@
   </div>
   <p id="banner" hidden></p>
   <p id="prompt" hidden></p>
-  <p id="offline">Verbindung zum Kran wird hergestellt …</p>
+  <p id="offline">{{offline}}</p>
 </main>
 
 <section id="readout">
-  <div><span id="elapsed-label">Fahrzeit</span><b id="elapsed">0,0 s</b></div>
-  <div id="ghost-readout" hidden><span id="ghost-label">Ihre Fahrt</span><b id="ghost-elapsed">0,0 s</b></div>
-  <div><span id="command-label">Stellgröße</span><b><span id="command-bar"><i id="command-fill"></i></span></b></div>
-  <div id="ghost-command-readout" hidden><span id="ghost-command-label">Stellgröße</span><b><span id="ghost-command-bar"><i id="ghost-command-fill"></i></span></b></div>
-  <div><span>Transporte</span><b id="transports">0</b></div>
+  <div><span id="elapsed-label">{{elapsed_label}}</span><b id="elapsed"></b></div>
+  <div id="ghost-readout" hidden><span id="ghost-label">{{teacher_self}}</span><b id="ghost-elapsed"></b></div>
+  <div><span id="command-label">{{command_label}}</span><b><span id="command-bar"><i id="command-fill"></i></span></b></div>
+  <div id="ghost-command-readout" hidden><span id="ghost-command-label">{{command_label}}</span><b><span id="ghost-command-bar"><i id="ghost-command-fill"></i></span></b></div>
+  <div><span>{{transports_label}}</span><b id="transports">0</b></div>
   <!-- The style profile, to the right of the readouts: in the band it
        crowded the curves and the model (DECISIONS.md §22). -->
   <div id="profile-panel" hidden>
@@ -46,7 +49,8 @@
   </div>
 </section>
 
-<!-- Filled in by the server, verbatim from funding.py (DECISIONS.md §2). -->
+<!-- Filled in by the server, verbatim from funding.py, in the screen's
+     language (DECISIONS.md §2, §24). -->
 <footer id="funding"><!--FUNDING--></footer>
 
 <script src="scene.js"></script>

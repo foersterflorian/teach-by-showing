@@ -5,7 +5,7 @@ every session.
 
 ## What this is
 
-A demonstrator for a research project (K-M-I, TU Chemnitz): visitors steer a
+A demonstrator for a research project (KMI, TU Chemnitz): visitors steer a
 simulated overhead crane with a swinging load; a small learned model (by
 default a linear policy) picks up their driving style from the demonstration
 within seconds (behavioural cloning), and an evolution strategy refines it towards goals the human sets.
@@ -34,7 +34,8 @@ decisions and must remain understandable without the concept.
 ## Conventions
 
 - **English only.** Code, comments, docstrings, commit messages, documentation.
-  On-screen texts for visitors are German; that is content, not convention.
+  On-screen texts for visitors are German and English, all in `texts.py`
+  (`DECISIONS.md` §24); that is content, not convention.
 - **Full type annotations** on every function signature, class attribute, and
   any local whose type is not obvious. `mypy src tests tools` must stay clean.
 - **Tests protect decisions.** Each test module names the `DECISIONS.md`

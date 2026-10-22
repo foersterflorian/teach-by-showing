@@ -1,8 +1,8 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2 begun: the model display (§21), the style profile (§22), the gallery (§23)
-**Last updated:** 2026-10-21
+**Status:** spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24)
+**Last updated:** 2026-10-22
 
 This file records *why* the code looks the way it does. The code says what it
 does; this says what was considered and rejected, so that changing something
@@ -81,25 +81,31 @@ logo wherever project results are shown. feature-viz settled how (its §17);
 this project follows it so that the two demonstrators on the stand read as a
 pair.
 
-**Decision.** The same wording and the same two logos, byte-identical copies of
-feature-viz's files, kept as package data in `src/teach_by_showing/funding/`
-and read through `importlib.resources`. `funding.py` holds the text, the link
-and the logo list. The notice appears in `README.md` and as a white strip
-along the bottom of the screen, filled in by the server (§9). It is in
-English; a German option is decided but not built (§5).
+**Decision.** The same two logos, byte-identical copies of feature-viz's
+files, kept as package data in `src/teach_by_showing/funding/` and read
+through `importlib.resources`. `funding.py` holds the text in German and in
+English, the link and the logo list. The notice appears in `README.md`, in
+English, and as a white strip along the bottom of the screen, filled in by
+the server (§9) in the screen's language (§24). The German text is verbatim
+from the funder's material; the English one is our translation of it, in
+British English and naming the project "KMI", as the German does (decided
+with the maintainer on 2026-10-22). It therefore no longer matches
+feature-viz's English notice character for character; bringing feature-viz
+in line is a task in that repository.
 
 **Details that are deliberate.**
 
-- *Verbatim text, one wording everywhere.* `FUNDING_TEXT` matches the README
-  character for character, typographic quotes and dash included.
+- *Verbatim text, one wording per language.* The English `FUNDING_TEXT`
+  matches the README character for character, typographic quotes and dash
+  included; the German one keeps the funder's „…“ quotes.
 - *White ground.* The BMFTR logo must sit on white or a very light colour;
   the screen is otherwise dark.
 - *Files unmodified, only scaled.* The protected margin is part of the mark.
 - *Allow-list.* `funding_asset()` serves only the names in `FUNDING_LOGOS`,
   so a name taken from an HTTP request can never reach another file.
 
-`tests/test_funding.py` guards the verbatim match, the README references and
-the allow-list.
+`tests/test_funding.py` guards the verbatim match, the German wording, the
+README references and the allow-list.
 
 ---
 
@@ -308,12 +314,14 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   Firefox kiosk on the 4K monitor, driving with the keyboard felt smooth
   with no noticeable delay (judged by eye, 2026-10-02), and so did the
   gamepad (2026-10-06, §12). Still open: whether `?delay=0` looks worse.
-- **Funding notice language.** The notice is shown in English, verbatim as
-  in feature-viz, on an otherwise German screen. Decided 2026-10-02, not yet
-  built: the language becomes an option, German or English, with English as
-  the default so that the repository reads internationally. The German
-  wording must come from the funder's material, not from a translation of
-  our own.
+- **Funding notice language** — *built on 2026-10-22, see §2 and §24*: the
+  notice follows the screen's language, the German wording verbatim from
+  the funder's material. Still open: feature-viz's English notice, which
+  still reads "K-M-I" and American spelling.
+- **The screen in English** (§24) — *built on 2026-10-22*. Not yet judged
+  on the stand: whether the English texts fit the banner and the readout
+  row, which are tight in German already (§20, §22), and whether the page's
+  reload on a switch disturbs.
 - **Several browsers driving at once.** Every connected client may send
   input, and the latest message wins. The stand has one kiosk, so this only
   matters when a second tab is open for debugging: the two then fight over
@@ -722,9 +730,10 @@ nothing at all → `main.js` and the browser console.
   along the bottom, as in feature-viz §17.
 - *Offline:* no external script, stylesheet or font (tested); system fonts
   only.
-- *German texts from the server,* with every state (§17, §18); the scripts
-  hold no wording (tested). `index.html` keeps only the texts shown before
-  the first message.
+- *Texts from the server* in the screen's language, with every state (§17,
+  §18, §24); the scripts hold no wording (tested). The texts shown before
+  the first message, and the few words the scripts draw, are filled into
+  `index.html` by the server.
 - *Every file is revalidated, and no canvas grows beyond the window* (§20):
   together they keep a stale stylesheet from freezing the page.
 
@@ -1489,8 +1498,9 @@ with every state instead (§18).
   would make the comparison unfair in the first second.
 - *Frames run on across transports,* although each restarts from a recorded
   state: the browser interpolates by frame number (§9).
-- *German texts from the server.* Headline, labels and banner arrive in
-  messages; the scripts hold no wording of their own (tested).
+- *Texts from the server.* Headline, labels and banner arrive in messages,
+  in the screen's language (§24); the scripts hold no wording of their own
+  (tested).
 
 **Judged by eye** on the stand's left monitor (deployment machine, Firefox
 kiosk, 2026-10-09, the maintainer), both teaching runs of `tests/data/`
@@ -1887,8 +1897,8 @@ about 50 of the 2000 epochs; the quick drive's distance weight grows from
 - *A neuron diagram with a small formula under it.* Three inputs with
   their names, one neuron, the command as output. A connection's
   thickness is the weight's size, its colour the sign, its number beside
-  the input. Under it the formula with German decimals and a fixed line
-  of explanation: "Je größer das Gewicht beim Abstand, desto zügiger fährt
+  the input. Under it the formula with the language's decimals (§24) and
+  a fixed line of explanation: "Je größer das Gewicht beim Abstand, desto zügiger fährt
   der Agent aufs Ziel zu." Only the quantities are named, no reading of a
   style into them (decided with the maintainer); the offset is in the
   formula, not in the diagram.
@@ -2084,11 +2094,14 @@ shows, and which are there from the start. Decided with the maintainer on
   `since all` or `since #n`.
 - *The models* are the maintainer's two teaching drives of 2026-10-09,
   shipped as `showcase/vorsichtig.json` and `showcase/zuegig.json`, cloned
-  with seed 0 at start and named "Vorbild vorsichtig" and "Vorbild zügig".
+  with seed 0 at start and named "Vorbild vorsichtig" and "Vorbild zügig"
+  (since §24 stored under the keys `cautious` and `quick`, and named in the
+  screen's language).
   They are never hidden. Further models wait for a recording session with
   colleagues (concept §15 item 11).
 - *Every visitor's agent joins as it learns,* named "Kranführer·in #n"
-  (concept §6.3: no real names); n runs on over every agent ever stored and
+  (concept §6.3: no real names; stored so, and shown as "Crane operator #n"
+  on an English screen, §24); n runs on over every agent ever stored and
   is never reused, hidden or not. It is stored as
   `$DATA_DIR/agents/agent-NNNN.json`: its policy, its run's file name, and
   its figures on the reference targets with the parameters they were
@@ -2169,3 +2182,83 @@ that visit, not traced to a step.
   the recording session with colleagues, whose drives may be shown.
 
 `tests/test_gallery.py` guards this section.
+
+---
+
+## 24. The screen in German or English: one catalogue, the staff's key, kept on disk
+
+**Context.** Concept §15 items 14 and 19 asked whether the visitors' texts
+can be switched to English, and in which language the funding notice
+appears. Until now every text was German and written where it was used, in
+five modules and three frontend files; the notice was English only.
+Decided with the maintainer on 2026-10-22, before the feature freeze.
+
+**Decision.**
+
+- *Two languages, English by default.* German and English, British
+  spelling. Without a stored choice the stand speaks English.
+- *Only the staff switch,* with Ctrl+Alt+L on the stand's keyboard; the
+  banner confirms for 3 s ("Deutsch" or "English"). Visitors have no
+  button for it. There is no automatic return to a language.
+- *The choice survives a restart:* it is kept in `$DATA_DIR/language.json`
+  on the container's volume, written whole and then renamed; a missing or
+  unreadable file means English.
+- *One catalogue,* `texts.py`: a frozen dataclass `Texts` with one field
+  per text, and two instances of it, `GERMAN` and `ENGLISH`. Templates use
+  `str.format` placeholders. The number style belongs to the language:
+  decimal comma in German, decimal point in English, chosen in one place,
+  `texts.number()`.
+- *The engine speaks through it.* The stand session holds the language;
+  the ghost replay holds the `Texts` it words with and the teacher's role
+  rather than a worded name, and the stand replaces its words when the
+  staff switch, so that the switch shows within the frame. Gallery agents
+  keep the name they are stored under, which is their identity; the screen
+  words a visitor's agent by its number and the two models by their keys.
+- *The page follows by one reload.* The server fills every fixed word of
+  `index.html` (the texts before the first message, the readout labels,
+  the scene's "Ziel", the live banners, the decimal separator, the funding
+  notice) in the stand's language. Each state carries the language; when it
+  differs from the page's, `main.js` reloads the page.
+- *The funding notice* follows the screen's language (§2); the logos stay
+  as they are. The README stays English.
+- *The live crane and the plain replay* (`--free`, `--record`, `--ghost`)
+  speak the stored language from the start; switching exists only on the
+  stand, as Ctrl+Alt+G does.
+- *Every keyboard shortcut is listed in the README* (decided 2026-10-22).
+
+**Why.**
+
+- *A dataclass, not a dictionary or gettext:* a text missing in one
+  language is then a type error and an error at import, not a gap on the
+  screen; no extra toolchain, no `.po` files, standard library only.
+- *The staff's key, not a gamepad button:* the staff see who stands at the
+  stand; a third button would need explaining on the screen and widen the
+  controls beyond A and B (§18).
+- *Kept, not reset at idle:* the maintainer's choice; the staff decide.
+- *English by default:* the maintainer's choice; the repository reads in
+  English, and a fresh install should too.
+- *Ctrl+Alt+L:* COSMIC's default shortcuts bind no Ctrl+Alt combination
+  (checked in `/usr/share/cosmic/com.system76.CosmicSettings.Shortcuts`),
+  and Firefox binds none for L on Linux. To be confirmed on the stand.
+- *A reload rather than more in every state:* the funding notice and the
+  page's fixed words would otherwise travel 60 times a second to change
+  once in a while; the staff switch between visitors, and the reload
+  takes a moment.
+
+**Rejected alternatives.**
+
+- *gettext and `.po` files:* a toolchain and a second format for about 70
+  texts.
+- *Translating in the frontend:* logic and wording in JavaScript, against
+  §3 and §9.
+- *A button for visitors,* *a return to German at idle:* see Why.
+- *Sending the footer and the page's words in every state:* see Why.
+- *Translating the funding notice ourselves into German:* the German
+  wording must come from the funder.
+
+`tests/test_texts.py` guards this section: both languages fill the same
+placeholders, numbers follow the language, the stored choice and its
+fallback, no German text outside the catalogue (a scan of `src/` and the
+frontend, the staff's gamepad page excepted), the page in each language,
+the reload, the staff's key once per press, a switch reaching the replay,
+and that every shortcut is in the README.

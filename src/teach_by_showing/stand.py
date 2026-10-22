@@ -28,6 +28,7 @@ from teach_by_showing.gallery import (
     Agent,
     GalleryStore,
     Joining,
+    display_name,
     opponent,
     reference_driving,
     table_agents,
@@ -35,15 +36,8 @@ from teach_by_showing.gallery import (
 from teach_by_showing.live import LiveSession, RecordingRequest, Settings, StandParams
 from teach_by_showing.model_view import LearningTrace, learn, model_message
 from teach_by_showing.recording import Run, run_filename
-from teach_by_showing.replay import (
-    AGENT_SELF,
-    HEADLINE,
-    HEADLINE_NEW,
-    PROFILE_FIGURES,
-    PROFILE_NOTE,
-    ReplaySession,
-    profile_cells,
-)
+from teach_by_showing.replay import ReplaySession, profile_cells
+from teach_by_showing.texts import DEFAULT_LANGUAGE, TEXTS, Language, Texts, number, other
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
@@ -57,14 +51,12 @@ AGENT_NEW_TARGETS: Final[int] = 2
 # that it is tuned on the stand without editing code (§21).
 # What a visitor's recording is called. Never a name (concept §6.3).
 RUN_LABEL: Final[str] = "besuch"
-# Whose drive the ghost plays while the stand waits.
-TEACHER_EARLIER: Final[str] = "Vorbild"
 # Frames of the reference drive per frame of the stand: about 3 ms, done
 # within two seconds; in one go it stalled the loop for 0.38 s (§23).
 REFERENCE_STEPS_PER_TICK: Final[int] = 30
-# How long the staff's key confirms that the gallery starts afresh.
+# How long the banner confirms a staff's key: the gallery starting afresh,
+# or the language switched.
 NOTICE_SECONDS: Final[float] = 3.0
-GALLERY_NOTICE: Final[str] = "Galerie neu ab jetzt"
 
 
 class Phase(StrEnum):
@@ -129,6 +121,15 @@ class StandSession:
     # The staff's key, as A and B: held as reported, a press decided here.
     held_reset: bool = False
     pressed_reset: bool = False
+    # The language the screen speaks (§24), and what to do when the staff
+    # switch it: the caller keeps it on disk, as it saves recordings.
+    language: Language = DEFAULT_LANGUAGE
+    on_language: Callable[[Language], None] | None = None
+    held_language: bool = False
+    pressed_language: bool = False
+    # Which confirmation the banner shows until notice_until, as a getter,
+    # so that it is worded in the language of the frame it is shown in.
+    notice: Callable[[Texts], str] | None = None
     notice_until: int = -1
 
     @classmethod
@@ -141,6 +142,8 @@ class StandSession:
         on_recorded: Callable[[Run], None],
         seed: int | None = None,
         gallery: GalleryStore | None = None,
+        language: Language = DEFAULT_LANGUAGE,
+        on_language: Callable[[Language], None] | None = None,
     ) -> StandSession:
         # The frontend draws every step to the one scale the config message
         # gives it; a showcase recorded under other physics would be drawn
@@ -148,7 +151,15 @@ class StandSession:
         if showcase.run.crane != settings.crane or showcase.run.task != settings.task:
             raise ValueError("the showcase was recorded with other crane or task parameters")
         session: StandSession = cls(
-            rng, settings, showcase, clock, on_recorded, seed, gallery=gallery
+            rng,
+            settings,
+            showcase,
+            clock,
+            on_recorded,
+            seed,
+            gallery=gallery,
+            language=language,
+            on_language=on_language,
         )
         session._idle()
         return session
@@ -176,6 +187,32 @@ class StandSession:
             self.pressed_reset = True
         self.held_reset = reset
 
+    def set_language_key(self, held: bool) -> None:
+        """The staff's other key: the screen switches between German and
+        English (§24), and stays so until the next switch."""
+        if held and not self.held_language:
+            self.pressed_language = True
+        self.held_language = held
+
+    @property
+    def words(self) -> Texts:
+        return TEXTS[self.language]
+
+    def _switch_language(self) -> None:
+        self.language = other(self.language)
+        if self.replay is not None:
+            self.replay.words = self.words
+            if self.rival is not None:
+                self.replay.rival_name = display_name(self.rival, self.words)
+        if self.on_language is not None:
+            self.on_language(self.language)
+        self._notify(lambda w: w.language_notice)
+        log.info("screen language %s", self.language)
+
+    def _notify(self, notice: Callable[[Texts], str]) -> None:
+        self.notice = notice
+        self.notice_until = self.frame + self._params.frames(NOTICE_SECONDS)
+
     def tick(self) -> None:
         self.frame += 1
         a, b = self.pressed_a, self.pressed_b
@@ -186,8 +223,11 @@ class StandSession:
             self.pressed_reset = False
             if self.gallery is not None:
                 self.gallery.set_since(self.clock())
-                self.notice_until = self.frame + self._params.frames(NOTICE_SECONDS)
+                self._notify(lambda w: w.gallery_notice)
                 log.info("gallery shown from now on")
+        if self.pressed_language:
+            self.pressed_language = False
+            self._switch_language()
         match self.phase:
             case Phase.IDLE:
                 if a:
@@ -263,7 +303,8 @@ class StandSession:
         self.replay = ReplaySession.start(
             self.showcase.run,
             self.showcase.policy,
-            teacher=TEACHER_EARLIER,
+            earlier_teacher=True,
+            words=self.words,
             with_naive=True,
             show_ghost=False,
         )
@@ -326,6 +367,7 @@ class StandSession:
         self.replay = ReplaySession.start(
             self.showcase.run,
             self.showcase.policy,
+            words=self.words,
             new_targets=AGENT_NEW_TARGETS,
             rng=self.rng,
             show_curves=True,
@@ -349,12 +391,13 @@ class StandSession:
         self.replay = ReplaySession.start(
             self.showcase.run,
             self.own.policy,
+            words=self.words,
             new_targets=max(1, self._params.gallery_transports),
             rng=self.rng,
             show_curves=True,
             teacher_transports=False,
             rival=rival.policy,
-            rival_name=rival.name,
+            rival_name=display_name(rival, self.words),
         )
         self._enter(Phase.GALLERY)
 
@@ -362,16 +405,19 @@ class StandSession:
         """The gallery laid across as the style profile (§22): one row per
         agent, its figures on the reference targets, the own row marked."""
         assert self.own is not None
+        w: Texts = self.words
 
         def label(agent: Agent) -> str:
-            return f"{AGENT_SELF} (#{agent.number})" if agent is self.own else agent.name
+            if agent is self.own:
+                return w.own_in_gallery.format(number=agent.number)
+            return display_name(agent, w)
 
         return {
-            "title": f"Galerie – Mittel aus {REFERENCE_TARGETS} Testzielen",
-            "columns": ["", *PROFILE_FIGURES],
-            "rows": [[label(a), *profile_cells(a.reference)] for a in self.table],
+            "title": w.gallery_title.format(targets=REFERENCE_TARGETS),
+            "columns": ["", *w.profile_figures],
+            "rows": [[label(a), *profile_cells(a.reference, w)] for a in self.table],
             "highlight": self.table.index(self.own),
-            "note": PROFILE_NOTE,
+            "note": w.profile_note,
         }
 
     def _replay(self) -> ReplaySession:
@@ -394,12 +440,14 @@ class StandSession:
             return None
         if self.phase is Phase.LEARN:
             k: int = self._snapshot()
-            return model_message(self.trace.policies[k], trace=self.trace, shown=k)
+            return model_message(
+                self.trace.policies[k], self.words, trace=self.trace, shown=k
+            )
         if self.phase in (Phase.AGENT, Phase.GALLERY):
             r: ReplaySession = self._replay()
             assert r.state is not None and r.transport is not None
             inputs = features(r.state, r.transport.target, r.run.crane)[0]
-            return model_message(policy, inputs=inputs, output=r.command)
+            return model_message(policy, self.words, inputs=inputs, output=r.command)
         return None
 
     def _transports_taught(self) -> int:
@@ -413,20 +461,21 @@ class StandSession:
         return 0 if live.request is not None else TEACH_TRANSPORTS
 
     def _texts(self) -> dict[str, str | None]:
-        """Everything the screen says, in German, from the server (§17)."""
+        """Everything the screen says, in its language, from the server
+        (§17, §24)."""
+        w: Texts = self.words
         live_labels: dict[str, str | None] = {
-            "elapsed_label": "Fahrzeit",
+            "elapsed_label": w.elapsed_label,
             "ghost_label": None,
-            "command_label": "Stellgröße",
+            "command_label": w.command_label,
             "ghost_command_label": None,
         }
         match self.phase:
             case Phase.IDLE:
                 return {
-                    "headline": "Bringen Sie einer KI das Kranfahren bei",
-                    "hint": "Grün: ein Agent, der von einem Menschen gelernt hat"
-                    " · Rot: ohne Lernen – Vollgas, dann bremsen",
-                    "prompt": "Übernehmen Sie den Kran! Drücken Sie A",
+                    "headline": w.idle_headline,
+                    "hint": w.idle_hint,
+                    "prompt": w.idle_prompt,
                     **self._replay().texts(),
                 }
             case Phase.TEACH:
@@ -434,41 +483,38 @@ class StandSession:
                 assert self.live is not None
                 waiting: bool = self.live.recording is None and self.live.request is not None
                 return {
-                    "headline": "Zeigen Sie Ihrem Agenten, wie Sie fahren"
-                    f" – Transport {n} von {TEACH_TRANSPORTS}",
-                    "hint": "Linker Stick: Katze fahren · B: abbrechen",
-                    "prompt": "Fahren Sie die Last ins Ziel – vorsichtig oder zügig,"
-                    " ganz nach Ihrem Stil"
-                    if waiting
-                    else None,
+                    "headline": w.teach_headline.format(n=n, total=TEACH_TRANSPORTS),
+                    "hint": w.teach_hint,
+                    "prompt": w.teach_prompt if waiting else None,
                     **live_labels,
                 }
             case Phase.LEARN:
-                seconds: str = (
-                    f"{self.trace.seconds:.2f}".replace(".", ",") if self.trace else "0,1"
-                )
+                seconds: str = number(self.trace.seconds if self.trace else 0.1, 2, w)
                 replaying: bool = self._in_phase() < self._params.frames(
                     self._params.learn_replay
                 )
                 return {
-                    "headline": "Ihr Agent lernt aus Ihrer Fahrt",
-                    "hint": f"Gelernt in {seconds} s – hier in Zeitlupe · B: beenden",
-                    "prompt": None if replaying else "A: Ihr Agent fährt los",
+                    "headline": w.learn_headline,
+                    "hint": w.learn_hint.format(seconds=seconds),
+                    "prompt": None if replaying else w.learn_prompt,
                     **live_labels,
                 }
             case Phase.AGENT:
                 return {
-                    "headline": HEADLINE_NEW if self._replay().on_new_target else HEADLINE,
-                    "hint": "A: noch einmal vormachen · B: beenden",
+                    "headline": (
+                        w.agent_headline_new
+                        if self._replay().on_new_target
+                        else w.agent_headline
+                    ),
+                    "hint": w.agent_hint,
                     "prompt": None,
                     **self._replay().texts(),
                 }
             case Phase.GALLERY:
                 assert self.rival is not None
                 return {
-                    "headline": f"Ihr Agent in der Galerie – gegen {self.rival.name}",
-                    "hint": f"Alle fahren dieselben {REFERENCE_TARGETS} Testziele"
-                    " · A: noch einmal vormachen · B: beenden",
+                    "headline": w.gallery_headline.format(rival=display_name(self.rival, w)),
+                    "hint": w.gallery_hint.format(targets=REFERENCE_TARGETS),
                     "prompt": None,
                     **self._replay().texts(),
                 }
@@ -496,6 +542,9 @@ class StandSession:
         )
         message["frame"] = self.frame
         message["phase"] = str(self.phase)
+        # The page compares it with its own and reloads on a change, so that
+        # its fixed words and the funding notice follow (§24).
+        message["language"] = str(self.language)
         message["texts"] = self._texts()
         model: dict[str, Any] | None = self._model()
         if model is not None:
@@ -505,6 +554,6 @@ class StandSession:
             message["banner"] = None
         if self.phase is Phase.GALLERY:
             message["profile"] = self._gallery_table()
-        if self.frame < self.notice_until:
-            message["banner"] = GALLERY_NOTICE
+        if self.frame < self.notice_until and self.notice is not None:
+            message["banner"] = self.notice(self.words)
         return message

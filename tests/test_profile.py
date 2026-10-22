@@ -22,8 +22,9 @@ from teach_by_showing.profile import (
     summarize,
 )
 from teach_by_showing.recording import Run
-from teach_by_showing.replay import PROFILE_FIGURES, ReplaySession
+from teach_by_showing.replay import ReplaySession
 from teach_by_showing.task import TaskParams, Transport
+from teach_by_showing.texts import ENGLISH
 from tests.teachers import quick, teach
 
 CRANE: CraneParams = CraneParams()
@@ -177,18 +178,18 @@ def test_the_replay_counts_the_agent_as_a_rollout_does() -> None:
 def test_the_profile_fills_transport_by_transport_and_new_targets_do_not_count() -> None:
     s: ReplaySession = replay(new_targets=2)
     first: dict[str, Any] = s.state_message()["profile"]
-    assert first["columns"] == ["", *PROFILE_FIGURES]
-    assert [row[0] for row in first["rows"]] == ["Ihre Fahrt", "Ihr Agent"]
+    assert first["columns"] == ["", *ENGLISH.profile_figures]
+    assert [row[0] for row in first["rows"]] == [ENGLISH.teacher_self, ENGLISH.agent_self]
     assert all(cell == "–" for row in first["rows"] for cell in row[1:])
 
     seen: list[dict[str, Any]] = finish_round(s)
     for k, profile in enumerate(seen, start=1):
-        assert f"Mittel aus {k} von 3 Transporten" in profile["title"]
+        assert profile["title"] == ENGLISH.profile_title_mean.format(both=k, total=3)
         assert all(cell != "–" for row in profile["rows"] for cell in row[1:])
-    assert seen[-1]["note"] == "Kleiner ist ruhiger bzw. schonender."
+    assert seen[-1]["note"] == ENGLISH.profile_note
 
     agent_means = summarize([p for p in s.agent_profiles if p is not None])
-    assert seen[-1]["rows"][1][4] == f"{agent_means.stick_travel:.1f}".replace(".", ",")
+    assert seen[-1]["rows"][1][4] == f"{agent_means.stick_travel:.1f}"
     while s.on_new_target or s.index != 0:
         s.tick()
     assert s.state_message()["profile"] == seen[-1]

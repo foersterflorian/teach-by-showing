@@ -16,17 +16,11 @@ import numpy as np
 from teach_by_showing.cloning import MLP, LinearPolicy, Policy, clone
 from teach_by_showing.crane import FloatArray
 from teach_by_showing.recording import Run
+from teach_by_showing.texts import Texts, number
 
-# In the order of features.NAMES. Only the quantities, no interpretation of
-# what a weight means for the style (decided 2026-10-16); that is in EXPLAIN.
-LABELS: Final[tuple[str, ...]] = ("Abstand zum Ziel", "Pendelwinkel", "Pendelgeschwindigkeit")
-SHORT: Final[tuple[str, ...]] = ("Abstand", "Winkel", "Winkelgeschw.")
-OUTPUT_LABEL: Final[str] = "Stellgröße"
-EXPLAIN: Final[str] = (
-    "Je größer das Gewicht beim Abstand, desto zügiger fährt der Agent aufs Ziel zu."
-)
-LOSS_LABEL: Final[str] = "Abweichung von Ihrer Fahrt"
-LOSS_AXIS: Final[str] = "Lernschritte"
+# The words are in texts.py: the inputs' labels name only the quantities, no
+# interpretation of what a weight means for the style (decided 2026-10-16);
+# that is in model_explain.
 # A weight of this size draws the thickest connection. The quick teaching
 # drive gives 1.8, the cautious one 0.3 (§21).
 WEIGHT_SCALE: Final[float] = 2.0
@@ -36,18 +30,15 @@ WEIGHT_SCALE: Final[float] = 2.0
 SNAPSHOTS: Final[int] = 48
 
 
-def _number(value: float) -> str:
-    return f"{value:.2f}".replace(".", ",")
+def _signed(value: float, words: Texts) -> str:
+    return ("−" if value < 0 else "+") + number(abs(value), 2, words)
 
 
-def _signed(value: float) -> str:
-    return ("−" if value < 0 else "+") + _number(abs(value))
-
-
-def formula(policy: LinearPolicy) -> str:
-    """The policy as one line, with German decimals and real minus signs."""
+def formula(policy: LinearPolicy, words: Texts) -> str:
+    """The policy as one line, in the language's number style and with real
+    minus signs."""
     terms: list[tuple[float, str]] = [
-        (float(w), f" · {name}") for w, name in zip(policy.w, SHORT, strict=True)
+        (float(w), f" · {name}") for w, name in zip(policy.w, words.model_short, strict=True)
     ]
     terms.append((float(policy.b), ""))
     text: str = ""
@@ -56,8 +47,8 @@ def formula(policy: LinearPolicy) -> str:
             sign: str = "−" if value < 0 else ""
         else:
             sign = " − " if value < 0 else " + "
-        text += f"{sign}{_number(abs(value))}{name}"
-    return f"{OUTPUT_LABEL} = tanh({text})"
+        text += f"{sign}{number(abs(value), 2, words)}{name}"
+    return f"{words.command_label} = tanh({text})"
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +102,7 @@ def learn(
 
 def model_message(
     policy: LinearPolicy,
+    words: Texts,
     inputs: FloatArray | None = None,
     output: float | None = None,
     trace: LearningTrace | None = None,
@@ -120,17 +112,17 @@ def model_message(
     neuron is shown at work; with `trace`, its learning up to snapshot
     `shown`, and the weights of that snapshot."""
     message: dict[str, Any] = {
-        "labels": list(LABELS),
-        "output_label": OUTPUT_LABEL,
+        "labels": list(words.model_labels),
+        "output_label": words.command_label,
         "w": policy.w.tolist(),
         # Formatted here, so that the scripts hold no wording or number style.
-        "w_text": [_signed(float(w)) for w in policy.w],
+        "w_text": [_signed(float(w), words) for w in policy.w],
         "b": float(policy.b),
         "weight_scale": WEIGHT_SCALE,
         "inputs": None if inputs is None else inputs.tolist(),
         "output": output,
-        "formula": formula(policy),
-        "explain": EXPLAIN,
+        "formula": formula(policy, words),
+        "explain": words.model_explain,
         "loss": None,
     }
     if trace is not None:
@@ -139,8 +131,8 @@ def model_message(
         last: int = max(trace.epochs)
         top: float = max(trace.losses)
         message["loss"] = {
-            "label": LOSS_LABEL,
-            "axis": LOSS_AXIS,
+            "label": words.loss_label,
+            "axis": words.loss_axis,
             "points": [
                 [float(np.log1p(e) / np.log1p(last)), loss / top]
                 for e, loss in zip(

@@ -5,16 +5,30 @@ from __future__ import annotations
 from importlib import resources
 from typing import Final
 
-# Verbatim from the project's funding notice, typographic quotes included, and
-# character for character the same as in feature-viz and in README.md.
-FUNDING_TEXT: Final[str] = (
-    "The K-M-I research and development project is funded as part of the "
-    "“Future of Work: Regional Competence Centers for Labor Research – "
-    "Artificial Intelligence” funding initiative within the “Innovations for "
-    "Tomorrow's Production, Services, and Work” program of the German Federal "
-    "Ministry of Research, Technology and Space (BMFTR) and is supervised by "
-    "the Project Management Agency Karlsruhe (PTKA)."
-)
+from teach_by_showing.texts import Language
+
+# The German text verbatim from the funder's material, German quotes
+# included; the English one is our own translation of it, in British
+# English (decided 2026-10-22, §24), and character for character the same as
+# in README.md. The screen shows the one of its language.
+FUNDING_TEXT: Final[dict[Language, str]] = {
+    Language.DE: (
+        "Das Forschungs- und Entwicklungsprojekt KMI wird im Rahmen der Fördermaßnahme "
+        "„Zukunft der Arbeit: Regionale Kompetenzzentren der Arbeitsforschung – "
+        "Künstliche Intelligenz“ im Programm „Innovationen für die Produktion, "
+        "Dienstleistung und Arbeit von morgen“ des Bundesministeriums für Forschung, "
+        "Technologie und Raumfahrt (BMFTR) gefördert und vom Projektträger Karlsruhe "
+        "(PTKA) betreut."
+    ),
+    Language.EN: (
+        "The KMI research and development project is funded as part of the "
+        "“Future of Work: Regional Competence Centres for Labour Research – "
+        "Artificial Intelligence” funding initiative within the “Innovations for "
+        "Tomorrow's Production, Services, and Work” programme of the German Federal "
+        "Ministry of Research, Technology and Space (BMFTR) and is supervised by "
+        "the Project Management Agency Karlsruhe (PTKA)."
+    ),
+}
 FUNDING_URL: Final[str] = "https://kmi-netzwerk.org/kmi-projekt/"
 
 # (file in teach_by_showing/funding/, alt text). The files are the funder's

@@ -30,6 +30,7 @@ from teach_by_showing.profile import ProfileSummary
 from teach_by_showing.recording import Run
 from teach_by_showing.stand import Phase, Showcase, StandSession
 from teach_by_showing.task import TaskParams
+from teach_by_showing.texts import ENGLISH, MODEL_CAUTIOUS, MODEL_QUICK
 from tests.teachers import cautious, quick, teach
 
 SETTINGS: Settings = Settings.from_dict({"input": {"expo": 0.0}})
@@ -58,7 +59,7 @@ def policy_of(name: str) -> Policy:
     return policy
 
 
-MODEL_NAMES: dict[str, str] = {"cautious": "Vorbild vorsichtig", "quick": "Vorbild zügig"}
+MODEL_NAMES: dict[str, str] = {"cautious": MODEL_CAUTIOUS, "quick": MODEL_QUICK}
 
 
 @cache
@@ -196,15 +197,15 @@ def test_the_visitors_agent_joins_and_after_one_round_meets_its_opposite(
     assert s.gallery is not None and [a.number for a in s.gallery.agents()] == [1]
     assert s.own is not None and s.own.name == "Kranführer·in #1"
     # A cautious visitor meets the quick model.
-    assert s.rival is not None and s.rival.name == "Vorbild zügig"
+    assert s.rival is not None and s.rival.name == MODEL_QUICK
     r = s.replay
     assert r is not None and r.rival_transport is not None and r.transport is not None
     assert r.rival_transport.target[0] == r.transport.target[0]
     m: dict[str, Any] = s.state_message()
     assert [o["kind"] for o in m["others"]] == ["rival"]
-    assert "Vorbild zügig" in m["texts"]["headline"]
+    assert ENGLISH.model_quick in m["texts"]["headline"]
     table: dict[str, Any] = m["profile"]
-    assert table["rows"][table["highlight"]][0] == "Ihr Agent (#1)"
+    assert table["rows"][table["highlight"]][0] == ENGLISH.own_in_gallery.format(number=1)
     assert len(table["rows"]) == 3
     json.dumps(m)
 
@@ -240,7 +241,7 @@ def test_the_gallery_stops_at_its_time_limit_and_says_who_still_drives(
         s.tick()
         until_held += 1
     assert until_held == short.stand.frames(2.0)
-    assert "fährt noch" in s.state_message()["banner"]
+    assert ENGLISH.still_driving in s.state_message()["banner"]
 
 
 def test_the_gallery_holds_its_result_then_the_stand_waits(visited: StandSession) -> None:
@@ -274,8 +275,8 @@ def test_the_staffs_key_counts_once_and_hides_the_earlier_agents(tmp_path: Path)
     s.set_staff(True)
     s.tick()
     assert store.since() == "20261021-120000"
-    assert s.state_message()["banner"] == "Galerie neu ab jetzt"
-    assert [a.name for a in store.visible(CRANE, TASK)] == ["Vorbild zügig"]
+    assert s.state_message()["banner"] == ENGLISH.gallery_notice
+    assert [a.name for a in store.visible(CRANE, TASK)] == [MODEL_QUICK]
 
 
 def test_the_staffs_key_arrives_with_the_input_and_only_true_counts(tmp_path: Path) -> None:

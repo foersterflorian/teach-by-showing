@@ -18,6 +18,10 @@ const curvesCtx = curvesCanvas.getContext("2d");
 const modelCanvas = document.getElementById("model");
 const modelCtx = modelCanvas.getContext("2d");
 const el = (id) => document.getElementById(id);
+// The words and the number style the server put into the page, in the
+// screen's language (DECISIONS.md §24).
+const WORDS = document.body.dataset;
+const seconds = (value) => `${value.toFixed(1).replace(".", WORDS.decimal)} s`;
 
 let socket = null;
 let config = null;
@@ -35,6 +39,12 @@ function connect() {
       // A replay brings its own headline; the live page keeps the one in index.html.
       showTexts(config);
     } else if (message.type === "state") {
+      // The staff switched the language: the page comes again from the
+      // server, its fixed words and the funding notice with it (§24).
+      if (message.language && message.language !== document.documentElement.lang) {
+        location.reload();
+        return;
+      }
       message.arrival = performance.now();
       states.push(message);
       recordCurves(message);
@@ -181,7 +191,7 @@ function showCommand(fill, command) {
 }
 
 function showReadout(view) {
-  el("elapsed").textContent = `${view.elapsed.toFixed(1).replace(".", ",")} s`;
+  el("elapsed").textContent = seconds(view.elapsed);
   el("transports").textContent = view.transports;
   showCommand(el("command-fill"), view.command);
   if (view.texts) showTexts(view.texts);
@@ -189,7 +199,7 @@ function showReadout(view) {
   el("ghost-readout").hidden = !view.ghost;
   el("ghost-command-readout").hidden = !view.ghost;
   if (view.ghost) {
-    el("ghost-elapsed").textContent = `${view.ghost.elapsed.toFixed(1).replace(".", ",")} s`;
+    el("ghost-elapsed").textContent = seconds(view.ghost.elapsed);
     showCommand(el("ghost-command-fill"), view.ghost.command);
   }
 
@@ -201,9 +211,9 @@ function showReadout(view) {
     banner.hidden = view.banner === null;
     banner.textContent = view.banner ?? "";
   } else if (view.result === "success") {
-    banner.textContent = `Ziel erreicht – ${view.elapsed.toFixed(1).replace(".", ",")} s`;
+    banner.textContent = `${WORDS.reached} – ${seconds(view.elapsed)}`;
   } else if (view.result === "timeout") {
-    banner.textContent = "Zeit abgelaufen";
+    banner.textContent = WORDS.timedOut;
   }
 }
 
@@ -217,7 +227,14 @@ function tick(now) {
   const buttons = readButtons();
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(
-      JSON.stringify({ type: "input", u: command, a: buttons.a, b: buttons.b, reset: buttons.reset }),
+      JSON.stringify({
+        type: "input",
+        u: command,
+        a: buttons.a,
+        b: buttons.b,
+        reset: buttons.reset,
+        language: buttons.language,
+      }),
     );
   }
   if (config && states.length > 0) {

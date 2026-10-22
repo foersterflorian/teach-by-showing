@@ -14,6 +14,7 @@ from teach_by_showing.naive import naive_command
 from teach_by_showing.recording import Run
 from teach_by_showing.replay import ReplaySession
 from teach_by_showing.stand import Phase
+from teach_by_showing.texts import ENGLISH
 from tests.teachers import quick, teach
 from tests.test_stand import demonstrate, press, stand
 
@@ -120,4 +121,6 @@ def test_the_hidden_ghost_still_sets_the_pace() -> None:
         assert "ghost" not in m
         if m["banner"] is not None:
             banners.add(m["banner"])
-    assert banners and all(b.startswith("Gelernt ") and "Ohne Lernen" in b for b in banners)
+    learnt, without = ENGLISH.banner_naive.split("{agent}")[0], "Without learning"
+    assert without in ENGLISH.banner_naive
+    assert banners and all(b.startswith(learnt) and without in b for b in banners)

@@ -28,6 +28,7 @@ from teach_by_showing.cloning import Driving, Policy, Rollout, policy_from_dict,
 from teach_by_showing.crane import CraneParams, CraneState, FloatArray
 from teach_by_showing.profile import ProfileSummary, profiles, summarize
 from teach_by_showing.task import TaskParams, sample_transports
+from teach_by_showing.texts import MODEL_CAUTIOUS, MODEL_QUICK, Texts
 
 SCHEMA: Final[int] = 1
 # The same targets for every agent, so that their figures compare.
@@ -36,6 +37,9 @@ REFERENCE_SEED: Final[int] = 2310
 # Own agent, opponent and the two most recent others: six rows made the
 # scene visibly smaller (decided 2026-10-21).
 TABLE_ROWS: Final[int] = 4
+# The name a visitor's agent is stored under, and its identity in the
+# gallery; agents stored since 2026-10-21 carry it. The screen words it in
+# the current language (display_name, §24).
 VISITOR_NAME: Final[str] = "Kranführer·in #{}"
 
 
@@ -245,6 +249,18 @@ class GalleryStore:
             a for a in self.agents() if since is None or a.created >= since
         ]
         return [a.measured_under(crane, task) for a in shown]
+
+
+def display_name(agent: Agent, words: Texts) -> str:
+    """The agent's name as the screen shows it: a visitor's by its number,
+    a shipped model by the key it is stored under (§24)."""
+    if agent.number is not None:
+        return words.visitor_name.format(number=agent.number)
+    models: dict[str, str] = {
+        MODEL_CAUTIOUS: words.model_cautious,
+        MODEL_QUICK: words.model_quick,
+    }
+    return models.get(agent.name, agent.name)
 
 
 def opponent(own: Agent, others: list[Agent]) -> Agent | None:

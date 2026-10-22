@@ -15,6 +15,7 @@ from teach_by_showing.live import Settings, StandParams
 from teach_by_showing.model_view import LearningTrace, formula, learn, model_message
 from teach_by_showing.recording import Run
 from teach_by_showing.stand import Phase, StandSession
+from teach_by_showing.texts import ENGLISH, GERMAN
 from tests.support import ROOT
 from tests.teachers import quick, teach
 from tests.test_stand import SETTINGS, demonstrate, press, showcase
@@ -90,26 +91,30 @@ def test_a_network_is_not_shown() -> None:
     assert trace is None
 
 
-def test_the_formula_in_german_decimals_with_real_minus_signs() -> None:
+def test_the_formula_in_each_languages_decimals_with_real_minus_signs() -> None:
+    """§21, §24: German decimal commas, English decimal points."""
     p: LinearPolicy = LinearPolicy(np.array([1.8, 0.1, -0.13]), np.array(-0.011))
-    assert formula(p) == (
+    assert formula(p, GERMAN) == (
         "Stellgröße = tanh(1,80 · Abstand + 0,10 · Winkel − 0,13 · Winkelgeschw. − 0,01)"
     )
+    assert formula(p, ENGLISH) == (
+        "Command = tanh(1.80 · Distance + 0.10 · Angle − 0.13 · Ang. speed − 0.01)"
+    )
     q: LinearPolicy = LinearPolicy(np.array([-0.3, 0.0, 0.02]), np.array(0.0))
-    assert formula(q).startswith("Stellgröße = tanh(−0,30 · Abstand + 0,00 · Winkel")
+    assert formula(q, GERMAN).startswith("Stellgröße = tanh(−0,30 · Abstand + 0,00 · Winkel")
 
 
 def test_the_loss_curve_grows_with_the_slow_motion_in_unit_coordinates() -> None:
     policy, trace = learnt()
     assert isinstance(policy, LinearPolicy) and trace is not None
-    m: dict[str, Any] = model_message(policy, trace=trace, shown=10)
+    m: dict[str, Any] = model_message(policy, ENGLISH, trace=trace, shown=10)
     points: list[list[float]] = m["loss"]["points"]
     assert len(points) == 11
     xs: list[float] = [x for x, _ in points]
     assert xs == sorted(xs) and xs[0] == 0.0
     assert all(0.0 <= y <= 1.0 for _, y in points)
     assert m["w_text"] == [
-        ("−" if w < 0 else "+") + f"{abs(w):.2f}".replace(".", ",") for w in policy.w
+        ("−" if w < 0 else "+") + f"{abs(w):.2f}" for w in policy.w
     ]
 
 
@@ -119,13 +124,13 @@ def test_the_learning_step_replays_the_weights_then_waits_for_a() -> None:
     assert s.trace is not None
     first: dict[str, Any] = s.state_message()
     assert first["model"]["w"] == s.trace.policies[0].w.tolist()
-    assert first["texts"]["prompt"] is None and "Zeitlupe" in first["texts"]["hint"]
+    assert first["texts"]["prompt"] is None and "slow motion" in first["texts"]["hint"]
     for _ in range(p.frames(p.learn_replay)):
         s.tick()
     done: dict[str, Any] = s.state_message()
     assert done["model"]["w"] == s.trace.policies[-1].w.tolist()
     assert len(done["model"]["loss"]["points"]) == s.trace.points
-    assert done["texts"]["prompt"] == "A: Ihr Agent fährt los"
+    assert done["texts"]["prompt"] == ENGLISH.learn_prompt
     for _ in range(p.frames(p.learn_wait) - 2):
         s.tick()
     assert s.phase is Phase.LEARN
@@ -171,7 +176,7 @@ def test_while_the_agent_drives_the_neuron_works_on_its_live_inputs() -> None:
     assert m["w"] == s.showcase.policy.w.tolist() and m["loss"] is None
     assert m["inputs"] == features(r.state, r.transport.target, r.run.crane)[0].tolist()
     assert m["output"] == r.command
-    assert "Abstand" in m["formula"] and m["explain"]
+    assert ENGLISH.model_short[0] in m["formula"] and m["explain"]
 
 
 def test_the_waiting_stand_shows_no_model() -> None:
@@ -186,5 +191,7 @@ def test_the_model_is_drawn_from_the_message_with_no_wording_of_its_own() -> Non
     main: str = (STATIC / "main.js").read_text(encoding="utf-8")
     assert "drawModel(" in main and "drawLoss(" in main
     assert "model.w_text[k]" in model and "model.labels" in model
-    for wording in ("Abstand", "Pendel", "Stellgröße", "Lernschritte", "Abweichung"):
-        assert wording not in model, wording
+    # English words occur in the comments; only a quoted one would be a text.
+    for words, quote in ((GERMAN, ""), (ENGLISH, '"')):
+        for wording in (*words.model_short, words.command_label, words.loss_axis):
+            assert f"{quote}{wording}{quote}" not in model, wording

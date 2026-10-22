@@ -21,6 +21,7 @@ from teach_by_showing.stand import (
     Showcase,
     StandSession,
 )
+from teach_by_showing.texts import ENGLISH
 from tests.support import ROOT
 from tests.teachers import quick, teach
 
@@ -77,7 +78,7 @@ def test_the_stand_waits_with_an_earlier_agent_and_a_call_to_action() -> None:
     assert s.phase is Phase.IDLE and m["phase"] == "idle"
     # Learnt against naive, without the earlier teacher's ghost (§19).
     assert "ghost" not in m and [o["kind"] for o in m["others"]] == ["naive"]
-    assert "Drücken Sie A" in m["texts"]["prompt"]
+    assert m["texts"]["prompt"] == ENGLISH.idle_prompt
 
 
 def test_input_drives_nothing_while_the_stand_waits() -> None:
@@ -96,7 +97,7 @@ def test_a_begins_the_demonstration_and_the_prompt_waits_for_the_first_deflectio
     assert s.phase is Phase.TEACH
     m: dict[str, Any] = s.state_message()
     assert "ghost" not in m and m["texts"]["ghost_label"] is None
-    assert "Transport 1 von 3" in m["texts"]["headline"]
+    assert "transport 1 of 3" in m["texts"]["headline"]
     assert m["texts"]["prompt"] is not None
     s.set_input(0.5)
     s.tick()
@@ -132,9 +133,10 @@ def test_the_whole_way_from_demonstration_to_the_visitors_agent() -> None:
         s.tick()
     assert s.phase is Phase.AGENT
     m = s.state_message()
-    assert m["texts"]["ghost_label"] == "Ihre Fahrt" and m["texts"]["prompt"] is None
+    assert m["texts"]["ghost_label"] == ENGLISH.teacher_self and m["texts"]["prompt"] is None
     # The style profile beside the visitor's agent only (§22).
-    assert [row[0] for row in m["profile"]["rows"]] == ["Ihre Fahrt", "Ihr Agent"]
+    rows: list[str] = [row[0] for row in m["profile"]["rows"]]
+    assert rows == [ENGLISH.teacher_self, ENGLISH.agent_self]
     assert s.showcase.run is recorded[0]
 
 
@@ -149,7 +151,7 @@ def test_the_visitors_agent_drives_until_a_button_decides() -> None:
     assert s.phase is Phase.IDLE
     # The stand now waits with this visitor's agent.
     assert s.replay is not None and s.replay.run is s.showcase.run
-    assert texts(s)["ghost_label"] == "Vorbild"
+    assert texts(s)["ghost_label"] == ENGLISH.teacher_earlier
     assert "profile" not in s.state_message()
 
 

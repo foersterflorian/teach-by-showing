@@ -12,6 +12,7 @@ import html
 import json
 import logging
 import os
+import re
 import secrets
 import signal
 import time
@@ -41,6 +42,16 @@ from teach_by_showing.live import (
 from teach_by_showing.recording import Run, load_run, save_run
 from teach_by_showing.replay import ReplaySession
 from teach_by_showing.stand import Showcase, StandSession
+from teach_by_showing.texts import (
+    DEFAULT_LANGUAGE,
+    MODEL_CAUTIOUS,
+    MODEL_QUICK,
+    TEXTS,
+    Language,
+    Texts,
+    load_language,
+    save_language,
+)
 
 log: logging.Logger = logging.getLogger("teach_by_showing")
 
@@ -52,11 +63,15 @@ STALL_SECONDS: Final[float] = 1.0
 # (DECISIONS.md §18).
 SHOWCASE_RUN: Final[str] = "zuegig.json"
 # The gallery's models until colleagues have recorded more: the maintainer's
-# two teaching drives, each cloned with a fixed seed (DECISIONS.md §23).
+# two teaching drives, each cloned with a fixed seed (DECISIONS.md §23),
+# stored under a key that texts.py words in the screen's language (§24).
 MODELS: Final[tuple[tuple[str, str], ...]] = (
-    ("vorsichtig.json", "Vorbild vorsichtig"),
-    ("zuegig.json", "Vorbild zügig"),
+    ("vorsichtig.json", MODEL_CAUTIOUS),
+    ("zuegig.json", MODEL_QUICK),
 )
+# A name in double braces in index.html: a field of texts.Texts, or the
+# page's language.
+PAGE_WORD: Final[re.Pattern[str]] = re.compile(r"\{\{(\w+)\}\}")
 
 
 class Outbox:
@@ -77,9 +92,16 @@ class Outbox:
         return self._latest
 
 
-def create_app(make_session: Callable[[], Session], exit_on_crash: bool = False) -> FastAPI:
+def create_app(
+    make_session: Callable[[], Session],
+    exit_on_crash: bool = False,
+    language: Language = DEFAULT_LANGUAGE,
+) -> FastAPI:
     """The app, with the session created at startup. Tests pass their own
     factory with a fixed seed.
+
+    The page speaks the stand's language, which the staff may switch; a
+    session without the stand's steps speaks `language` (§24).
 
     With `exit_on_crash`, a crash of the simulation loop shuts the server
     down, so that the container's restart policy brings it back: Docker only
@@ -175,7 +197,9 @@ def create_app(make_session: Callable[[], Session], exit_on_crash: bool = False)
 
     @app.get("/")
     async def index() -> HTMLResponse:
-        return HTMLResponse(index_page())
+        session: Session | None = holder.get("session")
+        spoken: Language = session.language if isinstance(session, StandSession) else language
+        return HTMLResponse(index_page(spoken))
 
     @app.get("/funding/{name}")
     async def funding_logo(name: str) -> Response:
@@ -191,18 +215,28 @@ def create_app(make_session: Callable[[], Session], exit_on_crash: bool = False)
     return app
 
 
-def index_page() -> str:
-    """The start page with the funding notice filled in on the server, so
-    that the wording exists once, in funding.py, and the frontend's script
-    never touches it (DECISIONS.md §2)."""
+def index_page(language: Language) -> str:
+    """The start page with its words and the funding notice filled in on the
+    server, in `language`, so that every wording exists once, in texts.py and
+    funding.py, and the frontend's scripts never word anything (§2, §24)."""
     page: str = (resources.files("teach_by_showing") / "static" / "index.html").read_text(
         encoding="utf-8"
     )
+    words: Texts = TEXTS[language]
+
+    def word(match: re.Match[str]) -> str:
+        name: str = match[1]
+        value: object = str(language) if name == "language" else getattr(words, name)
+        assert isinstance(value, str), name
+        return html.escape(value)
+
+    page = PAGE_WORD.sub(word, page)
     logos: str = "".join(
         f'<img src="/funding/{name}" alt="{html.escape(alt)}">' for name, alt in FUNDING_LOGOS
     )
     notice: str = (
-        f'{logos}<p>{html.escape(FUNDING_TEXT)} <a href="{FUNDING_URL}">{FUNDING_URL}</a></p>'
+        f"{logos}<p>{html.escape(FUNDING_TEXT[language])}"
+        f' <a href="{FUNDING_URL}">{FUNDING_URL}</a></p>'
     )
     return page.replace("<!--FUNDING-->", notice)
 
@@ -236,9 +270,10 @@ def handle_input(session: Session, text: str) -> None:
     session.set_input(command)
     # Anything but true is a button not held; older pages send none.
     session.set_buttons(message.get("a") is True, message.get("b") is True)
-    # The staff's key exists only on the stand (§23).
+    # The staff's keys exist only on the stand (§23, §24).
     if isinstance(session, StandSession):
         session.set_staff(message.get("reset") is True)
+        session.set_language_key(message.get("language") is True)
 
 
 def main() -> None:
@@ -297,6 +332,8 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     log.info("seed %d", seed)
     runs: Path = args.data_dir / "runs"
+    language: Language = load_language(args.data_dir)
+    log.info("screen language %s", language)
     settings: Settings = Settings.from_dict(
         json.loads(args.params.read_text(encoding="utf-8")) if args.params else {}
     )
@@ -319,7 +356,7 @@ def main() -> None:
             losses[0],
             losses[-1],
         )
-        return ReplaySession.start(run, policy, show_curves=True)
+        return ReplaySession.start(run, policy, words=TEXTS[language], show_curves=True)
 
     def make_session() -> LiveSession:
         session: LiveSession = LiveSession.start(
@@ -368,6 +405,8 @@ def main() -> None:
             saved,
             seed,
             gallery=GalleryStore(args.data_dir, tuple(models)),
+            language=language,
+            on_language=lambda chosen: save_language(args.data_dir, chosen),
         )
 
     if args.ghost and args.record:
@@ -377,7 +416,7 @@ def main() -> None:
         make = make_replay
     elif args.free or args.record:
         make = make_session
-    app: FastAPI = create_app(make, exit_on_crash=True)
+    app: FastAPI = create_app(make, exit_on_crash=True, language=language)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 

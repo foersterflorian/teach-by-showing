@@ -9,7 +9,7 @@ The point is the mechanism behind many industrial AI applications: people
 teach by showing rather than by writing rules, and people decide what counts
 as a good result.
 
-**Status:** in development, for the K-M-I closing event on 3–4 November 2026.
+**Status:** in development, for the KMI closing event on 3–4 November 2026.
 It runs next to its sibling [feature-viz](https://github.com/foersterflorian/feature-viz),
 one monitor each.
 
@@ -19,7 +19,7 @@ pdm run pytest
 pdm run teach-by-showing        # http://localhost:8081
 ```
 
-The server runs the stand's steps (`DECISIONS.md` §18–§23): while it waits,
+The server runs the stand's steps (`DECISIONS.md` §18–§24): while it waits,
 an agent that learnt from a person drives against one that learnt nothing;
 A begins a demonstration of three transports; the agent learns from it,
 shown in slow motion; then it drives the visitor's transports beside their
@@ -29,16 +29,20 @@ the agent most unlike it (§23). From the demonstration on, B returns the
 stand to waiting.
 
 The gallery keeps every agent under `agents/` in the data directory.
-Ctrl+Alt+G at the stand shows only the agents taught from now on; nothing
-is deleted. `teach-by-showing-gallery list` shows them all,
-`teach-by-showing-gallery since all` (or `since #n`, or a time stamp) sets
-the filter on the machine; in the container the same is
+Ctrl+Alt+G at the stand shows only the agents taught from now on (see
+Keyboard shortcuts); nothing is deleted. `teach-by-showing-gallery list`
+shows them all, `teach-by-showing-gallery since all` (or `since #n`, or a
+time stamp) sets the filter on the machine; in the container the same is
 `docker compose exec teach-by-showing python -m teach_by_showing.gallery list`.
 
+The screen speaks English or German (`DECISIONS.md` §24), English until
+the staff switch with Ctrl+Alt+L; the choice is kept in `language.json` in
+the data directory and survives a restart.
+
 The crane is driven with the left stick of a USB gamepad, A and B are its
-buttons; for development the keyboard stands in, ← → or A / D for the
-stick, Enter and Backspace for the buttons. `--free` drives the crane
-without the stand's steps. `http://localhost:8081/gamepad.html` shows what
+buttons; for development the keyboard stands in (see Keyboard shortcuts).
+`--free` drives the crane without the stand's steps.
+`http://localhost:8081/gamepad.html` shows what
 the browser reads from a gamepad, and `tools/measure_ws.py` measures the
 running server from outside — timing, input round trip (against `--free`),
 and the command it applies (`DECISIONS.md` §8, §12):
@@ -107,20 +111,32 @@ defaults: crane, task and input curve (`DECISIONS.md` §14, candidates in
 `tools/tuning/`), and the durations of the stand's steps, for instance
 `{"stand": {"learn_replay": 8, "learn_wait": 30}}` (`DECISIONS.md` §21).
 
+## Keyboard shortcuts
+
+Every key the stand's page reads, in the browser showing the crane:
+
+| Keys | What they do |
+|---|---|
+| ← → or A / D | the stick, for development |
+| Enter / Backspace | the gamepad's A / B, for development |
+| Ctrl+Alt+G | staff: the gallery shows only the agents taught from now on (`DECISIONS.md` §23) |
+| Ctrl+Alt+L | staff: the screen switches between English and German, and stays so (`DECISIONS.md` §24) |
+
 `DECISIONS.md` records why the code is shaped the way it is, including the
 alternatives that were rejected. Read it before changing anything structural.
 
 ## Funding
 
-The [K-M-I research and development project](https://kmi-netzwerk.org/kmi-projekt/) is funded as part of the “Future of Work: Regional Competence Centers for Labor Research – Artificial Intelligence” funding initiative within the “Innovations for Tomorrow's Production, Services, and Work” program of the German Federal Ministry of Research, Technology and Space (BMFTR) and is supervised by the Project Management Agency Karlsruhe (PTKA).
+The [KMI research and development project](https://kmi-netzwerk.org/kmi-projekt/) is funded as part of the “Future of Work: Regional Competence Centres for Labour Research – Artificial Intelligence” funding initiative within the “Innovations for Tomorrow's Production, Services, and Work” programme of the German Federal Ministry of Research, Technology and Space (BMFTR) and is supervised by the Project Management Agency Karlsruhe (PTKA).
 
 <p align="left">
   <img src="src/teach_by_showing/funding/BMFTR_de_Web_RGB_gef_durch.jpg" alt="funding logo" width="300">
   <img src="src/teach_by_showing/funding/Logo_Kompetenzzentren_Arbeitsforschung.png" alt="logo ReKodA (Regional Competence Centres of Work Research)" width="150">
 </p>
 
-The running demonstrator carries the same notice on screen (`DECISIONS.md`
-§2).
+The running demonstrator carries the same notice on screen, or in German
+the funder's own wording when the screen speaks German (`DECISIONS.md` §2,
+§24).
 
 ## License
 

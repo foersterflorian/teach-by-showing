@@ -15,6 +15,7 @@ from teach_by_showing.crane import CraneState
 from teach_by_showing.live import PAUSE_FRAMES
 from teach_by_showing.recording import Run
 from teach_by_showing.replay import ReplaySession
+from teach_by_showing.texts import ENGLISH
 from tests.teachers import quick, teach
 
 
@@ -64,7 +65,7 @@ def test_after_both_are_done_a_pause_then_the_next_transport_then_the_first() ->
     finish_transport(s)
     m: dict[str, Any] = s.state_message()
     assert m["result"] == "success" and m["ghost"]["result"] == "success"
-    assert m["banner"].startswith("Agent ") and "Ihre Fahrt" in m["banner"]
+    assert m["banner"].startswith("Agent ") and ENGLISH.teacher_self in m["banner"]
     for _ in range(PAUSE_FRAMES):
         s.tick()
     assert s.state_message()["target"] == [targets[1]]

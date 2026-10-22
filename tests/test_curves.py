@@ -12,8 +12,9 @@ import pytest
 from teach_by_showing.cloning import clone
 from teach_by_showing.live import PAUSE_FRAMES
 from teach_by_showing.recording import Run
-from teach_by_showing.replay import HEADLINE, HEADLINE_NEW, ReplaySession
+from teach_by_showing.replay import ReplaySession
 from teach_by_showing.stand import AGENT_NEW_TARGETS, Phase
+from teach_by_showing.texts import ENGLISH, GERMAN
 from tests.support import ROOT
 from tests.teachers import quick, teach
 from tests.test_stand import demonstrate, press, stand
@@ -150,10 +151,10 @@ def test_the_visitors_agent_step_shows_curves_and_new_targets_but_the_idle_step_
     assert replay is not None
     assert replay.new_targets == AGENT_NEW_TARGETS
     m: dict[str, Any] = s.state_message()
-    assert "curves" in m and m["texts"]["headline"] == HEADLINE
+    assert "curves" in m and m["texts"]["headline"] == ENGLISH.agent_headline
     while not replay.on_new_target:
         next_transport(replay)
-    assert s.state_message()["texts"]["headline"] == HEADLINE_NEW
+    assert s.state_message()["texts"]["headline"] == ENGLISH.agent_headline_new
 
 
 def test_the_curves_are_drawn_from_the_message_with_no_wording_of_their_own() -> None:
@@ -161,5 +162,7 @@ def test_the_curves_are_drawn_from_the_message_with_no_wording_of_their_own() ->
     main: str = (STATIC / "main.js").read_text(encoding="utf-8")
     assert "recordCurves(message)" in main and "drawCurves(" in main
     assert "curves.labels[key]" in curves and "curves.scales[key]" in curves
-    for wording in ("Geschwindigkeit", "Pendel", "Stellgröße"):
-        assert wording not in curves, wording
+    # English words occur in the comments; only a quoted one would be a text.
+    for words, quote in ((GERMAN, ""), (ENGLISH, '"')):
+        for wording in (words.curve_speed, words.curve_swing, words.command_label):
+            assert f"{quote}{wording}{quote}" not in curves, wording

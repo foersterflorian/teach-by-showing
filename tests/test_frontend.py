@@ -17,6 +17,7 @@ from teach_by_showing import funding
 from teach_by_showing.api import create_app
 from teach_by_showing.crane import CraneParams
 from teach_by_showing.live import LiveSession
+from teach_by_showing.texts import DEFAULT_LANGUAGE
 from tests.support import ROOT
 
 STATIC: Path = ROOT / "src" / "teach_by_showing" / "static"
@@ -31,7 +32,7 @@ def client() -> Iterator[TestClient]:
 def test_page_carries_the_funding_notice_verbatim(client: TestClient) -> None:
     page: str = client.get("/").text
     assert "<!--FUNDING-->" not in page
-    assert html.escape(funding.FUNDING_TEXT) in page
+    assert html.escape(funding.FUNDING_TEXT[DEFAULT_LANGUAGE]) in page
     assert f'href="{funding.FUNDING_URL}"' in page
     for name, _ in funding.FUNDING_LOGOS:
         assert f'src="/funding/{name}"' in page

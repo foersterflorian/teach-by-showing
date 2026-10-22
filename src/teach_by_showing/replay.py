@@ -35,63 +35,43 @@ from teach_by_showing.profile import (
 )
 from teach_by_showing.recording import Run
 from teach_by_showing.task import Transport, advance, sample_targets, sample_transports
+from teach_by_showing.texts import DEFAULT_LANGUAGE, TEXTS, Texts, number
 
-HEADLINE: Final[str] = "Ihr Agent fährt – Ihre eigene Fahrt läuft als Schatten mit"
-HEADLINE_NEW: Final[str] = "Ihr Agent fährt ein neues Ziel – das hat er nie gesehen"
-TEACHER_SELF: Final[str] = "Ihre Fahrt"
 # The swing curve's full height. A quick teacher swings about 24°, the naive
 # driver up to about 20° (§16, §19); beyond this the curve is clipped.
 CURVE_SWING_DEG: Final[float] = 30.0
 # The time axis is never shorter than this and grows in steps of it, so that
 # it does not rescale with every frame while a drive runs long.
 CURVE_STEP_SECONDS: Final[float] = 5.0
-CURVE_LABELS: Final[dict[str, str]] = {
-    "v": "Geschwindigkeit",
-    "theta": "Pendelwinkel",
-    "command": "Stellgröße",
-}
-AGENT_SELF: Final[str] = "Ihr Agent"
-PROFILE_TITLE: Final[str] = "Stil-Steckbrief"
-PROFILE_NOTE: Final[str] = "Kleiner ist ruhiger bzw. schonender."
 NOT_YET: Final[str] = "–"
-# A drive stopped before it reached calm, as the gallery's time limit does.
-STILL_DRIVING: Final[str] = "fährt noch"
 
 
-def _seconds(frames: int) -> str:
-    return f"{frames / SIM_HZ:.1f}".replace(".", ",") + " s"
+def seconds_text(frames: int, words: Texts) -> str:
+    return number(frames / SIM_HZ, 1, words, " s")
 
 
-def _number(value: float | None, unit: str = "") -> str:
-    return NOT_YET if value is None else f"{value:.1f}".replace(".", ",") + unit
+def _figure(value: float | None, words: Texts, unit: str = "") -> str:
+    return NOT_YET if value is None else number(value, 1, words, unit)
 
 
-def _time_cell(summary: ProfileSummary) -> str:
+def _time_cell(summary: ProfileSummary, words: Texts) -> str:
     """Mean time over the reached transports, and how many were not."""
     if summary.transports == 0:
         return NOT_YET
     if summary.reached == 0:
-        return "nicht erreicht"
+        return words.not_reached
     missed: int = summary.transports - summary.reached
-    time: str = _number(summary.seconds, " s")
-    return time if missed == 0 else f"{time} · {missed}× nicht erreicht"
+    time: str = _figure(summary.seconds, words, " s")
+    return time if missed == 0 else words.partly_reached.format(time=time, missed=missed)
 
 
-def profile_cells(summary: ProfileSummary) -> list[str]:
+def profile_cells(summary: ProfileSummary, words: Texts) -> list[str]:
     return [
-        _time_cell(summary),
-        _number(summary.max_swing_deg, "°"),
-        _number(summary.rest_deg, "°"),
-        _number(summary.stick_travel),
+        _time_cell(summary, words),
+        _figure(summary.max_swing_deg, words, "°"),
+        _figure(summary.rest_deg, words, "°"),
+        _figure(summary.stick_travel, words),
     ]
-
-
-PROFILE_FIGURES: Final[tuple[str, ...]] = (
-    "Fahrzeit",
-    "Größtes Pendeln",
-    "Ruhe am Ziel (Restpendeln)",
-    "Schonung (Stickweg)",
-)
 
 
 @dataclass(slots=True)
@@ -116,9 +96,13 @@ class ReplaySession:
     command: float = 0.0
     pause_left: int = 0
     transports_done: int = 0
+    # The words it speaks; the stand replaces them when the staff switch
+    # the language, so that the switch shows within the frame (§24).
+    words: Texts = TEXTS[DEFAULT_LANGUAGE]
     # Whose drive the ghost plays, as the readouts and the banner name it:
     # the visitor's own, or an earlier teacher's in the stand's idle step.
-    teacher: str = TEACHER_SELF
+    # A role, not a name, so that it is worded in the current language.
+    earlier_teacher: bool = False
     # The naive driver beside them, from the same start to the same target
     # (§19). It does not hold up the next transport: it rarely comes to rest
     # within the time limit, and the stand would wait a minute for it.
@@ -164,7 +148,8 @@ class ReplaySession:
         cls,
         run: Run,
         policy: Policy,
-        teacher: str = TEACHER_SELF,
+        earlier_teacher: bool = False,
+        words: Texts = TEXTS[DEFAULT_LANGUAGE],
         with_naive: bool = False,
         show_ghost: bool = True,
         new_targets: int = 0,
@@ -185,7 +170,8 @@ class ReplaySession:
             policy,
             begins,
             targets,
-            teacher=teacher,
+            words=words,
+            earlier_teacher=earlier_teacher,
             with_naive=with_naive,
             show_ghost=show_ghost,
             new_targets=new_targets,
@@ -201,6 +187,11 @@ class ReplaySession:
         )
         session._begin(0 if teacher_transports else run.transports)
         return session
+
+    @property
+    def teacher(self) -> str:
+        w: Texts = self.words
+        return w.teacher_earlier if self.earlier_teacher else w.teacher_self
 
     @property
     def on_new_target(self) -> bool:
@@ -334,20 +325,21 @@ class ReplaySession:
             shown and p is not None
             for shown, p in zip(self.teacher_shown, self.agent_profiles, strict=True)
         )
+        w: Texts = self.words
         title: str = (
-            f"{PROFILE_TITLE} – Mittel aus {both} von {self.run.transports} Transporten"
+            w.profile_title_mean.format(both=both, total=self.run.transports)
             if both > 0
-            else PROFILE_TITLE
+            else w.profile_title
         )
         # Laid across, one row per driver, to fit beside the readouts.
         return {
             "title": title,
-            "columns": ["", *PROFILE_FIGURES],
+            "columns": ["", *w.profile_figures],
             "rows": [
-                [self.teacher, *profile_cells(teacher)],
-                [AGENT_SELF, *profile_cells(agent)],
+                [self.teacher, *profile_cells(teacher, w)],
+                [w.agent_self, *profile_cells(agent, w)],
             ],
-            "note": PROFILE_NOTE,
+            "note": w.profile_note,
         }
 
     def _next_index(self) -> int:
@@ -450,10 +442,13 @@ class ReplaySession:
         if running and not self.stopped:
             return None
 
+        w: Texts = self.words
+
         def time_of(result: str, frames: int) -> str:
             if result == "running":
-                return STILL_DRIVING
-            return _seconds(frames) if result == "success" else "Zeit abgelaufen"
+                # Stopped before calm, as the gallery's time limit does.
+                return w.still_driving
+            return seconds_text(frames, w) if result == "success" else w.timed_out
 
         agent: str = time_of(self._agent_result(), self._agent_frames())
         if self.rival_transport is not None:
@@ -462,20 +457,20 @@ class ReplaySession:
             rival: str = time_of(
                 self._rival_result(), int(self.rival_transport.duration_frames()[0])
             )
-            return f"{AGENT_SELF} {agent} · {self.rival_name} {rival}"
+            return w.banner_rival.format(agent=agent, rival=self.rival_name, rival_time=rival)
         if self.rows is None:
-            return f"Agent {agent}"
+            return w.banner_agent.format(agent=agent)
         if not self.show_ghost and self.naive_transport is not None:
             # Without the ghost the comparison is learnt against naive; the
             # naive driver rarely comes to rest, and that is the point.
             naive: str = (
-                _seconds(int(self.naive_transport.duration_frames()[0]))
+                seconds_text(int(self.naive_transport.duration_frames()[0]), w)
                 if self.naive_transport.succeeded[0]
-                else "pendelt noch"
+                else w.still_swinging
             )
-            return f"Gelernt {agent} · Ohne Lernen {naive}"
+            return w.banner_naive.format(agent=agent, naive=naive)
         ghost: str = time_of(self._ghost_result(), len(self.rows))
-        return f"Agent {agent} · {self.teacher} {ghost}"
+        return w.banner_ghost.format(agent=agent, teacher=self.teacher, ghost=ghost)
 
     def _curves(self) -> dict[str, Any]:
         """One point of the curves over time, the agent's and, while the
@@ -514,16 +509,21 @@ class ReplaySession:
                 "theta": math.radians(CURVE_SWING_DEG),
                 "command": 1.0,
             },
-            "labels": CURVE_LABELS,
+            "labels": {
+                "v": self.words.curve_speed,
+                "theta": self.words.curve_swing,
+                "command": self.words.command_label,
+            },
         }
 
     def texts(self) -> dict[str, str]:
-        """The labels of the readouts; German, from the server (§17)."""
+        """The labels of the readouts, from the server (§17, §24)."""
+        w: Texts = self.words
         return {
-            "elapsed_label": "Agent",
+            "elapsed_label": w.agent_label,
             "ghost_label": self.teacher,
-            "command_label": "Stellgröße Agent",
-            "ghost_command_label": f"Stellgröße {self.teacher}",
+            "command_label": w.agent_command_label,
+            "ghost_command_label": w.teacher_command_label.format(teacher=self.teacher),
         }
 
     def config_message(self) -> dict[str, Any]:
@@ -533,8 +533,8 @@ class ReplaySession:
             "crane": self.run.crane.to_dict(),
             "task": self.run.task.to_dict(),
             "mode": "replay",
-            "headline": HEADLINE,
-            "hint": "Wiedergabe – das Gamepad hat Pause",
+            "headline": self.words.agent_headline,
+            "hint": self.words.replay_hint,
             **self.texts(),
         }
 

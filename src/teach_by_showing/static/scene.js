@@ -88,7 +88,8 @@ function drawScene(ctx, width, height, config, view) {
     ctx.fillStyle = COLORS.calm;
     ctx.fillRect(zx, L.floorY - 0.5 * s * view.calm, zw, 0.5 * s * view.calm);
     ctx.fillStyle = COLORS.target;
-    ctx.fillText("Ziel", L.px(target), L.floorY + 0.3 * s);
+    // Worded by the server, in the page (DECISIONS.md §24).
+    ctx.fillText(document.body.dataset.target, L.px(target), L.floorY + 0.3 * s);
   }
 
   // In a replay the teacher's recorded drive runs behind, translucent
