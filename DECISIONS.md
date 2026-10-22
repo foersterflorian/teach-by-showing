@@ -1500,6 +1500,14 @@ Hence the stand learns mirrored since 2026-10-22 (§15).
 `tests/test_cloning.py` keeps the cautious drive of that day: mirrored all
 50 targets, unmirrored none.
 
+**Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-22,
+the maintainer, two visits on the gamepad, driven cautiously as in the
+failing drive): the agent reached every target, its own and the new ones;
+the formula ends in "+ 0,00", "passt". The server logged the mirrored
+training at 0.082 s and 0.069 s inside the loop, and 2 overruns in 25 881
+ticks over both visits, as before (§23). The two drives are kept in the
+git-ignored `data/runs/`.
+
 `tests/test_evaluate.py` guards the tool's bookkeeping.
 
 ---
