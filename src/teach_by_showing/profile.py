@@ -124,16 +124,21 @@ def profiles(transport: Transport, tally: Tally) -> list[TransportProfile]:
 def run_profiles(run: Run) -> list[TransportProfile]:
     """The teacher's transports, counted row by row with the same advance()
     and Tally as a clone's."""
+    # Each column converted once: converting it per row, as run.states()
+    # does, grew with the square of the drive and stalled the loop for 2 s
+    # on a cautious drive when the agent's step began (§27).
     command: FloatArray = run.column("command")
+    x, v, theta, omega = (run.column(c) for c in ("x", "v", "theta", "omega"))
     result: list[TransportProfile] = []
     for i in range(run.transports):
         rows: IntArray = run.transport_rows(i)
         transport: Transport = Transport.begin(run.column("target")[rows[:1]], 0)
         tally: Tally = Tally.begin(transport.target)
         for k, row in enumerate(rows, start=1):
-            state: CraneState = run.states(np.asarray([row]), k)
+            one: slice = slice(row, row + 1)
+            state: CraneState = CraneState(k, x[one], v[one], theta[one], omega[one])
             running: BoolArray = ~transport.done(k - 1, run.task)
-            tally = tally.update(command[row : row + 1], state, running, run.crane, run.task)
+            tally = tally.update(command[one], state, running, run.crane, run.task)
             transport = advance(transport, state, run.crane, run.task)
         result += profiles(transport, tally)
     return result

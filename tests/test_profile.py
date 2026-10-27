@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from dataclasses import astuple
 from functools import cache
 from typing import Any
@@ -142,6 +143,29 @@ def test_the_teacher_is_counted_from_the_recording() -> None:
         u: np.ndarray = np.concatenate([[0.0], command[rows]])
         assert p.stick_travel == pytest.approx(float(np.abs(np.diff(u)).sum()))
         assert p.rest_deg is not None and 0.0 < p.rest_deg < p.max_swing_deg
+
+
+def test_the_teacher_is_counted_from_the_recording_in_linear_time() -> None:
+    """Counted when the agent's step begins, inside the loop: it stalled the
+    crane for 2 s on a cautious drive while its cost grew with the square
+    of the drive (§27). Two drives, one twice the other's length, must cost
+    about twice, not four times."""
+    run: Run = taught()
+    data: dict[str, Any] = run.to_dict()
+    double: Run = Run.from_dict(
+        data
+        | {
+            "columns": {name: c + c for name, c in data["columns"].items()},
+            "transport": data["transport"] * 2,
+            "running": data["running"] * 2,
+        }
+    )
+    times: list[float] = []
+    for r in (run, double):
+        start: float = time.perf_counter()
+        run_profiles(r)
+        times.append(time.perf_counter() - start)
+    assert times[1] < 3.0 * times[0]
 
 
 def finish_round(s: ReplaySession) -> list[dict[str, Any]]:
