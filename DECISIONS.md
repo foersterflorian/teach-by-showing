@@ -2237,9 +2237,11 @@ shows, and which are there from the start. Decided with the maintainer on
   screen's language).
   They are never hidden. Further models wait for a recording session with
   colleagues (concept §15 item 11).
-- *Every visitor's agent joins as it learns,* named "Kranführer·in #n"
+- *Every visitor's agent joins as it learns,* named "Kranführer #n"
   (concept §6.3: no real names; stored so, and shown as "Crane operator #n"
-  on an English screen, §24); n runs on over every agent ever stored and
+  on an English screen, §24; without a gendered form since 2026-10-27,
+  §24, so agents stored before carry "Kranführer·in #n", which the screen
+  never shows, as it words a visitor's agent by its number); n runs on over every agent ever stored and
   is never reused, hidden or not. It is stored as
   `$DATA_DIR/agents/agent-NNNN.json`: its policy, its run's file name, and
   its figures on the reference targets with the parameters they were
@@ -2363,6 +2365,10 @@ Decided with the maintainer on 2026-10-22, before the feature freeze.
   speak the stored language from the start; switching exists only on the
   stand, as Ctrl+Alt+G does.
 - *Every keyboard shortcut is listed in the README* (decided 2026-10-22).
+- *No gendered forms* (decided by the maintainer on 2026-10-27): no
+  "·in", ":in", "*in", "Innen" or "(in)" in the German texts or in a stored
+  name; a person is named in the plain form, "Kranführer #n", as the
+  English "Crane operator #n" is.
 - *The layout does not depend on the language.* The English headers of
   the style profile are as short as the German, so that both wrap into two
   lines ("Calm (final swing)" for "Ruhe am Ziel (Restpendeln)"); the profile's columns have one width (8vw), whatever their cells
@@ -2443,7 +2449,7 @@ placeholders, numbers follow the language, the stored choice and its
 fallback, no German text outside the catalogue (a scan of `src/` and the
 frontend, the staff's gamepad page excepted), the page in each language,
 the reload, the staff's key once per press, a switch reaching the replay,
-that every shortcut is in the README, and the layout rules that keep the
+that every shortcut is in the README, no gendered German form, and the layout rules that keep the
 scene's size the same in both languages.
 
 ---

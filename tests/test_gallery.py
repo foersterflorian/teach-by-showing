@@ -69,7 +69,7 @@ def model(name: str) -> Agent:
 
 def visitor(number: int, created: str) -> Agent:
     return make_agent(
-        number, f"Kranführer·in #{number}", created, None, policy_of("quick"), CRANE, TASK
+        number, f"Kranführer #{number}", created, None, policy_of("quick"), CRANE, TASK
     )
 
 
@@ -91,8 +91,8 @@ def test_the_reference_is_the_same_ten_targets_for_everyone() -> None:
 
 def test_numbers_run_on_across_a_restart_and_are_never_reused(tmp_path: Path) -> None:
     store: GalleryStore = GalleryStore(tmp_path)
-    store.add(fake("Kranführer·in #1", 10.0, number=1))
-    store.add(fake("Kranführer·in #2", 10.0, number=2))
+    store.add(fake("Kranführer #1", 10.0, number=1))
+    store.add(fake("Kranführer #2", 10.0, number=2))
     store.set_since("z")  # hides both
     assert GalleryStore(tmp_path).next_number() == 3
 
@@ -195,7 +195,7 @@ def test_the_visitors_agent_joins_and_after_one_round_meets_its_opposite(
 ) -> None:
     s: StandSession = visited
     assert s.gallery is not None and [a.number for a in s.gallery.agents()] == [1]
-    assert s.own is not None and s.own.name == "Kranführer·in #1"
+    assert s.own is not None and s.own.name == "Kranführer #1"
     # A cautious visitor meets the quick model.
     assert s.rival is not None and s.rival.name == MODEL_QUICK
     r = s.replay
@@ -294,8 +294,8 @@ def test_the_staffs_command_lists_and_sets_the_filter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     store: GalleryStore = GalleryStore(tmp_path)
-    store.add(fake("Kranführer·in #1", 10.0, number=1, created="20261021-090000"))
-    store.add(fake("Kranführer·in #2", 12.0, number=2, created="20261021-110000"))
+    store.add(fake("Kranführer #1", 10.0, number=1, created="20261021-090000"))
+    store.add(fake("Kranführer #2", 12.0, number=2, created="20261021-110000"))
 
     def command(*args: str) -> str:
         monkeypatch.setattr(

@@ -38,9 +38,10 @@ REFERENCE_SEED: Final[int] = 2310
 # scene visibly smaller (decided 2026-10-21).
 TABLE_ROWS: Final[int] = 4
 # The name a visitor's agent is stored under, and its identity in the
-# gallery; agents stored since 2026-10-21 carry it. The screen words it in
-# the current language (display_name, §24).
-VISITOR_NAME: Final[str] = "Kranführer·in #{}"
+# gallery; agents stored since 2026-10-21 carry it, those stored before
+# 2026-10-27 as "Kranführer·in #n" (§23). The screen words it by its number
+# in the current language (display_name, §24), so the older form never shows.
+VISITOR_NAME: Final[str] = "Kranführer #{}"
 
 
 def reference_targets(crane: CraneParams, task: TaskParams) -> tuple[FloatArray, FloatArray]:

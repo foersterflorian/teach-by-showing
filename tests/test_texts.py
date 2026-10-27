@@ -72,6 +72,35 @@ def test_every_text_is_worded_and_differs_where_it_should() -> None:
     assert GERMAN.language_notice == "Deutsch" and ENGLISH.language_notice == "English"
 
 
+# Gender star, colon, underscore, slash, middle dot, inner capital, brackets.
+GENDERED: re.Pattern[str] = re.compile(
+    r"[a-zäöüß][·:*_/]-?in(nen)?\b|[a-zäöüß]Innen\b|\(in(nen)?\)"
+)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Kranführer·in",
+        "Besucher:innen",
+        "Fahrer*in",
+        "BesucherInnen",
+        "Fahrer/-in",
+        "Fahrer(in)",
+    ],
+)
+def test_the_gendered_pattern_catches_the_usual_forms(text: str) -> None:
+    assert GENDERED.search(text)
+
+
+def test_no_german_text_is_gendered() -> None:
+    """The maintainer's choice of 2026-10-27: no gendered forms on the
+    screen or in a stored name."""
+    texts: dict[str, str] = wordings(GERMAN) | {"VISITOR_NAME": gallery.VISITOR_NAME}
+    texts |= {"funding": funding.FUNDING_TEXT[Language.DE]}
+    assert not {name: t for name, t in texts.items() if GENDERED.search(t)}
+
+
 def test_numbers_follow_the_language() -> None:
     assert number(3.25, 1, GERMAN, " s") == "3,2 s"
     assert number(3.25, 1, ENGLISH, " s") == "3.2 s"
