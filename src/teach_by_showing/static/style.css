@@ -327,5 +327,16 @@ main {
 }
 
 #funding img { height: 7vh; width: auto; }
-#funding p { margin: 0; max-width: 70vw; }
+#funding p { margin: 0; }
 #funding a { color: #1d4ed8; }
+#funding .funding { flex: 1; display: flex; align-items: center; gap: 2vw; }
+/* Licence and source, set off from the funding notice as in feature-viz
+   beside it (§2): a rule, a narrower column, smaller and greyer type. */
+#funding .about {
+  max-width: 30vw;
+  padding-left: 2vw;
+  border-left: 1px solid #ccc;
+  color: #555;
+  font-size: 1vh;
+}
+#funding .about p + p { margin-top: 0.5vh; }

@@ -73,6 +73,10 @@ MODELS: Final[tuple[tuple[str, str], ...]] = (
 # A name in double braces in index.html: a field of texts.Texts, or the
 # page's language or theme.
 PAGE_WORD: Final[re.Pattern[str]] = re.compile(r"\{\{(\w+)\}\}")
+# Named in the footer beside the funding notice, as feature-viz names its
+# own; MIT asks for no such notice, the pair is meant to read alike (§1, §2).
+SOURCE_URL: Final[str] = "https://github.com/foersterflorian/teach-by-showing"
+LICENCE_URL: Final[str] = f"{SOURCE_URL}/blob/main/LICENSE"
 
 
 class Outbox:
@@ -240,9 +244,15 @@ def index_page(language: Language, theme: Theme = DEFAULT_THEME) -> str:
     logos: str = "".join(
         f'<img src="/funding/{name}" alt="{html.escape(alt)}">' for name, alt in FUNDING_LOGOS
     )
+    licence: str = html.escape(words.licence).format(
+        licence=f'<a href="{LICENCE_URL}">{html.escape(words.licence_name)}</a>'
+    )
     notice: str = (
-        f"{logos}<p>{html.escape(FUNDING_TEXT[language])}"
-        f' <a href="{FUNDING_URL}">{FUNDING_URL}</a></p>'
+        f'<section class="funding">{logos}<p>{html.escape(FUNDING_TEXT[language])}'
+        f' <a href="{FUNDING_URL}">{FUNDING_URL}</a></p></section>'
+        f'<section class="about"><p>{licence}</p>'
+        f'<p>{html.escape(words.source)} <a href="{SOURCE_URL}">{SOURCE_URL}</a></p>'
+        "</section>"
     )
     return page.replace("<!--FUNDING-->", notice)
 

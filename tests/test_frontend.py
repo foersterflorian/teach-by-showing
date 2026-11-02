@@ -1,6 +1,7 @@
 """Frontend as served (DECISIONS.md §9, §2). The JavaScript itself is not
 executed here; what is tested is what Python controls: the page, its files,
-the funding notice, and that the scripts hold no crane logic."""
+the funding notice with licence and source beside it, and that the scripts
+hold no crane logic."""
 
 from __future__ import annotations
 
@@ -14,10 +15,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from teach_by_showing import funding
-from teach_by_showing.api import create_app
+from teach_by_showing.api import LICENCE_URL, SOURCE_URL, create_app, index_page
 from teach_by_showing.crane import CraneParams
 from teach_by_showing.live import LiveSession
-from teach_by_showing.texts import DEFAULT_LANGUAGE
+from teach_by_showing.texts import DEFAULT_LANGUAGE, TEXTS, Language
 from tests.support import ROOT
 
 STATIC: Path = ROOT / "src" / "teach_by_showing" / "static"
@@ -36,6 +37,20 @@ def test_page_carries_the_funding_notice_verbatim(client: TestClient) -> None:
     assert f'href="{funding.FUNDING_URL}"' in page
     for name, _ in funding.FUNDING_LOGOS:
         assert f'src="/funding/{name}"' in page
+
+
+@pytest.mark.parametrize("language", list(Language))
+def test_the_footer_names_licence_and_source_as_feature_viz_does(language: Language) -> None:
+    """Beside the funding notice, as feature-viz beside it on the stand (§2):
+    the licence of LICENSE and its holder, and the public repository."""
+    page: str = index_page(language)
+    licence: str = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    holder: str = licence.splitlines()[2].removeprefix("Copyright (c) 2026 ")
+    assert licence.startswith("MIT License") and "MIT" in TEXTS[language].licence_name
+    about: str = page.split('<section class="about">')[1].split("</section>")[0]
+    assert holder in about and html.escape(TEXTS[language].licence_name) in about
+    assert f'href="{SOURCE_URL}"' in about and f'href="{LICENCE_URL}"' in about
+    assert SOURCE_URL == "https://github.com/foersterflorian/teach-by-showing"
 
 
 @pytest.mark.parametrize("name", [n for n, _ in funding.FUNDING_LOGOS])

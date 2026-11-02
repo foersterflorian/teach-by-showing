@@ -67,6 +67,11 @@ class Texts:
     gallery_hint: str
     gallery_title: str
     gallery_notice: str
+    # The footer's column beside the funding notice, as in feature-viz (§2):
+    # copyright and licence, with {licence} for the link, and the source.
+    licence: str
+    licence_name: str
+    source: str
     language_notice: str
     # The theme the staff switched to (§25).
     dark_notice: str
@@ -136,6 +141,10 @@ GERMAN: Final[Texts] = Texts(
     " · A: noch einmal vormachen · B: beenden",
     gallery_title="Galerie – Mittel aus {targets} Testzielen",
     gallery_notice="Galerie neu ab jetzt",
+    licence="teach-by-showing, Copyright © 2026 Florian Förster"
+    " – lizenziert unter der {licence}.",
+    licence_name="MIT-Lizenz",
+    source="Quellcode:",
     language_notice="Deutsch",
     dark_notice="Dunkel",
     light_notice="Hell",
@@ -207,6 +216,10 @@ ENGLISH: Final[Texts] = Texts(
     " · A: demonstrate again · B: finish",
     gallery_title="Gallery – mean over {targets} test targets",
     gallery_notice="Gallery starts afresh now",
+    licence="teach-by-showing, Copyright © 2026 Florian Förster"
+    " — licensed under the {licence}.",
+    licence_name="MIT License",
+    source="Source:",
     language_notice="English",
     dark_notice="Dark",
     light_notice="Light",

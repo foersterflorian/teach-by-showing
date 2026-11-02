@@ -61,6 +61,10 @@ copyleft one reopens this section.
 industry partner. For a transfer-oriented research demonstrator that is
 intended.
 
+**Shown on the screen** since 2026-11-02, beside the funding notice (§2):
+the copyright, the licence and the repository, as feature-viz shows its
+own, though MIT does not ask for it.
+
 **Excluded.** The two funding logos (§2) are third-party marks and are excluded
 from the licence in `README.md`.
 
@@ -104,9 +108,25 @@ in line is a task in that repository.
 - *Files unmodified, only scaled.* The protected margin is part of the mark.
 - *Allow-list.* `funding_asset()` serves only the names in `FUNDING_LOGOS`,
   so a name taken from an HTTP request can never reach another file.
+- *Licence and source beside it* (decided by the maintainer on
+  2026-11-02): to the right of the notice, behind a thin rule, a narrower
+  column (30vw) in smaller, greyer type names the copyright, the MIT
+  licence with a link to `LICENSE`, and the repository's address, worded
+  in the screen's language from `texts.py`. feature-viz shows the same
+  column, where the AGPL requires it (its §16); here MIT requires nothing
+  (§1), and the column is there so that the pair reads alike. Its styles
+  are feature-viz's.
+
+**Measured** (the desktop app's browser at 2816 × 1584 CSS pixels, the 4K
+monitor's size, deployment machine, 2026-11-02): with the column the
+footer is 137 px high in German and in English, as before and as
+feature-viz's beside it; the column's type is 15.8 px in both pages, its
+two lines 51 px high; nothing scrolls.
 
 `tests/test_funding.py` guards the verbatim match, the German wording, the
-README references and the allow-list.
+README references and the allow-list; `tests/test_frontend.py` that the
+footer names the licence of `LICENSE`, its holder and the repository in
+both languages.
 
 ---
 
