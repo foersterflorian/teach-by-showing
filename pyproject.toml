@@ -1,6 +1,6 @@
 [project]
 name = "teach-by-showing"
-version = "0.2.2"
+version = "0.2.3"
 description = "A small learned model drives an overhead crane after a short human demonstration - a hands-on demonstrator for an exhibition stand"
 authors = [
     {name = "Florian Förster",email = "florian.foerster@mb.tu-chemnitz.de"},
@@ -90,7 +90,7 @@ directory = "reports/coverage"
 
 
 [tool.bumpversion]
-current_version = "0.2.2"
+current_version = "0.2.3"
 parse = """(?x)
     (?P<major>0|[1-9]\\d*)\\.
     (?P<minor>0|[1-9]\\d*)\\.

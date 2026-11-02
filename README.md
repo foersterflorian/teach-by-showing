@@ -77,8 +77,8 @@ the stand can be set up again without PyPI or Docker Hub (`DECISIONS.md`
 §10):
 
 ```bash
-docker save teach-by-showing:0.2.2 | zstd -T0 -o ../teach-by-showing-0.2.2.tar.zst
-zstd -dc ../teach-by-showing-0.2.2.tar.zst | docker load
+docker save teach-by-showing:0.2.3 | zstd -T0 -o ../teach-by-showing-0.2.3.tar.zst
+zstd -dc ../teach-by-showing-0.2.3.tar.zst | docker load
 ```
 
 `tools/kiosk.py` opens the page full screen in Firefox on a chosen monitor,
