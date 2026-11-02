@@ -1,7 +1,7 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** stand image 0.2.3 built, checked and archived (§10), endurance test of eight hours passed (§27); spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24), mirrored learning (§15, §16), colours in a dark and a light set (§25), the stand account (§26); week 4: the endurance test (§27)
+**Status:** stand image 0.2.4 built, checked and archived (§10), endurance test of eight hours passed (§27); spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24), mirrored learning (§15, §16), colours in a dark and a light set (§25), the stand account (§26); week 4: the endurance test (§27)
 **Last updated:** 2026-11-02
 
 This file records *why* the code looks the way it does. The code says what it
@@ -928,6 +928,14 @@ volume, healthy, its six agents still there; archive 74 MB, integrity
 checked: `../teach-by-showing-0.2.3.tar.zst` and
 `../Container-ID-Hash-teach-by-showing-0.2.3.txt` (config digest
 `sha256:5e121b56…`, manifest digest `sha256:4b3e07ec…`). 0.2.2 is kept
+beside it as the version before.
+
+**The stand's image, 0.2.4** (deployment machine, 2026-11-02, commit
+e0acf4e): scales and a step count on the learning curve (§21). Started
+with the stand's volume, healthy, its seven agents still there; archive
+74 MB, integrity checked: `../teach-by-showing-0.2.4.tar.zst` and
+`../Container-ID-Hash-teach-by-showing-0.2.4.txt` (config digest
+`sha256:d96aae22…`, manifest digest `sha256:7f3facab…`). 0.2.3 is kept
 beside it as the version before.
 
 **Not yet done.** The dress rehearsal on the venue's cabling, both
