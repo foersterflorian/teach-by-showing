@@ -2112,6 +2112,19 @@ about 50 of the 2000 epochs; the quick drive's distance weight grows from
 - *The durations are settings* (`StandParams`, the section `stand` of the
   settings file read by `--params`): `teach_timeout` 45 s, `learn_replay`
   5 s, `learn_wait` 20 s, to be tuned on the stand.
+- *Scales and a running step count* (asked for by the maintainer on
+  2026-11-02, so that a visitor sees how many iterations were trained):
+  under the axis the steps 0, 10, 100, 1000 and 2000 with a short mark
+  each, evenly spaced as the axis is logarithmic; in the left margin the
+  deviation as "100 %" and "0 %" of the deviation before training; top
+  right, in place of the old axis name "Lernschritte", the count
+  "Lernschritt 340 von 2000" ("Training step 340 of 2000"), running with
+  the slow motion to the last step. One step is one Adam update over the
+  whole drive (§15). The step numbers carry no thousands separator, so
+  they are the same characters in both languages; the count's number sits
+  in a slot as wide as the widest number, so its words stand still while
+  it counts. Positions and words come from `model_message()`; `model.js`
+  places them.
 
 **Why.**
 
@@ -2142,6 +2155,16 @@ nodes and weights overlapped; hence 42 % and the formula at 1.6vh.
 **Judged on the stand** (deployment machine, Firefox kiosk, 2026-10-16,
 the maintainer): "passt".
 
+**Scales measured** (deployment machine, 2026-11-02, the desktop app's
+browser at 2816 × 1584, a scripted visitor into the learning step, slow
+motion lengthened by `--params`): in German and in English every box of
+the page (headline, hint, scene, band, curve canvas, model, readouts,
+footer) is the same to the pixel and nothing scrolls. On the curve
+canvas (2065 × 403 px, labels 32 px), 56 px lie between "1000" and
+"2000", about 1000 px between the deviation's name and the count, and the
+widest percent label ends 147 px (German) and 155 px (English) from the
+canvas' left edge, inside the margin.
+
 **Not yet.** Learning after every transport is kept as an option (§5). A
 comparison with an earlier agent's weights waits for the gallery (concept
 §5.6).
@@ -2156,7 +2179,9 @@ comparison with an earlier agent's weights waits for the gallery (concept
 - *Naming the distance weight "Zielstrebigkeit":* decided against; the
   explanation under the formula says what a large weight does.
 
-`tests/test_model.py` guards this section.
+`tests/test_model.py` guards this section, since 2026-11-02 also the
+scale's positions on the points' logarithmic mapping, the count reaching
+the last step, and that scale and count are the same in both languages.
 
 ---
 
