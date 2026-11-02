@@ -108,7 +108,12 @@ class Texts:
     model_short: tuple[str, str, str]
     model_explain: str
     loss_label: str
-    loss_axis: str
+    # The running count of training steps, top right of the curve, worded
+    # around the number so that the number keeps its place (§21).
+    loss_step_before: str
+    loss_step_after: str
+    # The unit of the deviation's scale, in the language's spacing.
+    percent: str
 
 
 GERMAN: Final[Texts] = Texts(
@@ -182,7 +187,9 @@ GERMAN: Final[Texts] = Texts(
     model_explain="Je größer das Gewicht beim Abstand,"
     " desto zügiger fährt der Agent aufs Ziel zu.",
     loss_label="Abweichung von Ihrer Fahrt",
-    loss_axis="Lernschritte",
+    loss_step_before="Lernschritt",
+    loss_step_after="von {steps}",
+    percent=" %",
 )
 
 # British English (decided 2026-10-22).
@@ -261,7 +268,9 @@ ENGLISH: Final[Texts] = Texts(
     model_explain="The larger the weight on distance,"
     " the more briskly the agent heads for the target.",
     loss_label="Deviation from your drive",
-    loss_axis="Training steps",
+    loss_step_before="Training step",
+    loss_step_after="of {steps}",
+    percent="%",
 )
 
 TEXTS: Final[dict[Language, Texts]] = {Language.DE: GERMAN, Language.EN: ENGLISH}

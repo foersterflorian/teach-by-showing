@@ -114,9 +114,32 @@ function drawLoss(ctx, width, height, loss) {
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   ctx.fillText(loss.label, x0 + font * 0.5, 0);
-  ctx.textBaseline = "bottom";
+
+  // The running step count, top right. Placed from the fixed strings only
+  // (the words and the widest number), so nothing moves while it counts.
+  const gap = font * 0.35;
+  const step = loss.step;
+  const xValue = width - ctx.measureText(step.after).width - gap;
+  const xBefore = xValue - ctx.measureText(step.widest).width - gap;
   ctx.textAlign = "right";
-  ctx.fillText(loss.axis, width, height);
+  ctx.fillText(step.after, width, 0);
+  ctx.fillText(step.value, xValue, 0);
+  ctx.fillText(step.before, xBefore, 0);
+
+  // The deviation's scale in the left margin, beside the axis.
+  ctx.textBaseline = "middle";
+  loss.y_ticks.forEach(([y, label]) => ctx.fillText(label, x0 - gap, py(y)));
+
+  // The steps under the axis: a short mark and its number; the first and
+  // the last label kept inside the axis' ends.
+  ctx.textBaseline = "bottom";
+  ctx.fillStyle = COLORS.girder;
+  loss.x_ticks.forEach(([x]) => ctx.fillRect(px(x), bottom, 1, font * 0.25));
+  ctx.fillStyle = COLORS.label;
+  loss.x_ticks.forEach(([x, label], k) => {
+    ctx.textAlign = k === 0 ? "left" : k === loss.x_ticks.length - 1 ? "right" : "center";
+    ctx.fillText(label, px(x), height);
+  });
 
   ctx.strokeStyle = COLORS.agent;
   ctx.lineWidth = Math.max(2, font * 0.12);

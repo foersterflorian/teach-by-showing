@@ -28,6 +28,10 @@ WEIGHT_SCALE: Final[float] = 2.0
 # epochs: the cautious drive's weights settle within 50 of 2000 epochs and
 # would show no movement on a linear scale.
 SNAPSHOTS: Final[int] = 48
+# Steps named under the curve's axis, decades on its logarithmic scale; the
+# last step is added. Written without a thousands separator in both
+# languages, so the labels are the same characters in each (§21).
+STEP_TICKS: Final[tuple[int, ...]] = (0, 10, 100, 1000)
 
 
 def _negative(value: float) -> bool:
@@ -107,6 +111,11 @@ def learn(
     return policy, trace
 
 
+def step_position(epoch: int, last: int) -> float:
+    """Where a step lies on the curve's logarithmic axis, 0..1."""
+    return float(np.log1p(epoch) / np.log1p(last))
+
+
 def model_message(
     policy: LinearPolicy,
     words: Texts,
@@ -134,17 +143,33 @@ def model_message(
     }
     if trace is not None:
         # Positions in 0..1 on a logarithmic epoch axis and a loss axis from
-        # 0 to the largest loss, so that the frontend only scales them.
+        # 0 to the largest loss, so that the frontend only scales them. The
+        # loss axis is read in percent of the loss before training.
         last: int = max(trace.epochs)
         top: float = max(trace.losses)
         message["loss"] = {
             "label": words.loss_label,
-            "axis": words.loss_axis,
             "points": [
-                [float(np.log1p(e) / np.log1p(last)), loss / top]
+                [step_position(e, last), loss / top]
                 for e, loss in zip(
                     trace.epochs[: shown + 1], trace.losses[: shown + 1], strict=True
                 )
             ],
+            "x_ticks": [
+                [step_position(e, last), str(e)]
+                for e in (*(t for t in STEP_TICKS if t < last), last)
+            ],
+            "y_ticks": [
+                [0.0, number(0, 0, words, words.percent)],
+                [1.0, number(100, 0, words, words.percent)],
+            ],
+            # The widest number reserves the counter's slot, so that its
+            # words stand still while the number grows.
+            "step": {
+                "before": words.loss_step_before,
+                "value": str(trace.epochs[shown]),
+                "after": words.loss_step_after.format(steps=last),
+                "widest": str(last),
+            },
         }
     return message

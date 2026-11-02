@@ -206,5 +206,54 @@ def test_the_model_is_drawn_from_the_message_with_no_wording_of_its_own() -> Non
     assert "model.w_text[k]" in model and "model.labels" in model
     # English words occur in the comments; only a quoted one would be a text.
     for words, quote in ((GERMAN, ""), (ENGLISH, '"')):
-        for wording in (*words.model_short, words.command_label, words.loss_axis):
+        texts = (*words.model_short, words.command_label, words.loss_step_before)
+        for wording in texts:
             assert f"{quote}{wording}{quote}" not in model, wording
+    assert "loss.x_ticks" in model and "loss.y_ticks" in model and "loss.step" in model
+
+
+def test_the_learning_curve_has_a_step_scale_and_a_running_count() -> None:
+    """Asked for by the maintainer on 2026-11-02: how many steps the agent
+    really trained, on a scale under the axis and as a count that runs with
+    the slow motion to the last step."""
+    policy, trace = learnt()
+    assert isinstance(policy, LinearPolicy) and trace is not None
+    last: int = max(trace.epochs)
+    assert last == 2000
+    m: dict[str, Any] = model_message(policy, GERMAN, trace=trace, shown=10)["loss"]
+    assert [label for _, label in m["x_ticks"]] == ["0", "10", "100", "1000", "2000"]
+    assert m["x_ticks"][0][0] == 0.0 and m["x_ticks"][-1][0] == 1.0
+    for x, label in m["x_ticks"]:
+        assert x == pytest.approx(np.log1p(int(label)) / np.log1p(last))
+    # The points on the same scale as the ticks.
+    assert m["points"][-1][0] == pytest.approx(np.log1p(trace.epochs[10]) / np.log1p(last))
+    assert m["step"] == {
+        "before": "Lernschritt",
+        "value": str(trace.epochs[10]),
+        "after": "von 2000",
+        "widest": "2000",
+    }
+    assert m["y_ticks"] == [[0.0, "0 %"], [1.0, "100 %"]]
+    end: dict[str, Any] = model_message(policy, ENGLISH, trace=trace, shown=trace.points - 1)[
+        "loss"
+    ]
+    assert end["step"]["value"] == "2000" and end["step"]["after"] == "of 2000"
+    assert end["y_ticks"] == [[0.0, "0%"], [1.0, "100%"]]
+
+
+@pytest.mark.parametrize("snapshot", [0, 10, -1])
+def test_the_scale_and_the_count_do_not_depend_on_the_language(snapshot: int) -> None:
+    """Nothing on the screen may move when the staff switch the language:
+    the step numbers are the same characters in both, without a thousands
+    separator, and the count's slot is reserved by the same widest number."""
+    policy, trace = learnt()
+    assert isinstance(policy, LinearPolicy) and trace is not None
+    shown: int = snapshot % trace.points
+    de, en = (
+        model_message(policy, words, trace=trace, shown=shown)["loss"]
+        for words in (GERMAN, ENGLISH)
+    )
+    assert de["x_ticks"] == en["x_ticks"] and de["points"] == en["points"]
+    assert de["step"]["value"] == en["step"]["value"]
+    assert de["step"]["widest"] == en["step"]["widest"]
+    assert [y for y, _ in de["y_ticks"]] == [y for y, _ in en["y_ticks"]]
