@@ -1,8 +1,8 @@
 # Design Decisions
 
 **Project:** teach-by-showing — crane demonstrator for imitation learning (TUC-KMI)
-**Status:** stand image 0.2.0 built, checked and archived (§10); spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24), mirrored learning (§15, §16), colours in a dark and a light set (§25)
-**Last updated:** 2026-10-22
+**Status:** stand image 0.2.2 built, checked and archived (§10), endurance test of eight hours passed (§27); spikes done (§6–§17); Go given by the maintainer on 2026-10-09, the linear policy stays the model; week 1 done: the stand's steps (§18), the naive driver (§19), the full ghost replay (§20); week 2: the model display (§21), the style profile (§22), the gallery (§23); week 3: the screen in German or English (§24), mirrored learning (§15, §16), colours in a dark and a light set (§25), the stand account (§26); week 4: the endurance test (§27)
+**Last updated:** 2026-11-02
 
 This file records *why* the code looks the way it does. The code says what it
 does; this says what was considered and rejected, so that changing something
@@ -318,8 +318,8 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   gamepad (2026-10-06, §12). Still open: whether `?delay=0` looks worse.
 - **Funding notice language** — *built on 2026-10-22, see §2 and §24*: the
   notice follows the screen's language, the German wording verbatim from
-  the funder's material. Still open: feature-viz's English notice, which
-  still reads "K-M-I" and American spelling.
+  the funder's material. feature-viz follows since 2026-10-27 (its
+  `DECISIONS.md` §17, §21).
 - **The screen in English** (§24) — *built on 2026-10-22*. Not yet judged
   on the stand on 2026-10-22, layout "passt" in both languages. Still
   open: whether visitors who speak English read the texts as meant.
@@ -412,6 +412,24 @@ Reasoned about, never measured. Each item is an open task, not a fact.
   neither the evolution nor its fitness exists yet; the comparison drives
   would also lengthen each visitor's turn, by an amount not measured. To
   be weighed once the evolution with sliders has been judged on the stand.
+- **Long operation** — *eight hours measured on 2026-10-27, see §27*:
+  the server, 147 scripted visits and a gallery of 500 to 648 agents,
+  without kiosks. Still open: the kiosks over eight hours (Firefox's
+  memory, the picture), not run for lack of time before the event, and a
+  restart of the whole machine into the stand account. Also open: the
+  crane container's memory grew evenly, 50 to 148 MB in eight hours
+  (about 0.7 MB per visit); whether that is the page cache of the runs
+  written (56 MB) or a leak is not traced. Harmless for two days of eight
+  hours on 61 GB, to be traced after the event.
+- **COSMIC's interface after a long screen lock.** On the deployment
+  machine the interface stopped responding after the screen had been
+  locked for a long time, twice (boots ending 2026-10-13 and 2026-10-17,
+  the maintainer's report), and only the power button helped; the journal
+  went on for hours to days after the last lock, so the system itself ran
+  on. Not traced. The stand never locks by itself (screen-off and suspend
+  are off); Super+Esc would lock it, which is why the keyboard stays out
+  of the visitors' reach (§26). Whether the stand account locks on idle
+  is to be checked at the dress rehearsal.
 - **Evolution speed.** Whether a vectorised population shows a visible
   improvement within 20–60 s on the deployment machine.
 - **Crane and task parameters** (§6, §7) — *tuned on the gamepad on
@@ -873,6 +891,16 @@ languages and both themes, the staff's keys: "läuft wie zuvor"; the pair
 side by side, focus, gamepad and frame rate undisturbed: "passt". The
 server counted 1 overrun in 23 129 ticks and trained the visitor's agent
 in 0.082 s.
+
+**The stand's image, 0.2.2** (deployment machine, 2026-10-27, commit
+8edff61): 0.2.1 named a visitor's agent without a gendered form (§24),
+0.2.2 removed the stall when the agent's step begins (§27); 0.2.1 never
+went to the stand and is not kept. Build 15 s, 316 MB on disk; started
+with the stand's volume on 2026-11-02, healthy, the gallery's five agents,
+the language and the theme still there. Archive (`docker save` + `zstd`)
+74 MB, integrity checked: `../teach-by-showing-0.2.2.tar.zst` and
+`../Container-ID-Hash-teach-by-showing-0.2.2.txt` (config digest
+`sha256:8e00e3d5…`, manifest digest `sha256:c6a0e68a…`).
 
 **Not yet done.** The dress rehearsal on the venue's cabling, both
 monitors on DisplayPort without the docking station (concept §13, week 4).
@@ -2308,7 +2336,9 @@ opponent, green against violet, "passt"; the table readable and the scene
 large enough, "passt"; 30 s and 8 s, "passt"; Ctrl+Alt+G reached the page
 under COSMIC and showed its banner, and the step from demonstration to
 learning did not stall. The loop counted 1 overrun in 17 599 ticks over
-that visit, not traced to a step.
+that visit, not traced to a step. *Traced on 2026-10-27 (§27):* the
+teacher's profile, counted when the agent's step begins, took 0.35–2 s;
+fixed in 0.2.2.
 
 **Rejected alternatives.**
 
@@ -2634,3 +2664,115 @@ kiosks.
 and naming the one missing, reopening a kiosk that exits and leaving one
 that keeps exiting, the defaults, the standard library only, and an
 installer that copies and grants nothing else.
+
+---
+
+## 27. The endurance test: scripted visitors for hours, a large gallery
+
+**Context.** Concept §14 names hours of operation as a risk (memory,
+dropped connections, the gamepad unplugged), to be met by a health check,
+restarts, reconnects and an endurance test in week 4. Until 2026-10-27 no
+run longer than a few minutes had been recorded, and nothing about a
+gallery of more than a handful of agents: the stand reads every stored
+agent again when a visitor's agent is numbered and when the gallery step
+begins (`GalleryStore.agents()`, inside the loop). Planned with the
+maintainer on 2026-10-27; eight hours is the upper bound of a day.
+
+**Decision.**
+
+- *A tool, not a manual drive:* `tools/endurance.py` with three commands.
+  `seed N` stores N agents into an empty volume, inside the image as the
+  container's user (uid 10001, who must own the files), cloned from the
+  two shipped teaching drives with ten training seeds each. `visit`
+  presses A, drives the three transports with a speed command towards the
+  target plus a term in the swing that damps it (cap drawn per visit
+  between 0.45 and 1.0; offline 30 of 30 targets), and lets learning, the
+  agent and the gallery run before the next visit. `sample` only listens
+  and writes one CSV row a minute: the message intervals, `/healthz`,
+  `docker stats` of both containers, Firefox's memory, the agents, runs
+  and data on the volume, and problems in the log.
+- *A container of its own:* Compose project `tbs-endurance` with its own
+  volume, so the stand's gallery is never touched.
+- *Three phases:* A, the server for eight hours with 500 seeded agents
+  and scripted visitors, without kiosks; B, both kiosks for eight hours
+  with the sampler alone, as the visitor and a kiosk would fight over the
+  crane (§5, several browsers); C, faults: the container restarted, the
+  gamepad unplugged, the machine restarted.
+- *The stall it found is fixed, not tolerated:* `run_profiles()` counted
+  the teacher's transports through `Run.states()` row by row, which
+  converts the whole recorded column each time, so its cost grew with the
+  square of the drive. It is counted from the columns converted once.
+
+**Why.**
+
+- *Scripted visitors:* a person cannot drive for eight hours, and the
+  gallery's growth needs hundreds of visits.
+- *Seeding inside the image:* the package is there, and files copied in
+  from the host would belong to the host's user.
+- *No change to the gallery's reads:* about 25 µs per stored agent
+  (below), a frame or two when a visitor's agent joins and when the
+  gallery begins, against the 106 ms that the training already costs at
+  the same moment (§18).
+
+**Measured** (deployment machine, RTX 4090 / AMD 16-core, image 0.2.1
+and 0.2.2, 2026-10-27).
+
+*The gallery's reads,* outside the container, files in the page cache:
+
+| stored agents | numbering an agent | the gallery step's start | on disk |
+|---|---|---|---|
+| 100 | 2.3 ms | 2.3 ms | 0.07 MB |
+| 300 | 7.1 ms | 7.3 ms (max 21) | 0.22 MB |
+| 600 | 14.7 ms | 15.0 ms (max 29) | 0.44 MB |
+| 1000 | 24.8 ms | 25.1 ms (max 35) | 0.74 MB |
+
+*The stall,* found in a smoke run on 0.2.1 with 500 agents: the longest
+interval when the agent's step began was 347 ms and 680 ms, one overrun
+each, the overrun per visit noted in §23. Offline, the profile of the
+shipped quick drive (3522 frames) took 879 ms and of the cautious one
+(5485 frames) 2113 ms; counted from the columns, 62 ms and 98 ms, with
+identical results. A visitor driving the full 60 s per transport would
+have stood about 8 s (extrapolated, not measured). On 0.2.2 the same
+style of visit (cap 0.91) began the agent's step after 59 ms, without an
+overrun.
+
+*Phase A,* 0.2.2, feature-viz 0.3.1 running beside it with its camera,
+14:29–22:29:
+
+| | Result |
+|---|---|
+| Visits | 147, median 181 s; the gallery from 501 to 648 agents |
+| Timing, per minute | interval median 16.73 ms (at most 16.87), p99 at most 18.34 ms, no frame skipped |
+| Health check | `ok` in 464 of 464 rows; 1 735 968 ticks, 14 overruns |
+| Overruns | each at the end of a demonstration (training, 133–146 ms) or the agent's step beginning (95–117 ms) |
+| Longest interval per change of step (median / max) | learning 106 / 146 ms, the agent 67 / 117 ms, the gallery 33 / 46 ms |
+| Log | no warning, no error |
+| Volume | 0.6 to 56.4 MB, about 0.4 MB per visit |
+| Memory | crane container 50 to 148 MB, evenly (§5); feature-viz 1.18 to 1.26 GB |
+
+*Phase B* was not run: phase A was evaluated on 2026-11-02, the day
+before the machine is loaded for the event (§5). *Phase C,* shortened, on the stand's volume with
+both kiosks from `tools/stand.py` (the copy in `/opt/kmi-stand/` is the
+same), 2026-11-02, the maintainer at the gamepad: a visit through the
+gallery on 0.2.2 with 0 overruns in 21 583 ticks, the agent trained in
+0.076 s and stored as "Kranführer #6"; after `docker restart` the kiosk
+was connected again 2.1 s after the command and the picture back, judged
+by the maintainer; the gamepad unplugged and plugged in again steered
+without a reload. A restart of the whole machine into the stand account
+waits for the dress rehearsal.
+
+**Rejected alternatives.**
+
+- *A virtual gamepad (uinput) driving the kiosk:* the whole chain in one
+  run, but root on the host and a new dependency, the week before the
+  event.
+- *Keeping the agents in memory:* the reads cost less than the training
+  beside them; a cache would be a second copy of the gallery to keep
+  right.
+- *Driving the reference profile in slices,* as the joining agent is
+  (§23): not needed once the profile costs 0.1 s.
+
+`tests/test_endurance.py` guards the tool: seeded agents numbered as the
+stand numbers them, an occupied gallery refused, and the visitor's
+controller. `tests/test_profile.py` guards the fix: twice the drive costs
+less than three times the time.

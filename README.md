@@ -52,6 +52,19 @@ and the command it applies (`DECISIONS.md` §8, §12):
 pdm run python tools/measure_ws.py timing --seconds 30
 ```
 
+`tools/endurance.py` runs the endurance test against a container of its
+own: agents seeded into its volume, scripted visitors, and one CSV row a
+minute (`DECISIONS.md` §27):
+
+```bash
+docker compose -p tbs-endurance up -d
+docker run --rm -v tbs-endurance_data:/data -v ./tools:/tools:ro \
+    --entrypoint python teach-by-showing:<version> /tools/endurance.py seed 500
+pdm run python tools/endurance.py visit --hours 8
+pdm run python tools/endurance.py sample --out data/endurance/run.csv --hours 8
+docker compose -p tbs-endurance down -v      # afterwards
+```
+
 On the stand it runs in a container, without GPU or devices; the browser on
 the host draws the crane and reads the gamepad:
 

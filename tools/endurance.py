@@ -5,7 +5,7 @@ out. Three commands:
 
     # inside the container, as its own user, into an empty test volume
     docker run --rm -v tbs-endurance_data:/data -v ./tools:/tools:ro \\
-        --entrypoint python teach-by-showing:0.2.1 /tools/endurance.py seed 500
+        --entrypoint python teach-by-showing:<version> /tools/endurance.py seed 500
     # beside the running container, from the venv
     pdm run python tools/endurance.py visit --hours 8
     pdm run python tools/endurance.py sample --out endurance.csv --hours 8
